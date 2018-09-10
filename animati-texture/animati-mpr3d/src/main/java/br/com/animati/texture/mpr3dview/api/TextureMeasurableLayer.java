@@ -253,8 +253,13 @@ public class TextureMeasurableLayer implements MeasurableLayer {
                 } catch (Exception ex) {
                     LOGGER.error("Error when receiving rendered result from texture. ", ex);
                 }
-
             }
+
+            @Override
+            public void onRenderException(final Exception exeption) {
+                LOGGER.error("Exception from render process: ", exeption);
+            }
+
         }, renderAsRaw);
 
         helper.getParametersCanvas().setBounds(bounds);

@@ -28,7 +28,9 @@ import br.com.animati.texture.mpr3dview.GUIManager;
 import br.com.animati.texture.mpr3dview.HaPrefsPage;
 import br.com.animati.texture.mpr3dview.View3DContainer;
 import br.com.animati.texture.mpr3dview.ViewTexture;
+import br.com.animati.texture.mpr3dview.api.ActionWA;
 import br.com.animati.texture.mpr3dview.internal.Messages;
+import org.weasis.core.api.gui.util.ToggleButtonListener;
 
 /**
  *
@@ -38,6 +40,10 @@ import br.com.animati.texture.mpr3dview.internal.Messages;
 public class TextureToolbar extends WtoolBar {
 
     public static final String NAME = Messages.getString("TextureToolbar.name");
+    private static final ImageIcon MODE_OFF = new ImageIcon(
+            TextureToolbar.class.getResource("/icon/32x32/cross-mode-off.png"));
+    private static final ImageIcon MODE_ON = new ImageIcon(
+            TextureToolbar.class.getResource("/icon/32x32/cross-mode-on.png"));
 
     private ImageViewerEventManager eventManager;
     private JToggleButton show3D;
@@ -119,6 +125,18 @@ public class TextureToolbar extends WtoolBar {
         });
 
         add(show3D);
+
+        ActionState crossAct = GUIManager.getInstance().getAction(ActionWA.CROSSHAIR_MODE);
+        System.out.println(" ");
+        if (crossAct instanceof ToggleButtonListener) {
+            final JToggleButton modeButton = new JToggleButton();
+            modeButton.setSelectedIcon(MODE_ON);
+            modeButton.setIcon(MODE_OFF);
+            ToggleButtonListener mode = (ToggleButtonListener) crossAct;
+            mode.registerActionState(modeButton);
+            add(modeButton);
+        }
+
 
         JButton config = new JButton(new ImageIcon(TextureToolbar.class.getResource("/icon/32x32/config.png")));
         config.setToolTipText(Messages.getString("TextureToolbar.config"));

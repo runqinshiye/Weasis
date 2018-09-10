@@ -74,7 +74,7 @@
 		<dependency>
 			<groupId>br.com.animati</groupId>
 			<artifactId>texturedicom_pg</artifactId>
-			<version>1.2.4</version>
+			<version>1.2.9</version>
 			<type>jar</type>
 		</dependency>
 		<dependency>

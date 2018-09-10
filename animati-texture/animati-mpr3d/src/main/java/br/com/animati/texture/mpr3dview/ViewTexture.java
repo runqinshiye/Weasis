@@ -597,6 +597,12 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
         actionsInView.put(ActionWA.MIP_DEPTH.cmd(), 2);
 
         actionsInView.put(ActionWA.SMOOTHING.cmd(), true);
+
+        ActionState action = GUIManager.getInstance().getAction(ActionWA.CROSSHAIR_MODE);
+        if (action instanceof ToggleButtonListener) {
+            controlAxesExtendToCenter = ((ToggleButtonListener) action).isSelected();
+            actionsInView.put(ActionWA.CROSSHAIR_MODE.cmd(), controlAxesExtendToCenter);
+        }
     }
 
     /**
@@ -637,6 +643,8 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
                     setColorMask((ColorMask) value);
                 }
             }
+        } else if (ActionWA.CROSSHAIR_MODE.cmd().equals(action) && value instanceof Boolean) {
+            controlAxesExtendToCenter = (Boolean) value;
         }
 
         if (repaint) {
@@ -1372,7 +1380,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
         public void mouseMoved(MouseEvent e) {
             move(e);
         }
-        
+
         private void move(MouseEvent e) {
             int mask = InputEvent.CTRL_DOWN_MASK;
             if ((e.getModifiersEx() & mask) == mask) {
