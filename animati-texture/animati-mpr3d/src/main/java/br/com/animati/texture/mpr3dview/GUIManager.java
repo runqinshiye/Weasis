@@ -115,6 +115,7 @@ public class GUIManager extends ImageViewerEventManager<DicomImageElement> {
         setAction(newSmoothing());
         setAction(newVolumeSlicing());
         setAction(newVolumeLighting());
+        setAction(newCrosshairModeAction());
 
         setAction(newPresetAction());
         // setAction(newLutShapeAction());
@@ -388,6 +389,35 @@ public class GUIManager extends ImageViewerEventManager<DicomImageElement> {
                     new SynchEvent(getSelectedViewPane(), action.cmd(), selected));
             }
         };
+    }
+
+    private ToggleButtonListener newCrosshairModeAction() {
+        ToggleButtonListener action = new ToggleButtonListener(ActionWA.CROSSHAIR_MODE, false) {
+            @Override
+            public void actionPerformed(final boolean bln) {
+                // Change on All views (not an action behavior, a setting behavior)
+                synchronized (UIManager.VIEWER_PLUGINS) {
+                    for (final ViewerPlugin<?> p : UIManager.VIEWER_PLUGINS) {
+                        if (p instanceof View3DContainer) {
+                            List<ViewCanvas<DicomImageElement>> imagePanels
+                                    = ((View3DContainer) p).getImagePanels();
+                            for (ViewCanvas<DicomImageElement> view : imagePanels) {
+                                view.setActionsInView(ActionWA.CROSSHAIR_MODE.cmd(), bln, true);
+                            }
+                        }
+                    }
+                }
+
+                saveToPrefs(ActionWA.CROSSHAIR_MODE.cmd(), bln);
+            }
+
+        };
+
+        boolean mode = readFromPrefs(ActionWA.CROSSHAIR_MODE.cmd());
+        action.setSelected(mode);
+
+        return action;
+
     }
 
     public static GUIManager getInstance() {
@@ -878,6 +908,23 @@ public class GUIManager extends ImageViewerEventManager<DicomImageElement> {
             }
         }
         return menu;
+    }
+
+    private void saveToPrefs(String cmd, boolean value) {
+        BundleContext context = FrameworkUtil.getBundle(this.getClass()).getBundleContext();
+        Preferences prefs = BundlePreferences.getDefaultPreferences(context);
+        if (prefs != null) {
+            prefs.putBoolean(cmd, value);
+        }
+    }
+
+    private boolean readFromPrefs(String cmd) {
+        BundleContext context = FrameworkUtil.getBundle(this.getClass()).getBundleContext();
+        Preferences prefs = BundlePreferences.getDefaultPreferences(context);
+        if (prefs != null) {
+            return prefs.getBoolean(cmd, false);
+        }
+        return false;
     }
 
 }

@@ -45,6 +45,11 @@ public class ActionWA {
 
     public static final ActionW BEST_FIT = new ActionW("Best Fit", "bestFit", 0, 0, null);
 
+    /**
+     * Crosshair mode action. Texture only.
+     */
+    public static final ActionW CROSSHAIR_MODE = new ActionW("Crosshair Mode", "crosshair-mode", 0, 0, null);
+
     /** Private constructor. */
     private ActionWA() {
     }
