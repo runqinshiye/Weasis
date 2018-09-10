@@ -694,12 +694,14 @@ public class ImageSeriesFactory {
 
                             // Verify pixelSpacing
                             double[] pixSp = TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class);
-                            if (pixSp == null || pixSpacing == null) {
-                                variablePixSpacing = true;
-                            } else {
-                                for (int i = 0; i < pixSp.length; i++) {
-                                    if (pixSpacing[1] != pixSp[i]) {
-                                        variablePixSpacing = true;
+                            if (!variablePixSpacing) {
+                                if (pixSp == null || pixSpacing == null) {
+                                    variablePixSpacing = true;
+                                } else {
+                                    for (int i = 0; i < pixSp.length; i++) {
+                                        if (pixSpacing[1] != pixSp[i]) {
+                                            variablePixSpacing = true;
+                                        }
                                     }
                                 }
                             }
@@ -711,6 +713,7 @@ public class ImageSeriesFactory {
                         if (!variablePixSpacing && pixSpacing != null) {
                             seriesToLoad.setAcquisitionPixelSpacing(pixSpacing);
                         } else {
+                            seriesToLoad.setAcquisitionPixelSpacing(null);
                             seriesToLoad.textureLogInfo.writeText("Found variable or unknown pixel-spacing.");
                         }
                     }
@@ -870,12 +873,14 @@ public class ImageSeriesFactory {
 
                             // Verify pixelSpacing
                             double[] pixSp = TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class);
-                            if (pixSp == null || pixSpacing == null) {
-                                variablePixSpacing = true;
-                            } else {
-                                for (int i = 0; i < pixSp.length; i++) {
-                                    if (pixSpacing[1] != pixSp[i]) {
-                                        variablePixSpacing = true;
+                            if (!variablePixSpacing) {
+                                if (pixSp == null || pixSpacing == null) {
+                                    variablePixSpacing = true;
+                                } else {
+                                    for (int i = 0; i < pixSp.length; i++) {
+                                        if (pixSpacing[1] != pixSp[i]) {
+                                            variablePixSpacing = true;
+                                        }
                                     }
                                 }
                             }
@@ -887,6 +892,7 @@ public class ImageSeriesFactory {
                         if (!variablePixSpacing && pixSpacing != null) {
                             seriesToLoad.setAcquisitionPixelSpacing(pixSpacing);
                         } else {
+                            seriesToLoad.setAcquisitionPixelSpacing(null);
                             seriesToLoad.textureLogInfo.writeText("Found variable or unknown pixel-spacing.");
                         }
                     }

@@ -91,7 +91,9 @@ public class TextureMeasurableLayer implements MeasurableLayer {
             String abr = owner.getSeriesObject().getPixelSpacingUnit().getAbbreviation();
             double[] pixelSpacing = owner.getSeriesObject().getAcquisitionPixelSpacing();
             double pixelSize = 1;
-            if (pixelSpacing != null) {
+            if (pixelSpacing == null) {
+                abr = Unit.PIXEL.getAbbreviation();
+            } else {
                 pixelSize = pixelSpacing[0];
             }
             return new MeasurementsAdapter(pixelSize, 0, 0, false, 0, abr);
