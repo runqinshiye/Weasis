@@ -1359,11 +1359,16 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
                         lev.mousePressed(e);
                     }
                 } else {
-                    win = null;
-                    lev = null;
+                    
+                    releaseWinLevelAdapter();
                     mouseDragReset(e.getPoint());
                 }
             }
+        }
+        
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            releaseWinLevelAdapter();
         }
 
         @Override
@@ -1405,6 +1410,18 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
                 } else {
                     onMouseDragged(e.getPoint());
                 }
+            }
+        }
+
+        
+        private void releaseWinLevelAdapter() {
+            if (win != null) {
+                win.setButtonMaskEx(0);
+                win = null;
+            }
+            if (lev != null) {
+                lev.setButtonMaskEx(0);
+                lev = null;
             }
         }
 
