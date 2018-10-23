@@ -115,14 +115,12 @@ public class TextureMeasurableLayer implements MeasurableLayer {
     public Object getSourceTagValue(final TagW tagW) {
         if (hasContent()) {
             Object tagValue = owner.getSeriesObject().getTagValue(tagW);
-            // Special case RescaleIntercept (#3743)
+            // Do not deliver Rescale or slope for measurements, becouse the source image
+            // we deliver is alreary threated for them.
             if (TagD.get(Tag.RescaleIntercept).equals(tagW)) {
-                if (TextureData.Format.UnsignedShort.equals(owner.getSeriesObject().getTextureData().getFormat())
-                        && tagValue != null) {
-                    return tagValue;
-                } else {
-                    return 0.0d;
-                }
+                return 0.0d;
+            } else if (TagD.get(Tag.RescaleSlope).equals(tagW)) {
+                return 1.0d;
             }
             if (tagValue == null) {
                 tagValue = owner.getSeriesObject().getTagValue(tagW, 0);

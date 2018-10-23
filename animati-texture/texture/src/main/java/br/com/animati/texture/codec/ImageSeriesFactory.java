@@ -935,6 +935,7 @@ public class ImageSeriesFactory {
                 }
             }
 
+            seriesToLoad.textureLogInfo.writeText("Min in value: " + seriesToLoad.windowingMinInValue);
             final long stop = System.currentTimeMillis();
             String log = "Loading time: " + ((stop - timeStarted) / 1000) + " s";
             LOGGER.info(log);
