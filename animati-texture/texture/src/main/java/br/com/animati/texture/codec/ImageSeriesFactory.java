@@ -3,6 +3,7 @@
  */
 package br.com.animati.texture.codec;
 
+import br.com.animati.texture.codec.loader.GeometryLoaderMath;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
@@ -491,30 +492,6 @@ public class ImageSeriesFactory {
         return "No-data";
     }
 
-    /**
-     * Normalize vector to obtain a valid parameter for dimendionMultiplier: divide all by the smaller.
-     *
-     * @param xSp
-     *            x-spacing.
-     * @param ySp
-     *            y-spacing.
-     * @param zSp
-     *            z-spacing.
-     * @return A valid parameter for dimendionMultiplier.
-     */
-    private static Vector3d getNormalizedVector(final double xSp, final double ySp, final double zSp) {
-
-        if (xSp <= 0 || ySp <= 0 || zSp <= 0) {
-            return new Vector3d(1, 1, 1);
-        }
-
-        double min = Math.min(xSp, ySp);
-        if (zSp < min) {
-            min = zSp;
-        }
-        return new Vector3d(xSp / min, ySp / min, zSp / min);
-    }
-
     private static int getAverage(ArrayList<Integer> listOfKeys) {
         int sunOfKeys = 0;
         for (int i = 0; i < listOfKeys.size(); i++) {
@@ -683,11 +660,11 @@ public class ImageSeriesFactory {
                             seriesToLoad.addZSpacingOccurence(space);
 
                             if (place == 1) { // is second
-                                Vector3d vector = getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
+                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                             } else if (place == seriesToLoad.getSeries().size(null) - 1) { // is last
                                 zSpacing = seriesToLoad.getMostCommonSpacing();
-                                Vector3d vector = getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
+                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
                             }
@@ -862,11 +839,11 @@ public class ImageSeriesFactory {
                             seriesToLoad.addZSpacingOccurence(space);
 
                             if (place == 1) { // is second
-                                Vector3d vector = getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
+                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                             } else if (place == seriesSize - 1) { // is last
                                 zSpacing = seriesToLoad.getMostCommonSpacing();
-                                Vector3d vector = getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
+                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
                             }
