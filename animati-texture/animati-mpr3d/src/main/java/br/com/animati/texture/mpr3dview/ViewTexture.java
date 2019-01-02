@@ -1046,19 +1046,47 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
         return false;
     }
 
+    /**
+     * Calculated based no TextureImageCanvas.getProximityToOriginalAxis() value.
+     *
+     * The ProximityToOriginalAxis is a value from -1.0 to +1.0. For the this calculation the sign is not used.
+     * A tolerance value is used, end the identification is done by the following values.
+     * ---------------------------------------------------------------------------
+     * | Axis / Original Acq. plane |     Axial     |    Coronal   |  Sagittal   |
+     * ---------------------------------------------------------------------------
+     * | AcquisitionAxis            |    * 1.0 *    |      0.0     |     0.0     |
+     * ---------------------------------------------------------------------------
+     * | HorizontalAxis             |      1.0      |    * 0.0 *   |     0.0     |
+     * ---------------------------------------------------------------------------
+     * | VerticalAxis               |      1.0      |      1.0     |   * 0.0 *   |
+     * ---------------------------------------------------------------------------
+     *
+     * @return True only if the position being shown corresponds to the Acquisition of the original series.
+     */
     public boolean isShowingAcquisitionAxis() {
         double proximity = getProximityToOriginalAxis();
         if (TextureImageCanvas.FixedAxis.AcquisitionAxis.equals(fixedAxis)) {
-            if (Math.abs(proximity) < (1 - WARNING_TOLERANCE)) {
-                return false;
+            if (Math.abs(proximity) > (1 - WARNING_TOLERANCE)) {
+                return true;
             }
-        } else if (TextureImageCanvas.FixedAxis.VerticalAxis.equals(fixedAxis)
-            || TextureImageCanvas.FixedAxis.HorizontalAxis.equals(fixedAxis)) {
-            if (Math.abs(proximity) > WARNING_TOLERANCE) {
-                return false;
+        } else if (TextureImageCanvas.FixedAxis.VerticalAxis.equals(fixedAxis)) {
+            if (Math.abs(proximity) < WARNING_TOLERANCE) {
+                return true;
+            }
+        } else if (TextureImageCanvas.FixedAxis.HorizontalAxis.equals(fixedAxis)) {
+            if (Math.abs(proximity) < WARNING_TOLERANCE) {
+                TextureImageCanvas[] canv = controlAxes.getCanvases();
+                for (TextureImageCanvas textureImageCanvas : canv) {
+                    if (TextureImageCanvas.FixedAxis.VerticalAxis.equals(textureImageCanvas.fixedAxis)) {
+                        double otherProx = textureImageCanvas.getProximityToOriginalAxis();
+                        if (Math.abs(otherProx) > (1 - WARNING_TOLERANCE)) {
+                            return true;
+                        }
+                    }
+                }
             }
         }
-        return true;
+        return false;
     }
 
     /**
