@@ -3,9 +3,14 @@
  */
 package br.com.animati.texture.codec;
 
+import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.weasis.core.api.image.util.Unit;
 
 /**
@@ -15,9 +20,22 @@ import org.weasis.core.api.image.util.Unit;
  */
 public class TextureGeometry {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(TextureGeometry.class);
+
+    private static final String STRING_NULL = "Null";
+    private static final NumberFormat DF3 = NumberFormat.getNumberInstance(Locale.US);
+    private static final int Z_SPACING_PRECISION = 3; // 3 decimals
+
+    static {
+        DF3.setMaximumFractionDigits(Z_SPACING_PRECISION);
+    }
+
+
     private double[] firstAcqPixSpacing;
     private boolean isUnknown = false;
     private boolean isVariable = false;
+    private Map<String, Integer> zSpacings;
+    private double[] originalSeriesOrientationPatient;
     private final Map<Integer, double[]> pixelSpacingMap = new HashMap<>();
 
 
@@ -110,6 +128,129 @@ public class TextureGeometry {
     public void setVariablePixelSpacing(boolean variable) {
         isVariable = variable;
     }
+
+    /**
+     * Stores an occurrence of the given slice-spacing om a {@code Map<String, Integer>}.
+     *
+     * Uses a String conversion of 3-decimals to limit the tolerance to 0.001, like the MPR of weasis.dicom.view2d.
+     *
+     * @param space Spacing value to add.
+     */
+    public void addZSpacingOccurence(final Double space) {
+        if (zSpacings == null) {
+            zSpacings = new HashMap<>();
+        }
+        String sp = asString(space);
+        Integer number = zSpacings.get(sp);
+        if (number == null) {
+            zSpacings.put(sp, 1);
+            LOGGER.info("Found new z-spacing value: " + sp);
+        } else {
+            zSpacings.put(sp, number + 1);
+        }
+    }
+
+    private String asString(final Double value) {
+        if (value != null) {
+            return DF3.format(value);
+        }
+        return STRING_NULL;
+    }
+
+    private Double asDouble(final String string) {
+        try {
+            return Double.parseDouble(string);
+        } catch (NumberFormatException ignore) {
+            return null;
+        }
+    }
+
+    /**
+     * @return True if the original series has known and regular slice-spacing.
+     */
+    public boolean isSliceSpacingRegular() {
+        if (zSpacings != null && zSpacings.size() == 1) {
+            String[] toArray = zSpacings.keySet().toArray(new String[1]);
+            Double value = asDouble(toArray[0]);
+            return value != null;
+        }
+        return false;
+    }
+
+    /**
+     * @return True if it has any occurrence of negative slice spacing.
+     */
+    public boolean hasNegativeSliceSpacing() {
+        if (zSpacings != null && !zSpacings.isEmpty()) {
+            Iterator<String> iterator = zSpacings.keySet().iterator();
+            while (iterator.hasNext()) {
+                String next = iterator.next();
+                Double val = asDouble(next);
+                if (val != null && val < 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Consults the slice-spacing map to get the most common one. If there are two or more spacing with the same higher
+     * occurrence value, the first one found is returned. If no value if found, returns zero.
+     *
+     * @return The most common slice spacing. Can be negative!
+     */
+    public double getMostCommonSpacing() {
+        if (zSpacings == null || zSpacings.isEmpty()) {
+            return 0;
+        }
+        if (zSpacings.size() == 1) {
+            String[] toArray = zSpacings.keySet().toArray(new String[1]);
+            Double val = asDouble(toArray[0]);
+            if (val == null) {
+                return 0;
+            }
+            return asDouble(toArray[0]);
+        }
+        String[] toArray = zSpacings.keySet().toArray(new String[zSpacings.size()]);
+        String maxKey = toArray[0];
+        for (int i = 1; i < toArray.length; i++) {
+            if (zSpacings.get(maxKey) < zSpacings.get(toArray[i])) {
+                maxKey = toArray[i];
+            }
+        }
+        Double val = asDouble(maxKey);
+        if (val == null) {
+            return 0;
+        }
+        return asDouble(maxKey);
+    }
+
+    /**
+     * Valid if has 6 double s. Set to a double[] of one element to make not-valid.
+     *
+     * @param imOri OrientationPatient to set
+     */
+    public void setOrientationPatient(final double[] imOri) {
+        if (imOri == null) {
+            originalSeriesOrientationPatient = null;
+        } else {
+            originalSeriesOrientationPatient = imOri.clone();
+        }
+    }
+
+    /**
+     * Valid if has 6 double s. Set to a double[] of one element to make not-valid.
+     *
+     * @return original SeriesOrientationPatient
+     */
+    public double[] getOriginalSeriesOrientationPatient() {
+        if (originalSeriesOrientationPatient == null) {
+            return null;
+        }
+        return originalSeriesOrientationPatient.clone();
+    }
+
 
 
     public Unit getPixelSpacingUnit() {

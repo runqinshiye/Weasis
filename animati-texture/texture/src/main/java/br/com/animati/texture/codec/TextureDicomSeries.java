@@ -6,14 +6,12 @@
 package br.com.animati.texture.codec;
 
 import java.awt.event.KeyEvent;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -44,12 +42,6 @@ import br.com.animati.texturedicom.TextureData;
  */
 public class TextureDicomSeries<E extends ImageElement> extends ImageSeries implements MediaSeriesGroup {
 
-    private static final NumberFormat DF3 = NumberFormat.getNumberInstance(Locale.US);
-
-    static {
-        DF3.setMaximumFractionDigits(3); // 3 decimals
-    }
-
     private final List<Object> oldIds = new ArrayList<>();
     private TagW tagID;
     private Map<TagW, Object> tags;
@@ -58,16 +50,11 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
     /** Information about the build process of the series`s texture. */
     public TextureLogInfo textureLogInfo;
 
-    /** Map of slice-spacing occurrences. */
-    private Map<String, Integer> zSpacings;
 
     /** Window / Level presets list. */
     private List<PresetWindowLevel> windowingPresets;
 
     protected String pixelValueUnit = null;
-
-    /** ImageOrientationPatient from original series, if unique. */
-    private double[] originalSeriesOrientationPatient;
 
     /** Series comparator used to build the texture. */
     private final Comparator<E> seriesComparator;
@@ -247,70 +234,14 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
     }
 
     /**
-     * Stores an occurrence of the given slice-spacing om a Map<String, Integer>.
-     *
-     * Uses a String conversion of 3-decimals to limit the tolerance to 0.001, like the MPR of weasis.dicom.view2d.
-     *
-     * @param space
-     */
-    protected void addZSpacingOccurence(double space) {
-        if (zSpacings == null) {
-            zSpacings = new HashMap<>();
-        }
-        String sp = DF3.format(space);
-        Integer number = zSpacings.get(sp);
-        if (number != null) {
-            zSpacings.put(sp, number + 1);
-        } else {
-            zSpacings.put(sp, 1);
-        }
-    }
-
-    /**
      * @return True if the original series has known and regular slice-spacing.
      */
     public boolean isSliceSpacingRegular() {
-        if (zSpacings != null && !zSpacings.isEmpty() && zSpacings.size() == 1) {
-            return true;
-        }
-        return false;
+        return geometry.isSliceSpacingRegular();
     }
 
     public boolean hasNegativeSliceSpacing() {
-        if (zSpacings != null && !zSpacings.isEmpty()) {
-            Iterator<String> iterator = zSpacings.keySet().iterator();
-            while (iterator.hasNext()) {
-                String next = iterator.next();
-                if (Double.parseDouble(next) < 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Consults the slice-spacing map to get the most common one. If there are two or more spacing with the same higher
-     * occurrence value, the first one found is returned.
-     *
-     * @return The most common slice spacing. Can be negative!
-     */
-    public double getMostCommonSpacing() {
-        if (zSpacings == null && zSpacings.isEmpty()) {
-            return 0;
-        }
-        if (zSpacings.size() == 1) {
-            String[] toArray = zSpacings.keySet().toArray(new String[1]);
-            return Double.parseDouble(toArray[0]);
-        }
-        String[] toArray = zSpacings.keySet().toArray(new String[zSpacings.size()]);
-        String maxKey = toArray[0];
-        for (int i = 1; i < toArray.length; i++) {
-            if (zSpacings.get(maxKey) < zSpacings.get(toArray[i])) {
-                maxKey = toArray[i];
-            }
-        }
-        return Double.parseDouble(maxKey);
+        return geometry.hasNegativeSliceSpacing();
     }
 
     /**
@@ -418,19 +349,10 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
     /**
      * Valid if has 6 double s. Set to a double[] of one element to make not-valid.
      *
-     * @param imOri
-     */
-    public void setOrientationPatient(double[] imOri) {
-        originalSeriesOrientationPatient = imOri;
-    }
-
-    /**
-     * Valid if has 6 double s. Set to a double[] of one element to make not-valid.
-     *
      * @return
      */
     public double[] getOriginalSeriesOrientationPatient() {
-        return originalSeriesOrientationPatient;
+        return geometry.getOriginalSeriesOrientationPatient();
     }
 
     public Comparator<E> getSeriesSorter() {

@@ -561,7 +561,7 @@ public class ImageSeriesFactory {
         if (imOri != null && imOri.length == 6) {
             double[] serieOri = seriesToLoad.getOriginalSeriesOrientationPatient();
             if (serieOri == null) {
-                seriesToLoad.setOrientationPatient(imOri);
+                seriesToLoad.getTextureGeometry().setOrientationPatient(imOri);
                 StringBuilder bd = new StringBuilder();
                 bd.append("First ImageOrientationPatient: ");
                 for (double d : imOri) {
@@ -575,7 +575,7 @@ public class ImageSeriesFactory {
 
                     // Could not find a case yet, but its possible!
                     seriesToLoad.textureLogInfo.writeText("Found variable ImageOrientationPatient.");
-                    seriesToLoad.setOrientationPatient(new double[] { 0 });
+                    seriesToLoad.getTextureGeometry().setOrientationPatient(new double[] { 0 });
                 }
             }
         }
@@ -628,7 +628,7 @@ public class ImageSeriesFactory {
                         if (place > 0) {
                             double space = pos - lastPos;
                             zSpacing = space;
-                            seriesToLoad.addZSpacingOccurence(space);
+                            seriesToLoad.getTextureGeometry().addZSpacingOccurence(space);
                             String log = seriesToLoad.getTextureGeometry().submitAcquisitionPixelSpacing(place,
                                     TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
                             LOGGER.info(log);
@@ -638,7 +638,7 @@ public class ImageSeriesFactory {
                                 Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                             } else if (place == seriesToLoad.getSeries().size(null) - 1) { // is last
-                                zSpacing = seriesToLoad.getMostCommonSpacing();
+                                zSpacing = seriesToLoad.getTextureGeometry().getMostCommonSpacing();
                                 Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
@@ -788,17 +788,17 @@ public class ImageSeriesFactory {
                             double space = pos - lastPos;
 
                             zSpacing = space;
-                            seriesToLoad.addZSpacingOccurence(space);
+                            seriesToLoad.getTextureGeometry().addZSpacingOccurence(space);
                             String log = seriesToLoad.getTextureGeometry().submitAcquisitionPixelSpacing(place,
                                     TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
                             LOGGER.info(log);
-                            
+
                             double[] pixSpacing = seriesToLoad.getTextureGeometry().getAcquisitionPixelSpacing();
                             if (place == 1) { // is second
                                 Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                             } else if (place == seriesSize - 1) { // is last
-                                zSpacing = seriesToLoad.getMostCommonSpacing();
+                                zSpacing = seriesToLoad.getTextureGeometry().getMostCommonSpacing();
                                 Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
@@ -813,7 +813,7 @@ public class ImageSeriesFactory {
                     double[] imOri = TagD.getTagValue(elmt, Tag.ImageOrientationPatient, double[].class);
                     if (imOri != null && imOri.length == 6) {
                         if (place == 0) {
-                            seriesToLoad.setOrientationPatient(imOri);
+                            seriesToLoad.getTextureGeometry().setOrientationPatient(imOri);
                             StringBuilder bd = new StringBuilder();
                             bd.append("First ImageOrientationPatient: ");
                             for (double d : imOri) {
@@ -828,7 +828,7 @@ public class ImageSeriesFactory {
                                 // Could not find a case yet, but its possible!
                                 seriesToLoad.textureLogInfo.writeText("Found variable ImageOrientationPatient.");
                                 variableOP = true;
-                                seriesToLoad.setOrientationPatient(new double[] { 0 });
+                                seriesToLoad.getTextureGeometry().setOrientationPatient(new double[] { 0 });
                             }
                         }
                     }
