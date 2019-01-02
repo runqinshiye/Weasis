@@ -3,12 +3,14 @@
  */
 package br.com.animati.texture.codec;
 
+import br.com.animati.texture.codec.loader.GeometryLoaderMath;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import javax.vecmath.Vector3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.image.util.Unit;
@@ -225,6 +227,21 @@ public class TextureGeometry {
         }
         return asDouble(maxKey);
     }
+
+    /**
+     * Calculates DimentionMultiplier vector, based on actual values of pixel-spaces and distance between frames.
+     *
+     * @return Calculated dimension multiplier vector.
+     */
+    public Vector3d getDimensionMultiplier() {
+        double[] pixSp = firstAcqPixSpacing;
+        if (pixSp == null) {
+            pixSp = new double[]{1, 1};
+        }
+        double zSp = getMostCommonSpacing();
+        return GeometryLoaderMath.getNormalizedVector(pixSp[0], pixSp[1], Math.abs(zSp));
+    }
+
 
     /**
      * Valid if has 6 double s. Set to a double[] of one element to make not-valid.

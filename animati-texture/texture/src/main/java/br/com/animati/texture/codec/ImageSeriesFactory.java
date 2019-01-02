@@ -3,7 +3,6 @@
  */
 package br.com.animati.texture.codec;
 
-import br.com.animati.texture.codec.loader.GeometryLoaderMath;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
@@ -105,7 +104,6 @@ public class ImageSeriesFactory {
 
     /** Register when series was sent to here to build texture. */
     private long timeStarted;
-    private double zSpacing;
 
     private Comparator comparator;
 
@@ -627,19 +625,17 @@ public class ImageSeriesFactory {
                         double pos = (sp[0] + sp[1] + sp[2]);
                         if (place > 0) {
                             double space = pos - lastPos;
-                            zSpacing = space;
-                            seriesToLoad.getTextureGeometry().addZSpacingOccurence(space);
-                            String log = seriesToLoad.getTextureGeometry().submitAcquisitionPixelSpacing(place,
+                            TextureGeometry geometry = seriesToLoad.getTextureGeometry();
+                            geometry.addZSpacingOccurence(space);
+                            String log = geometry.submitAcquisitionPixelSpacing(place,
                                     TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
                             LOGGER.info(log);
 
-                            double[] pixSpacing = seriesToLoad.getTextureGeometry().getAcquisitionPixelSpacing();
                             if (place == 1) { // is second
-                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
-                                seriesToLoad.setDimensionMultiplier(vector);
+                                seriesToLoad.setDimensionMultiplier(geometry.getDimensionMultiplier());
                             } else if (place == seriesToLoad.getSeries().size(null) - 1) { // is last
                                 zSpacing = seriesToLoad.getTextureGeometry().getMostCommonSpacing();
-                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
+                                Vector3d vector = geometry.getDimensionMultiplier();
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
                             }
@@ -748,7 +744,6 @@ public class ImageSeriesFactory {
 
             String lastInfo = "";
 
-            zSpacing = 1;
             double lastPos = 0;
             boolean variableOP = false;
 
@@ -787,19 +782,17 @@ public class ImageSeriesFactory {
                         if (place > 0) {
                             double space = pos - lastPos;
 
-                            zSpacing = space;
-                            seriesToLoad.getTextureGeometry().addZSpacingOccurence(space);
-                            String log = seriesToLoad.getTextureGeometry().submitAcquisitionPixelSpacing(place,
+                            TextureGeometry geometry = seriesToLoad.getTextureGeometry();
+
+                            geometry.addZSpacingOccurence(space);
+                            String log = geometry.submitAcquisitionPixelSpacing(place,
                                     TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
                             LOGGER.info(log);
 
-                            double[] pixSpacing = seriesToLoad.getTextureGeometry().getAcquisitionPixelSpacing();
                             if (place == 1) { // is second
-                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
-                                seriesToLoad.setDimensionMultiplier(vector);
+                                seriesToLoad.setDimensionMultiplier(geometry.getDimensionMultiplier());
                             } else if (place == seriesSize - 1) { // is last
-                                zSpacing = seriesToLoad.getTextureGeometry().getMostCommonSpacing();
-                                Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
+                                Vector3d vector = geometry.getDimensionMultiplier();
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
                             }
@@ -842,6 +835,7 @@ public class ImageSeriesFactory {
                 }
 
                 if (place % 10 == 0) {
+                    seriesToLoad.setDimensionMultiplier(seriesToLoad.getTextureGeometry().getDimensionMultiplier());
                     fireProperyChange(ImageSeriesFactory.this, TEXTURE_DO_DISPLAY, seriesToLoad.getSeries());
                 }
             }
