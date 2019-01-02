@@ -105,8 +105,6 @@ public class ImageSeriesFactory {
 
     /** Register when series was sent to here to build texture. */
     private long timeStarted;
-
-    private double[] pixSpacing;
     private double zSpacing;
 
     private Comparator comparator;
@@ -315,31 +313,6 @@ public class ImageSeriesFactory {
             imSeries.setTag(TagD.get(Tag.WindowCenter), listOfLevelValues);
         }
 
-        // Values of RescaleSlope & RescaleIntercept (#2852)
-        // Intercept ans slope are used to correct the wondow/level values;
-        // Some series (more common in PET) can have variable values on them,
-        // and this would make impossible to use the same window/level values
-        // for the hole series.
-
-//        Double interceptVal = TagD.getTagValue(elmt, Tag.RescaleIntercept, Double.class);
-//        Double actualIntercept = TagD.getTagValue(imSeries, Tag.RescaleIntercept, Double.class);
-//        if (interceptVal != null) {
-//            if (actualIntercept == null) {
-//                imSeries.setTag(TagD.get(Tag.RescaleIntercept), interceptVal);
-//            } else if (!interceptVal.equals(actualIntercept)) {
-//                sendError(ErrorCode.err500, imSeries);
-//            }
-//        }
-//
-//        Double slopeVal = TagD.getTagValue(elmt, Tag.RescaleSlope, Double.class);
-//        Double actualSlope = TagD.getTagValue(imSeries, Tag.RescaleSlope, Double.class);
-//        if (slopeVal != null) {
-//            if (actualSlope == null) {
-//                imSeries.setTag(TagD.get(Tag.RescaleSlope), slopeVal);
-//            } else if (!slopeVal.equals(actualSlope)) {
-//                sendError(ErrorCode.err500, imSeries);
-//            }
-//        }
     }
 
     private static void sendError(ErrorCode error, TextureDicomSeries imSeries) {
@@ -641,8 +614,6 @@ public class ImageSeriesFactory {
             int place = 0;
             double lastPos = 0;
             double zSpacing = 1;
-            double[] pixSpacing = new double[] { 1, 1 };
-            boolean variablePixSpacing = false;
 
             while (iterator.hasNext()) {
                 // dimensionMultiplier//////////////////////////////////////
@@ -658,7 +629,11 @@ public class ImageSeriesFactory {
                             double space = pos - lastPos;
                             zSpacing = space;
                             seriesToLoad.addZSpacingOccurence(space);
+                            String log = seriesToLoad.getTextureGeometry().submitAcquisitionPixelSpacing(place,
+                                    TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
+                            LOGGER.info(log);
 
+                            double[] pixSpacing = seriesToLoad.getTextureGeometry().getAcquisitionPixelSpacing();
                             if (place == 1) { // is second
                                 Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
@@ -669,30 +644,8 @@ public class ImageSeriesFactory {
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
                             }
 
-                            // Verify pixelSpacing
-                            double[] pixSp = TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class);
-                            if (!variablePixSpacing) {
-                                if (pixSp == null || pixSpacing == null) {
-                                    variablePixSpacing = true;
-                                } else {
-                                    for (int i = 0; i < pixSp.length; i++) {
-                                        if (pixSpacing[1] != pixSp[i]) {
-                                            variablePixSpacing = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                        } else {
-                            pixSpacing = TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class);
                         }
                         lastPos = pos;
-                        if (!variablePixSpacing && pixSpacing != null) {
-                            seriesToLoad.setAcquisitionPixelSpacing(pixSpacing);
-                        } else {
-                            seriesToLoad.setAcquisitionPixelSpacing(null);
-                            seriesToLoad.textureLogInfo.writeText("Found variable or unknown pixel-spacing.");
-                        }
                     }
                 }
                 place++;
@@ -798,7 +751,6 @@ public class ImageSeriesFactory {
             zSpacing = 1;
             double lastPos = 0;
             boolean variableOP = false;
-            boolean variablePixSpacing = false;
 
             seriesToLoad.windowingMinInValue = MAX_16;
             seriesToLoad.windowingMaxInValue = -MAX_16;
@@ -837,7 +789,11 @@ public class ImageSeriesFactory {
 
                             zSpacing = space;
                             seriesToLoad.addZSpacingOccurence(space);
-
+                            String log = seriesToLoad.getTextureGeometry().submitAcquisitionPixelSpacing(place,
+                                    TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
+                            LOGGER.info(log);
+                            
+                            double[] pixSpacing = seriesToLoad.getTextureGeometry().getAcquisitionPixelSpacing();
                             if (place == 1) { // is second
                                 Vector3d vector = GeometryLoaderMath.getNormalizedVector(pixSpacing[0], pixSpacing[1], Math.abs(zSpacing));
                                 seriesToLoad.setDimensionMultiplier(vector);
@@ -847,31 +803,9 @@ public class ImageSeriesFactory {
                                 seriesToLoad.setDimensionMultiplier(vector);
                                 seriesToLoad.textureLogInfo.writeText("Last dimension multiplier vector: " + vector);
                             }
-
-                            // Verify pixelSpacing
-                            double[] pixSp = TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class);
-                            if (!variablePixSpacing) {
-                                if (pixSp == null || pixSpacing == null) {
-                                    variablePixSpacing = true;
-                                } else {
-                                    for (int i = 0; i < pixSp.length; i++) {
-                                        if (pixSpacing[1] != pixSp[i]) {
-                                            variablePixSpacing = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                        } else {
-                            pixSpacing = TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class);
                         }
                         lastPos = pos;
-                        if (!variablePixSpacing && pixSpacing != null) {
-                            seriesToLoad.setAcquisitionPixelSpacing(pixSpacing);
-                        } else {
-                            seriesToLoad.setAcquisitionPixelSpacing(null);
-                            seriesToLoad.textureLogInfo.writeText("Found variable or unknown pixel-spacing.");
-                        }
+
                     }
                     // ///////////////////////////////////////////////////////
 

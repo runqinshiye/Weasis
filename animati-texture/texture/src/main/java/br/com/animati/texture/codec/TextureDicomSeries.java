@@ -50,7 +50,6 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
         DF3.setMaximumFractionDigits(3); // 3 decimals
     }
 
-
     private final List<Object> oldIds = new ArrayList<>();
     private TagW tagID;
     private Map<TagW, Object> tags;
@@ -72,12 +71,13 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
 
     /** Series comparator used to build the texture. */
     private final Comparator<E> seriesComparator;
-    private double[] acquisitionPixelSpacing;
 
     private volatile boolean isFactoryDone = false;
     private ImageSeriesFactory.LoaderThread factoryReference;
 
     private boolean[] inVideo;
+
+    private final TextureGeometry geometry = new TextureGeometry();
 
     /**
      * Builds an empty TextureImageSeries. Its best to use ImageSeriesFactory.
@@ -191,7 +191,7 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
             factoryReference = null;
         }
     }
-    
+
 
     @Override
     public void addMergeIdValue(Object valueID) {
@@ -203,18 +203,18 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
     @Override
     public boolean matchIdValue(Object valueID) {
         Object v = tags.get(tagID);
-        
+
         if(Objects.equals(v, valueID)) {
             return true;
         }
         for (Object id : oldIds) {
             if(Objects.equals(id, valueID)) {
                 return true;
-            } 
-        }        
+            }
+        }
         return false;
     }
-    
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -437,19 +437,16 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
         return seriesComparator;
     }
 
-    public void setAcquisitionPixelSpacing(double[] pixSpacing) {
-        acquisitionPixelSpacing = pixSpacing;
+    public TextureGeometry getTextureGeometry() {
+        return geometry;
     }
 
     public double[] getAcquisitionPixelSpacing() {
-        return acquisitionPixelSpacing;
+        return geometry.getAcquisitionPixelSpacing();
     }
 
     public Unit getPixelSpacingUnit() {
-        if (acquisitionPixelSpacing != null) {
-            return Unit.MILLIMETER;
-        }
-        return Unit.PIXEL;
+        return geometry.getPixelSpacingUnit();
     }
 
     /**
