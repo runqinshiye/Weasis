@@ -137,6 +137,8 @@ import br.com.animati.texturedicom.ControlAxes;
 import br.com.animati.texturedicom.ImageSeries;
 import br.com.animati.texturedicom.TextureImageCanvas;
 import br.com.animati.texturedicom.cl.CLConvolution;
+import org.weasis.core.ui.docking.DockableTool;
+import org.weasis.core.ui.model.graphic.GraphicSelectionListener;
 
 /**
  *
@@ -1331,6 +1333,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
     private void handleGraphicsLayer(int old) {
         if (old != getCurrentSlice()) {
             setGraphicManager(new XmlGraphicModel());
+            updateGraphicSelectionListener(eventManager.getSelectedView2dContainer());
         }
     }
 
@@ -1359,13 +1362,13 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
                         lev.mousePressed(e);
                     }
                 } else {
-                    
+
                     releaseWinLevelAdapter();
                     mouseDragReset(e.getPoint());
                 }
             }
         }
-        
+
         @Override
         public void mouseReleased(MouseEvent e) {
             releaseWinLevelAdapter();
@@ -1413,7 +1416,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
             }
         }
 
-        
+
         private void releaseWinLevelAdapter() {
             if (win != null) {
                 win.setButtonMaskEx(0);
@@ -1809,6 +1812,20 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
     @Override
     public PlanarImage getSourceImage() {
         return null;
+    }
+
+    @Override
+    public void updateGraphicSelectionListener(final ImageViewerPlugin<DicomImageElement> viewerPlugin) {
+        if (viewerPlugin != null) {
+            List<DockableTool> tools = viewerPlugin.getToolPanel();
+            synchronized (tools) {
+                for (DockableTool p : tools) {
+                    if (p instanceof GraphicSelectionListener) {
+                        graphicManager.addGraphicSelectionListener((GraphicSelectionListener) p);
+                    }
+                }
+            }
+        }
     }
 
     protected JPopupMenu buildGraphicContextMenu(final MouseEvent evt, final ArrayList<Graphic> selected) {
