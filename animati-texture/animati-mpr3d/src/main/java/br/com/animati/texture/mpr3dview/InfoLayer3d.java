@@ -420,10 +420,7 @@ public class InfoLayer3d extends AbstractInfoLayer {
     @Override
     public Unit getOwnerPixelSpacingUnit() {
         if (owner instanceof ViewTexture) {
-            ImageSeries ser = owner.getParentImageSeries();
-            if (ser instanceof TextureDicomSeries) {
-                return ((TextureDicomSeries) ser).getPixelSpacingUnit();
-            }
+            return owner.getShowingPixelUnit();
         }
         return null;
     }
@@ -507,7 +504,7 @@ public class InfoLayer3d extends AbstractInfoLayer {
             TextureDicomSeries textureSeries = (TextureDicomSeries) imSeries;
 
             /* AVISO SE O ESPAÇAMENTO DE SLICES FOR IRREGULAR */
-            if (!textureSeries.isSliceSpacingRegular()) {
+            if (!textureSeries.isVolumeScaleTrustable()) {
                 if (isVolumetricView() || !owner.isShowingAcquisitionAxis()) {
                     String message = Messages.getString("InfoLayer3d.SliceSpacingWarning");
                     DefaultGraphicLabel.paintColorFontOutline(g2d, message, border, drawY, Color.red);

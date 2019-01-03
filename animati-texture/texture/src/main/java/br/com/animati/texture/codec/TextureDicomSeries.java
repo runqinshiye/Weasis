@@ -19,7 +19,6 @@ import javax.swing.SwingWorker;
 
 import org.dcm4che3.data.Tag;
 import org.weasis.core.api.image.LutShape;
-import org.weasis.core.api.image.util.Unit;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.api.media.data.MediaSeriesGroup;
@@ -367,9 +366,14 @@ public class TextureDicomSeries<E extends ImageElement> extends ImageSeries impl
         return geometry.getAcquisitionPixelSpacing();
     }
 
-    public Unit getPixelSpacingUnit() {
-        return geometry.getPixelSpacingUnit();
+    public PixelSize getShowingPixelSize(boolean acquisition, int viewingSlice) {
+        return geometry.getShowingPixelSize(acquisition, viewingSlice);
     }
+
+    public boolean isVolumeScaleTrustable() {
+        return geometry.isVolumeScaleTrustable();
+    }
+
 
     /**
      * Gets a tagValue from the original DicomImageElement on this location.

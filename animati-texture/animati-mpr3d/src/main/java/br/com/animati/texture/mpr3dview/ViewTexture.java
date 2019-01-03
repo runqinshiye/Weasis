@@ -752,7 +752,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
             resetAction(null);
             updateModelArea();
 
-            actionsInView.put(ActionW.SPATIAL_UNIT.cmd(), series.getPixelSpacingUnit());
+            actionsInView.put(ActionW.SPATIAL_UNIT.cmd(), getShowingPixelUnit());
 
             series.getSeries().setOpen(true);
         }
@@ -1090,33 +1090,28 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
     }
 
     /**
-     * Content pixel size. Will return 0 if its unknown ot not trustable.
+     * Content pixel size. Will return 1 if its unknown or not trustable.
      *
      * @return Content's pixel size.
      */
     public double getShowingPixelSize() {
-        // Se tem o pixelSpacing é consistente na textura
-        double acqSpacing = 0;
-        if (getParentImageSeries() instanceof TextureDicomSeries) {
-            TextureDicomSeries ser = (TextureDicomSeries) getParentImageSeries();
-            double[] aps = ser.getAcquisitionPixelSpacing();
-            Vector3d dimMultiplier = ser.getDimensionMultiplier();
-
-            if (aps != null && aps.length == 2 && aps[0] == aps[1] && dimMultiplier.x == dimMultiplier.y) {
-                acqSpacing = aps[0];// dimMultiplier.x;
-
-                // Acquisition plane?
-                if (isShowingAcquisitionAxis() || ser.isSliceSpacingRegular()) {
-                    return acqSpacing;
-                }
-            }
-
-            if (aps == null && (isShowingAcquisitionAxis() || ser.isSliceSpacingRegular())) {
-                return 1.0;
-            }
+        ImageSeries imgSeries = getParentImageSeries();
+        if (imgSeries instanceof TextureDicomSeries) {
+            return ((TextureDicomSeries) imgSeries).getShowingPixelSize(
+                    isShowingAcquisitionAxis(), getCurrentSlice()).getPixelSize();
         }
-        return 0;
+        return 1; // Should never happen.
     }
+
+    public Unit getShowingPixelUnit() {
+        ImageSeries imgSeries = getParentImageSeries();
+        if (imgSeries instanceof TextureDicomSeries) {
+            return ((TextureDicomSeries) imgSeries).getShowingPixelSize(
+                    isShowingAcquisitionAxis(), getCurrentSlice()).getPixelSpacingUnit();
+        }
+        return Unit.PIXEL; // Should never happen.
+    }
+
 
     protected MouseActionAdapter getAction(ActionW action) {
         ActionState a = eventManager.getAction(action);
@@ -1550,7 +1545,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
                 if (monitor != null) {
                     double realFactor = monitor.getRealScaleFactor();
                     if (realFactor > 0.0) {
-                        Unit imgUnit = s.getPixelSpacingUnit();
+                        Unit imgUnit = getShowingPixelUnit();
                         double pixSize = getShowingPixelSize();
                         if (!Unit.PIXEL.equals(imgUnit) && pixSize != 0.0) {
                             viewScale = imgUnit.getConvFactor() * pixSize / realFactor;

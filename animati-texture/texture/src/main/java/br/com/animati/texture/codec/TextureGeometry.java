@@ -268,13 +268,40 @@ public class TextureGeometry {
         return originalSeriesOrientationPatient.clone();
     }
 
+    /**
+     * Some cases where a unique scale for the volume cannot be trusted: variable slice-spacing or
+     * variable pixel-spacing.
+     *
+     * @return true only if the volume scale is considered trustable.
+     */
+    public boolean isVolumeScaleTrustable() {
+        return isSliceSpacingRegular() && !isUnknownPixelSpacing() && !isVariablePixelSpacing();
+    }
 
-
-    public Unit getPixelSpacingUnit() {
-        if (firstAcqPixSpacing != null) {
-            return Unit.MILLIMETER;
+    /**
+     * Returns the pixelSpace for the given place, assuming acquisition plane if acquisition value is true.
+     * If scale is unknown, it will return 1. If the original images of volume have different pixelSize, they
+     * will return accordingly if acquisition=true, but any of the values can be returned if acquisition=false.
+     *
+     * @param acquisition True if it is to consider an acquisition plane.
+     * @param viewingSlice Nominal slice number (from viewer 'getCurrentSlice()' method) - from 1 to n.
+     * @return The pixelSpacing object, with value and unit..
+     */
+    public PixelSize getShowingPixelSize(boolean acquisition, int viewingSlice) {
+        if (acquisition) {
+            // When showing acquisition, viewingSlice - 1 = place.
+            double[] space = getAcquisitionPixelSpacing(viewingSlice - 1);
+            if (space == null) {
+                return new PixelSize(); // no pixel-spacin if did not get the image yet, or it is out of range.
+            } else {
+                return new PixelSize(space, Unit.MILLIMETER);
+            }
         }
-        return Unit.PIXEL;
+        double[] space = getAcquisitionPixelSpacing();
+        if (space != null) {
+            return new PixelSize(space, Unit.MILLIMETER);
+        }
+        return new PixelSize();
     }
 
 }

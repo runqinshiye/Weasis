@@ -32,7 +32,6 @@ import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.image.util.Unit;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.core.api.media.data.TagW;
-import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.model.graphic.Graphic;
 
 import br.com.animati.texture.mpr3dview.View3DFactory;
@@ -88,14 +87,9 @@ public class TextureMeasurableLayer implements MeasurableLayer {
     public MeasurementsAdapter getMeasurementAdapter(Unit displayUnit) {
         // TODO: support other displayUnits
         if (hasContent()) {
-            String abr = owner.getSeriesObject().getPixelSpacingUnit().getAbbreviation();
-            double[] pixelSpacing = owner.getSeriesObject().getAcquisitionPixelSpacing();
+            String abr = owner.getShowingPixelUnit().getAbbreviation();
+            double pixelSpacing = owner.getShowingPixelSize();
             double pixelSize = 1;
-            if (pixelSpacing == null) {
-                abr = Unit.PIXEL.getAbbreviation();
-            } else {
-                pixelSize = pixelSpacing[0];
-            }
             return new MeasurementsAdapter(pixelSize, 0, 0, false, 0, abr);
         }
         return null;
