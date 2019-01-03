@@ -3,6 +3,7 @@
  */
 package br.com.animati.texture.codec;
 
+import br.com.animati.texture.codec.loader.DataBytesMath;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
@@ -432,17 +433,16 @@ public class ImageSeriesFactory {
             byte[] bytesOut = null;
             if (dataBuffer instanceof DataBufferByte) {
                 bufferClass = "DataBufferByte";
-                bytesOut = ((DataBufferByte) dataBuffer).getData();
-
+                bytesOut = DataBytesMath.bufferBytetoBytesArray((DataBufferByte) dataBuffer);
             } else if (dataBuffer instanceof DataBufferShort || dataBuffer instanceof DataBufferUShort) {
                 bufferClass = dataBuffer.getClass().getSimpleName();
-                short[] data = dataBuffer instanceof DataBufferShort ? ((DataBufferShort) dataBuffer).getData()
-                    : ((DataBufferUShort) dataBuffer).getData();
-                bytesOut = new byte[data.length * 2];
-                for (int i = 0; i < data.length; i++) {
-                    bytesOut[i * 2] = (byte) (data[i] & 0xFF);
-                    bytesOut[i * 2 + 1] = (byte) ((data[i] >>> 8) & 0xFF);
+                short[] data = getShortDataFromBuffer(dataBuffer);
+                if (TextureData.Format.Byte.equals(imgSeries.getTextureData().getFormat())) {
+                    bytesOut = DataBytesMath.short8ArrayToByteArray(data);
+                } else {
+                    bytesOut = DataBytesMath.shortArrayToByteArray(data);
                 }
+
             }
             if (bytesOut != null) {
                 if (imgSeries.getTextureData() != null) {
@@ -461,6 +461,14 @@ public class ImageSeriesFactory {
             imgSeries.textureLogInfo.writeText("Image not included! place = " + place);
         }
         return "No-data";
+    }
+
+    private static short[] getShortDataFromBuffer(final DataBuffer dataBuffer) {
+        if (dataBuffer instanceof DataBufferShort) {
+            return ((DataBufferShort) dataBuffer).getData();
+        } else {
+            return ((DataBufferUShort) dataBuffer).getData();
+        }
     }
 
     private static int getAverage(ArrayList<Integer> listOfKeys) {
