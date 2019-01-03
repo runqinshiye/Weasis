@@ -27,7 +27,6 @@ public class GeometryLoaderMath {
      * @return A valid parameter for dimendionMultiplier.
      */
     public static Vector3d getNormalizedVector(final double xSp, final double ySp, final double zSp) {
-
         if (xSp <= 0 || ySp <= 0 || zSp <= 0) {
             return new Vector3d(1, 1, 1);
         }
