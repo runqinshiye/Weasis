@@ -4,6 +4,7 @@
 package br.com.animati.texture.codec;
 
 import br.com.animati.texture.codec.loader.DataBytesMath;
+import br.com.animati.texture.codec.loader.GeometryLoaderMath;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
@@ -34,8 +35,6 @@ import org.weasis.core.api.media.data.TagW;
 import org.weasis.dicom.codec.DicomImageElement;
 import org.weasis.dicom.codec.SortSeriesStack;
 import org.weasis.dicom.codec.TagD;
-import org.weasis.dicom.codec.geometry.ImageOrientation;
-import org.weasis.dicom.codec.geometry.ImageOrientation.Label;
 import org.weasis.dicom.codec.utils.LutParameters;
 import org.weasis.dicom.explorer.wado.SeriesInstanceList;
 import org.weasis.opencv.data.ImageCV;
@@ -577,7 +576,7 @@ public class ImageSeriesFactory {
                 seriesToLoad.textureLogInfo.writeText(bd.toString());
             } else {
                 if (serieOri.length == 6
-                    && !isSameOrientation(imOri, seriesToLoad.getOriginalSeriesOrientationPatient())) {
+                    && !GeometryLoaderMath.isSameOrientation(imOri, seriesToLoad.getOriginalSeriesOrientationPatient())) {
 
                     // Could not find a case yet, but its possible!
                     seriesToLoad.textureLogInfo.writeText("Found variable ImageOrientationPatient.");
@@ -585,31 +584,6 @@ public class ImageSeriesFactory {
                 }
             }
         }
-    }
-
-    // See ImageOrientation.hasSameOrientation
-    private static boolean isSameOrientation(double[] v1, double[] v2) {
-        if (v1 != null && v1.length == 6 && v2 != null && v2.length == 6) {
-            Label label1 = ImageOrientation.makeImageOrientationLabelFromImageOrientationPatient(v1[0], v1[1], v1[2],
-                v1[3], v1[4], v1[5]);
-            Label label2 = ImageOrientation.makeImageOrientationLabelFromImageOrientationPatient(v2[0], v2[1], v2[2],
-                v2[3], v2[4], v2[5]);
-
-            if (label1 != null && !label1.equals(ImageOrientation.Label.OBLIQUE)) {
-                return label1.equals(label2);
-            }
-            // If oblique search if the plan has approximately the same orientation
-            double[] postion1 = ImageOrientation.computeNormalVectorOfPlan(v1);
-            double[] postion2 = ImageOrientation.computeNormalVectorOfPlan(v2);
-            if (postion1 != null && postion2 != null) {
-                double prod = postion1[0] * postion2[0] + postion1[1] * postion2[1] + postion1[2] * postion2[2];
-                // A little tolerance
-                if (prod > 0.95) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static void updateMultiplier(TextureDicomSeries seriesToLoad) {
@@ -636,7 +610,7 @@ public class ImageSeriesFactory {
                             TextureGeometry geometry = seriesToLoad.getTextureGeometry();
                             geometry.addZSpacingOccurence(space);
                             String log = geometry.submitAcquisitionPixelSpacing(place,
-                                    TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
+                                    GeometryLoaderMath.getPixelSpacingByTag(elmt));
                             LOGGER.info(log);
 
                             if (place == 1) { // is second
@@ -794,7 +768,7 @@ public class ImageSeriesFactory {
 
                             geometry.addZSpacingOccurence(space);
                             String log = geometry.submitAcquisitionPixelSpacing(place,
-                                    TagD.getTagValue(elmt, Tag.PixelSpacing, double[].class));
+                                    GeometryLoaderMath.getPixelSpacingByTag(elmt));
                             LOGGER.info(log);
 
                             if (place == 1) { // is second
@@ -824,7 +798,8 @@ public class ImageSeriesFactory {
                             seriesToLoad.textureLogInfo.writeText(bd.toString());
                         } else {
                             if (!variableOP
-                                && !isSameOrientation(imOri, seriesToLoad.getOriginalSeriesOrientationPatient())) {
+                                && !GeometryLoaderMath.isSameOrientation(imOri,
+                                        seriesToLoad.getOriginalSeriesOrientationPatient())) {
 
                                 // Could not find a case yet, but its possible!
                                 seriesToLoad.textureLogInfo.writeText("Found variable ImageOrientationPatient.");
