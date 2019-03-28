@@ -186,10 +186,10 @@ public class View3DContainer extends ImageViewerPlugin<DicomImageElement> implem
         if (toolBar != null) {
             String command = ActionW.CROSSHAIR.cmd();
             MouseActions mouseActions = eventManager.getMouseActions();
-            String lastAction = mouseActions.getAction(MouseActions.LEFT);
+            String lastAction = mouseActions.getAction(MouseActions.T_LEFT);
             if (!command.equals(lastAction)) {
-                mouseActions.setAction(MouseActions.LEFT, command);
-                toolBar.changeButtonState(MouseActions.LEFT, command);
+                mouseActions.setAction(MouseActions.T_LEFT, command);
+                toolBar.changeButtonState(MouseActions.T_LEFT, command);
             }
         }
     }

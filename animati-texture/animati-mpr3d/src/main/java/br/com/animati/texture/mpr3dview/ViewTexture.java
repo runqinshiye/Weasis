@@ -61,7 +61,6 @@ import javax.vecmath.Matrix3d;
 import javax.vecmath.Point3d;
 import javax.vecmath.Quat4d;
 import javax.vecmath.Vector2d;
-import javax.vecmath.Vector3d;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +81,7 @@ import org.weasis.core.api.media.data.SeriesComparator;
 import org.weasis.core.api.util.FontTools;
 import org.weasis.core.api.util.StringUtil;
 import org.weasis.core.ui.dialog.MeasureDialog;
+import org.weasis.core.ui.docking.DockableTool;
 import org.weasis.core.ui.docking.UIManager;
 import org.weasis.core.ui.editor.SeriesViewerEvent;
 import org.weasis.core.ui.editor.SeriesViewerEvent.EVENT;
@@ -106,6 +106,7 @@ import org.weasis.core.ui.model.AbstractGraphicModel;
 import org.weasis.core.ui.model.graphic.AbstractDragGraphic;
 import org.weasis.core.ui.model.graphic.DragGraphic;
 import org.weasis.core.ui.model.graphic.Graphic;
+import org.weasis.core.ui.model.graphic.GraphicSelectionListener;
 import org.weasis.core.ui.model.graphic.imp.line.LineGraphic;
 import org.weasis.core.ui.model.imp.XmlGraphicModel;
 import org.weasis.core.ui.model.layer.LayerAnnotation;
@@ -137,8 +138,6 @@ import br.com.animati.texturedicom.ControlAxes;
 import br.com.animati.texturedicom.ImageSeries;
 import br.com.animati.texturedicom.TextureImageCanvas;
 import br.com.animati.texturedicom.cl.CLConvolution;
-import org.weasis.core.ui.docking.DockableTool;
-import org.weasis.core.ui.model.graphic.GraphicSelectionListener;
 
 /**
  *
@@ -2030,7 +2029,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
         JPopupMenu popupMenu = new JPopupMenu();
         TitleMenuItem itemTitle = new TitleMenuItem("Left mouse actions" + StringUtil.COLON, popupMenu.getInsets()); //$NON-NLS-1$
         popupMenu.add(itemTitle);
-        popupMenu.setLabel(MouseActions.LEFT);
+        popupMenu.setLabel(MouseActions.T_LEFT);
         String action = eventManager.getMouseActions().getLeft();
         ButtonGroup groupButtons = new ButtonGroup();
         int count = popupMenu.getComponentCount();
@@ -2041,7 +2040,7 @@ public class ViewTexture extends CanvasTexure implements ViewCanvas<DicomImageEl
                 ActionListener leftButtonAction = event -> {
                     if (event.getSource() instanceof JRadioButtonMenuItem) {
                         JRadioButtonMenuItem item = (JRadioButtonMenuItem) event.getSource();
-                        toolBar.changeButtonState(MouseActions.LEFT, item.getActionCommand());
+                        toolBar.changeButtonState(MouseActions.T_LEFT, item.getActionCommand());
                     }
                 };
 
