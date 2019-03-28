@@ -33,6 +33,7 @@ import org.weasis.core.api.image.OpManager;
 import org.weasis.core.api.image.PseudoColorOp;
 import org.weasis.core.api.image.WindowOp;
 import org.weasis.core.api.image.op.ByteLut;
+import org.weasis.core.api.image.op.ByteLutCollection;
 import org.weasis.core.api.image.util.Unit;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.service.BundlePreferences;
@@ -80,7 +81,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
         conversionMapForStorage.put(PIXEL, "pixel"); //$NON-NLS-1$
     }
 
-    protected static final int BORDER = 10;
+    protected static final int P_BORDER = 10;
 
     protected final HashMap<String, Boolean> displayPreferences = new HashMap<>();
     protected boolean visible = true;
@@ -89,7 +90,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     protected PixelInfo pixelInfo = null;
     protected final Rectangle pixelInfoBound;
     protected final Rectangle preloadingProgressBound;
-    protected int border = BORDER;
+    protected int border = P_BORDER;
     protected double thickLength = 15.0;
     protected boolean showBottomScale = true;
     protected String name;
@@ -255,7 +256,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
         }
         if (lut != null && bound.height > 350) {
             if (lut.getLutTable() == null) {
-                lut = ByteLut.grayLUT;
+                lut = ByteLutCollection.Lut.GRAY.getByteLut();
             }
             byte[][] table = LangUtil.getNULLtoFalse((Boolean) pseudoColorOp.getParam(PseudoColorOp.P_LUT_INVERSE))
                 ? lut.getInvertedLutTable() : lut.getLutTable();

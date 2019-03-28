@@ -17,7 +17,6 @@ import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
 import java.awt.image.SampleModel;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutput;
@@ -49,6 +48,7 @@ import javax.imageio.stream.ImageInputStream;
 import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.BulkData;
 import org.dcm4che3.data.Fragments;
+import org.dcm4che3.data.Implementation;
 import org.dcm4che3.data.Tag;
 import org.dcm4che3.data.UID;
 import org.dcm4che3.data.VR;
@@ -61,8 +61,8 @@ import org.dcm4che3.imageio.plugins.dcm.DicomMetaData;
 import org.dcm4che3.imageio.stream.ImageInputStreamAdapter;
 import org.dcm4che3.io.DicomInputStream;
 import org.dcm4che3.io.DicomInputStream.IncludeBulkData;
-import org.dcm4che3.util.StreamUtils;
 import org.dcm4che3.io.DicomOutputStream;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
@@ -108,7 +108,7 @@ public class DicomMediaIO extends ImageReader implements DcmMediaReader {
     public static final File CACHE_UNCOMPRESSED_DIR =
         AppProperties.buildAccessibleTempDirectory(AppProperties.FILE_CACHE_DIR.getName(), "dcm-rawcv"); //$NON-NLS-1$
 
-    public static final String MIMETYPE = "application/dicom"; //$NON-NLS-1$
+    public static final String DICOM_MIMETYPE = "application/dicom"; //$NON-NLS-1$
     public static final String IMAGE_MIMETYPE = "image/dicom"; //$NON-NLS-1$
     public static final String SERIES_VIDEO_MIMETYPE = "video/dicom"; //$NON-NLS-1$
     public static final String SERIES_MIMETYPE = "series/dicom"; //$NON-NLS-1$
@@ -288,11 +288,11 @@ public class DicomMediaIO extends ImageReader implements DcmMediaReader {
     private URI uri;
     private int numberOfFrame;
     private final Map<TagW, Object> tags;
-    private volatile MediaElement[] image = null;
-    private volatile String mimeType;
+    private MediaElement[] image = null;
+    private String mimeType;
     private final ArrayList<Integer> fragmentsPositions = new ArrayList<>();
 
-    private volatile ImageInputStream iis;
+    private ImageInputStream iis;
     private DicomInputStream dis;
     private int dataType = 0;
     private boolean hasPixel = false;
@@ -319,7 +319,7 @@ public class DicomMediaIO extends ImageReader implements DcmMediaReader {
         this.uri = Objects.requireNonNull(uri);
         this.numberOfFrame = 0;
         this.tags = new HashMap<>();
-        this.mimeType = MIMETYPE;
+        this.mimeType = DICOM_MIMETYPE;
         this.fileCache = new FileCache(this);
     }
 
@@ -368,7 +368,7 @@ public class DicomMediaIO extends ImageReader implements DcmMediaReader {
         return dcmMetadata != null && "data".equals(uri.getScheme()); //$NON-NLS-1$
     }
 
-    public boolean isReadableDicom() {
+    public synchronized boolean isReadableDicom() {
         if (UNREADABLE.equals(mimeType)) {
             // Return true only to display the error message in the view
             return true;
@@ -926,7 +926,7 @@ public class DicomMediaIO extends ImageReader implements DcmMediaReader {
     }
 
     @Override
-    public MediaElement[] getMediaElement() {
+    public synchronized MediaElement[] getMediaElement() {
         if (image == null && isReadableDicom()) {
             if (SERIES_VIDEO_MIMETYPE.equals(mimeType)) {
                 image = new MediaElement[] { new DicomVideoElement(this, null) };
@@ -1016,23 +1016,17 @@ public class DicomMediaIO extends ImageReader implements DcmMediaReader {
 
     @Override
     public Codec getCodec() {
-        return BundleTools.getCodec(DicomMediaIO.MIMETYPE, DicomCodec.NAME);
+        return BundleTools.getCodec(DicomMediaIO.DICOM_MIMETYPE, DicomCodec.NAME);
     }
 
     @Override
     public String[] getReaderDescription() {
-        String[] desc = new String[3];
-        // TODO add version
+        String[] desc = new String[5];
         desc[0] = "DICOM Codec: " + DicomCodec.NAME; //$NON-NLS-1$
-        if (compressedData) {
-            // desc[1] = "Image Reader Class: " + decompressor.getClass().getName(); //$NON-NLS-1$
-            // try {
-            // desc[2] = "Image Format: " + decompressor.getFormatName(); //$NON-NLS-1$
-            // } catch (IOException e) {
-            // desc[2] = "Image Format: unknown"; //$NON-NLS-1$
-            // }
-        }
-
+        desc[1] = "Version: " + Implementation.getVersionName(); //$NON-NLS-1$
+        desc[2] = "Image Codec: OpenCV imgcodecs";
+        desc[3] = "Version: " + Core.VERSION;
+        desc[4] = "Supports all the DICOM compression types";
         return desc;
     }
 

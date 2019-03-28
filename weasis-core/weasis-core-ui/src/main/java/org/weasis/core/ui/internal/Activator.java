@@ -90,7 +90,12 @@ public class Activator implements BundleActivator, ServiceListener {
         GuiExecutor.instance().execute(() -> {
             ServiceReference<?> service = event.getServiceReference();
             BundleContext context = AppProperties.getBundleContext(service);
-            SeriesViewerFactory viewerFactory = (SeriesViewerFactory) context.getService(service);
+            SeriesViewerFactory viewerFactory = null;
+            try {
+                viewerFactory = (SeriesViewerFactory) context.getService(service);
+            } catch (Exception e) {
+                LOGGER.info("Cannot get service of {}", service.getBundle()); //$NON-NLS-1$
+            }
             if (viewerFactory != null) {
                 if (event.getType() == ServiceEvent.REGISTERED) {
                     registerSeriesViewerFactory(viewerFactory);
@@ -115,7 +120,7 @@ public class Activator implements BundleActivator, ServiceListener {
     private static void registerCommands(BundleContext context) {
         Dictionary<String, Object> dict = new Hashtable<>();
         dict.put(CommandProcessor.COMMAND_SCOPE, "image"); //$NON-NLS-1$
-        dict.put(CommandProcessor.COMMAND_FUNCTION, AbstractFileModel.functions);
+        dict.put(CommandProcessor.COMMAND_FUNCTION, AbstractFileModel.functions.toArray(new String[AbstractFileModel.functions.size()]));
         context.registerService(FileModel.class.getName(), ViewerPluginBuilder.DefaultDataModel, dict);
     }
 

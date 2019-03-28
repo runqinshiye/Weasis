@@ -86,7 +86,7 @@ import org.weasis.core.api.image.ImageOpNode;
 import org.weasis.core.api.image.OpManager;
 import org.weasis.core.api.image.PseudoColorOp;
 import org.weasis.core.api.image.WindowOp;
-import org.weasis.core.api.image.op.ByteLut;
+import org.weasis.core.api.image.op.ByteLutCollection;
 import org.weasis.core.api.image.util.ImageFiler;
 import org.weasis.core.api.image.util.KernelData;
 import org.weasis.core.api.image.util.MeasurableLayer;
@@ -248,7 +248,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
             eventManager.getZoomSetting().getInterpolation());
         disOp.setParamValue(AffineTransformOp.OP_NAME, AffineTransformOp.P_AFFINE_MATRIX, null);
         disOp.setParamValue(FilterOp.OP_NAME, FilterOp.P_KERNEL_DATA, KernelData.NONE);
-        disOp.setParamValue(PseudoColorOp.OP_NAME, PseudoColorOp.P_LUT, ByteLut.defaultLUT);
+        disOp.setParamValue(PseudoColorOp.OP_NAME, PseudoColorOp.P_LUT, ByteLutCollection.Lut.IMAGE.getByteLut());
         disOp.setParamValue(PseudoColorOp.OP_NAME, PseudoColorOp.P_LUT_INVERSE, false);
     }
 
@@ -1000,7 +1000,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
     @Override
     public void setDrawingsVisibility(Boolean visible) {
-        if ((Boolean) actionsInView.get(ActionW.DRAWINGS.cmd()) != visible) {
+        if (!Objects.equals((Boolean) actionsInView.get(ActionW.DRAWINGS.cmd()), visible)) {
             actionsInView.put(ActionW.DRAWINGS.cmd(), visible);
             repaint();
         }
@@ -1259,7 +1259,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
         for (int i = 0; i < wheelListeners.length; i++) {
             this.removeMouseWheelListener(wheelListeners[i]);
         }
-        Optional.ofNullable(lens).ifPresent(l -> l.disableMouseAndKeyListener());
+        Optional.ofNullable(lens).ifPresent(ZoomWin<E>::disableMouseAndKeyListener);
     }
 
     @Override

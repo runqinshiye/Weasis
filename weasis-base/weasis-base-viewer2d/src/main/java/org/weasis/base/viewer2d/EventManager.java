@@ -171,10 +171,10 @@ public class EventManager extends ImageViewerEventManager<ImageElement> implemen
 
     private ComboItemListener<ByteLut> newLutAction() {
         List<ByteLut> luts = new ArrayList<>();
-        luts.add(ByteLut.grayLUT);
+        luts.add(ByteLutCollection.Lut.GRAY.getByteLut());
         ByteLutCollection.readLutFilesFromResourcesDir(luts, ResourceUtil.getResource("luts"));//$NON-NLS-1$
         // Set default first as the list has been sorted
-        luts.add(0, ByteLut.defaultLUT);
+        luts.add(0, ByteLutCollection.Lut.IMAGE.getByteLut());
 
         return new ComboItemListener<ByteLut>(ActionW.LUT, luts.toArray(new ByteLut[luts.size()])) {
             @Override
@@ -243,7 +243,7 @@ public class EventManager extends ImageViewerEventManager<ImageElement> implemen
     public void setSelectedView2dContainer(ImageViewerPlugin<ImageElement> selectedView2dContainer) {
         if (this.selectedView2dContainer != null) {
             this.selectedView2dContainer.setMouseActions(null);
-            getAction(ActionW.SCROLL_SERIES, SliderCineListener.class).ifPresent(a -> a.stop());
+            getAction(ActionW.SCROLL_SERIES, SliderCineListener.class).ifPresent(SliderCineListener::stop);
         }
 
         ImageViewerPlugin<ImageElement> oldContainer = this.selectedView2dContainer;

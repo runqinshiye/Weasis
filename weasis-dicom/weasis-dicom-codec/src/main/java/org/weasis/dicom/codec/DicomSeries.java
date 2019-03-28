@@ -37,7 +37,7 @@ public class DicomSeries extends Series<DicomImageElement> {
     static final TagView defaultTagView =
         new TagView(TagD.getTagFromIDs(Tag.SeriesDescription, Tag.SeriesNumber, Tag.SeriesTime));
 
-    private static volatile PreloadingTask preloadingTask;
+    private static PreloadingTask preloadingTask;
 
     public DicomSeries(String subseriesInstanceUID) {
         this(subseriesInstanceUID, null, defaultTagView);
@@ -99,7 +99,7 @@ public class DicomSeries extends Series<DicomImageElement> {
         if (getFileSize() > 0.0) {
             toolTips.append(Messages.getString("DicomSeries.size")); //$NON-NLS-1$
             toolTips.append(StringUtil.COLON_AND_SPACE);
-            toolTips.append(FileUtil.formatSize(getFileSize()));
+            toolTips.append(FileUtil.humanReadableByte(getFileSize(), false));
             toolTips.append("<br>"); //$NON-NLS-1$
         }
         toolTips.append("</html>"); //$NON-NLS-1$
