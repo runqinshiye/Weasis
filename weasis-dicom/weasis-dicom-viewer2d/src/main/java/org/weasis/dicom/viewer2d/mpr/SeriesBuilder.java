@@ -230,7 +230,7 @@ public class SeriesBuilder {
                             // Get the image in the middle of the series for having better default W/L values
                             img = series.getMedia(MediaSeries.MEDIA_POSITION.MIDDLE, filter,
                                 SortSeriesStack.slicePosition);
-                            final Attributes attributes = ((DcmMediaReader) img.getMediaReader()).getDicomObject();
+                            final Attributes attributes = img.getMediaReader().getDicomObject();
 
                             for (int i = 0; i < 2; i++) {
                                 if (needBuild[i]) {
@@ -263,8 +263,7 @@ public class SeriesBuilder {
                                             img, viewParams, origPixSize, sPixSize, geometry, mprView, attributes);
 
                                     if (dicomSeries != null && dicomSeries.size(null) > 0) {
-                                        ((DcmMediaReader) dicomSeries.getMedia(0, null, null).getMediaReader())
-                                            .writeMetaData(dicomSeries);
+                                        dicomSeries.getMedia(0, null, null).getMediaReader().writeMetaData(dicomSeries);
                                         if (study != null && treeModel != null) {
                                             dicomSeries.setTag(TagW.ExplorerModel, model);
                                             treeModel.addHierarchyNode(study, dicomSeries);
@@ -488,10 +487,12 @@ public class SeriesBuilder {
                 if (MathUtil.isDifferent(dcm.getRescaleX(), dcm.getRescaleY())) {
                     Dimension dim = new Dimension((int) (Math.abs(dcm.getRescaleX()) * image.width()),
                         (int) (Math.abs(dcm.getRescaleY()) * image.height()));
-                    image = ImageProcessor.scale(image.toImageCV(), dim, Imgproc.INTER_LINEAR);
+                    try (ImageCV rimg = ImageProcessor.scale(image.toImageCV(), dim, Imgproc.INTER_LINEAR)) {
+                        writeRasterInRaw(rimg, newSeries, builImgs, params, dstHeight, index);
+                    }
+                } else {
+                    writeRasterInRaw(image, newSeries, builImgs, params, dstHeight, index);
                 }
-
-                writeRasterInRaw(image, newSeries, builImgs, params, dstHeight, index);
             }
 
             return lastSpace;
@@ -513,7 +514,6 @@ public class SeriesBuilder {
         ViewParameter params, int dstHeight, int imgIndex) throws IOException {
         ImageCV img = ImageProcessor.getRotatedImage(image.toMat(), params.rotateCvType);
         if (newSeries != null && img != null && img.height() == newSeries.length) {
-
             if (newSeries[0] == null) {
                 File dir = new File(MPR_CACHE_DIR, params.seriesUID);
                 dir.mkdirs();
@@ -526,8 +526,10 @@ public class SeriesBuilder {
             for (int j = 0; j < newSeries.length; j++) {
                 img.row(j).copyTo(builImgs[j].row(imgIndex - 1));
             }
+            if(!img.equals(image)) {
+                img.release();
+            }
         }
-
     }
 
     private static void rotate(Vector3d vSrc, Vector3d axis, double angle, Vector3d vDst) {

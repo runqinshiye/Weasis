@@ -284,6 +284,7 @@ public class Thumbnail extends JLabel implements Thumbnailable {
 
                             if (thumb == null || thumb.width() <= 0) {
                                 readable = false;
+                                ImageConversion.releasePlanarImage(thumb);
                             } else {
                                 mCache.put(this, thumb);
                             }

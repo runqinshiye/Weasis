@@ -65,8 +65,9 @@ import org.weasis.dicom.param.ConnectOptions;
 import org.weasis.dicom.param.DicomNode;
 import org.weasis.dicom.param.DicomProgress;
 import org.weasis.dicom.param.DicomState;
-import org.weasis.dicom.web.StowRS;
-import org.weasis.dicom.web.StowRS.ContentType;
+import org.weasis.dicom.web.AbstractStowrs.ContentType;
+import org.weasis.dicom.web.StowrsMultiFiles;
+
 
 public class SendDicomView extends AbstractItemDialogPage implements ExportDicom {
 
@@ -203,18 +204,16 @@ public class SendDicomView extends AbstractItemDialogPage implements ExportDicom
                 final DicomState state =
                     CStore.process(params, new DicomNode(weasisAet), node.getDicomNode(), files, dicomProgress);
                 if (state.getStatus() != Status.Success && state.getStatus() != Status.Cancel) {
-                    LOGGER.error("Dicom send error: {}", state.getMessage()); //$NON-NLS-1$
-                    GuiExecutor.instance().execute(() -> JOptionPane.showMessageDialog(exportTree, state.getMessage(),
-                        getTitle(), JOptionPane.ERROR_MESSAGE));
+                    showErrorMessage(null, null, state);
+                } else {
+                    LOGGER.info("Dicom send: {}", state.getMessage());
                 }
             } else if (selectedItem instanceof DicomWebNode) {
                 DicomWebNode destination = (DicomWebNode) selectedItem;
-                try (StowRS stowRS = new StowRS(destination.getUrl().toString(), ContentType.DICOM)) {
+                try (StowrsMultiFiles stowRS = new StowrsMultiFiles(destination.getUrl().toString(), ContentType.DICOM, AppProperties.WEASIS_NAME, destination.getHeaders())) {
                     stowRS.uploadDicom(files, true);
                 } catch (Exception e) {
-                    LOGGER.error("StowRS error: {}", e.getMessage()); //$NON-NLS-1$
-                    GuiExecutor.instance().execute(() -> JOptionPane.showMessageDialog(exportTree, e.getMessage(),
-                        getTitle(), JOptionPane.ERROR_MESSAGE));
+                    showErrorMessage("StowRS error: {}", e, null);
                 }
             }
         } finally {
@@ -222,6 +221,14 @@ public class SendDicomView extends AbstractItemDialogPage implements ExportDicom
         }
 
         return true;
+    }
+
+    private void showErrorMessage(String title, Exception e, DicomState state) {
+        if (e != null) {
+            LOGGER.error(title, e.getMessage()); // $NON-NLS-1$
+        }
+        GuiExecutor.instance().execute(() -> JOptionPane.showMessageDialog(exportTree,
+            state == null ? e.getMessage() : state.getMessage(), getTitle(), JOptionPane.ERROR_MESSAGE));
     }
 
     private void writeDicom(ExplorerTask<Boolean, String> task, File writeDir, CheckTreeModel model)
@@ -252,7 +259,7 @@ public class SendDicomView extends AbstractItemDialogPage implements ExportDicom
 
                     File destinationFile = new File(destinationDir, iuid);
                     if (!img.saveToFile(destinationFile)) {
-                        LOGGER.error("Cannot export DICOM file: {}", img.getFile()); //$NON-NLS-1$
+                        LOGGER.error("Cannot export DICOM file: {}", img.getFileCache().getOriginalFile().orElse(null)); //$NON-NLS-1$
                     }
                 } else if (node.getUserObject() instanceof MediaElement) {
                     MediaElement dcm = (MediaElement) node.getUserObject();
