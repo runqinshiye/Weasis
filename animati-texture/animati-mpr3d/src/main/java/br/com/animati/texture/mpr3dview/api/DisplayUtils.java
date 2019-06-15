@@ -179,20 +179,20 @@ public class DisplayUtils {
 
         if (flip) {
             result[0] = po[0];
-            StringBuffer buf = new StringBuffer();
+            StringBuilder buf = new StringBuilder();
             for (char c : po[0].toCharArray()) {
                 buf.append(DisplayUtils.getImageOrientationOposite(c));
             }
             result[2] = buf.toString();
         } else {
-            StringBuffer buf = new StringBuffer();
+            StringBuilder buf = new StringBuilder();
             for (char c : po[0].toCharArray()) {
                 buf.append(DisplayUtils.getImageOrientationOposite(c));
             }
             result[0] = buf.toString();
             result[2] = po[0];
         }
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (char c : po[1].toCharArray()) {
             buf.append(DisplayUtils.getImageOrientationOposite(c));
         }

@@ -37,10 +37,10 @@ public class MenuAccordion extends JPanel implements ActionListener {
     private GridBagConstraints grid = new GridBagConstraints();
     private Insets titleInsets = new Insets(8, 5, 0, 5);
     private Insets panelInsets = new Insets(0, 5, 0, 5);
-    private List<ChangeListener> listeners = new ArrayList<ChangeListener>();
+    private List<ChangeListener> listeners = new ArrayList<>();
 
     public MenuAccordion() {
-        items = new HashMap<Integer, AccordionItem>();
+        items = new HashMap<>();
         setLayout(new GridBagLayout());
         grid.fill = GridBagConstraints.HORIZONTAL;
         grid.insets = titleInsets;
@@ -62,7 +62,7 @@ public class MenuAccordion extends JPanel implements ActionListener {
             grid.gridy++;
         }
         validate();
-        items.put(new Integer(item.getIndex()), item);
+        items.put(item.getIndex(), item);
         curIndex++;
         item.addActionListener(this);
     }

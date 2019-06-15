@@ -4,9 +4,6 @@
  */
 package br.com.animati.texture.mpr3dview.tool;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JToggleButton;
@@ -17,9 +14,9 @@ import javax.swing.event.ListDataListener;
 import org.weasis.core.api.gui.util.ActionState;
 import org.weasis.core.api.gui.util.ActionW;
 import org.weasis.core.api.gui.util.ComboItemListener;
+import org.weasis.core.api.gui.util.ToggleButtonListener;
 import org.weasis.core.ui.editor.image.ImageViewerEventManager;
 import org.weasis.core.ui.editor.image.ImageViewerPlugin;
-import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.pref.PreferenceDialog;
 import org.weasis.core.ui.util.ColorLayerUI;
 import org.weasis.core.ui.util.WtoolBar;
@@ -27,10 +24,8 @@ import org.weasis.core.ui.util.WtoolBar;
 import br.com.animati.texture.mpr3dview.GUIManager;
 import br.com.animati.texture.mpr3dview.HaPrefsPage;
 import br.com.animati.texture.mpr3dview.View3DContainer;
-import br.com.animati.texture.mpr3dview.ViewTexture;
 import br.com.animati.texture.mpr3dview.api.ActionWA;
 import br.com.animati.texture.mpr3dview.internal.Messages;
-import org.weasis.core.api.gui.util.ToggleButtonListener;
 
 /**
  *
@@ -82,14 +77,10 @@ public class TextureToolbar extends WtoolBar {
     private void initGui() {
         JButton refreshBt = new JButton(new ImageIcon(TextureToolbar.class.getResource("/icon/32x32/refresh.png")));
         refreshBt.setToolTipText(Messages.getString("View3DContainer.refreshTexture"));
-        refreshBt.addActionListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ImageViewerPlugin container = GUIManager.getInstance().getSelectedView2dContainer();
-                if (container instanceof View3DContainer) {
-                    ((View3DContainer) container).refreshTexture();
-                }
+        refreshBt.addActionListener(e -> {
+            ImageViewerPlugin container = GUIManager.getInstance().getSelectedView2dContainer();
+            if (container instanceof View3DContainer) {
+                ((View3DContainer) container).refreshTexture();
             }
         });
 
@@ -107,20 +98,17 @@ public class TextureToolbar extends WtoolBar {
             layout.getModel().addListDataListener(layListener);
         }
 
-        show3D.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ActionState action = GUIManager.getInstance().getAction(ActionW.LAYOUT);
-                if (action instanceof ComboItemListener) {
-                    ComboItemListener lis = (ComboItemListener) action;
-                    lis.getModel().removeListDataListener(layListener);
-                    if (show3D.isSelected()) {
-                        lis.setSelectedItem(View3DContainer.VIEWS_2x2_mpr);
-                    } else {
-                        lis.setSelectedItem(View3DContainer.VIEWS_2x1_mpr);
-                    }
-                    lis.getModel().addListDataListener(layListener);
+        show3D.addActionListener(e -> {
+            ActionState action1 = GUIManager.getInstance().getAction(ActionW.LAYOUT);
+            if (action1 instanceof ComboItemListener) {
+                ComboItemListener lis = (ComboItemListener) action1;
+                lis.getModel().removeListDataListener(layListener);
+                if (show3D.isSelected()) {
+                    lis.setSelectedItem(View3DContainer.VIEWS_2x2_mpr);
+                } else {
+                    lis.setSelectedItem(View3DContainer.VIEWS_2x1_mpr);
                 }
+                lis.getModel().addListDataListener(layListener);
             }
         });
 
@@ -140,15 +128,11 @@ public class TextureToolbar extends WtoolBar {
 
         JButton config = new JButton(new ImageIcon(TextureToolbar.class.getResource("/icon/32x32/config.png")));
         config.setToolTipText(Messages.getString("TextureToolbar.config"));
-        config.addActionListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ColorLayerUI layer = ColorLayerUI.createTransparentLayerUI(TextureToolbar.this);
-                PreferenceDialog dialog = new PreferenceDialog(SwingUtilities.getWindowAncestor(TextureToolbar.this));
-                dialog.showPage(HaPrefsPage.PAGE_NAME);
-                ColorLayerUI.showCenterScreen(dialog, layer);
-            }
+        config.addActionListener(e -> {
+            ColorLayerUI layer = ColorLayerUI.createTransparentLayerUI(TextureToolbar.this);
+            PreferenceDialog dialog = new PreferenceDialog(SwingUtilities.getWindowAncestor(TextureToolbar.this));
+            dialog.showPage(HaPrefsPage.PAGE_NAME);
+            ColorLayerUI.showCenterScreen(dialog, layer);
         });
         add(config);
     }

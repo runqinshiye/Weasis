@@ -22,17 +22,19 @@ import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.vecmath.Vector2d;
+
 import org.dcm4che3.data.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.GuiExecutor;
-import org.weasis.opencv.op.ImageConversion;
 import org.weasis.core.api.image.measure.MeasurementsAdapter;
 import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.image.util.Unit;
-import org.weasis.opencv.data.PlanarImage;
 import org.weasis.core.api.media.data.TagW;
 import org.weasis.core.ui.model.graphic.Graphic;
+import org.weasis.dicom.codec.TagD;
+import org.weasis.opencv.data.PlanarImage;
+import org.weasis.opencv.op.ImageConversion;
 
 import br.com.animati.texture.mpr3dview.View3DFactory;
 import br.com.animati.texture.mpr3dview.ViewTexture;
@@ -40,7 +42,6 @@ import br.com.animati.texturedicom.TextureData;
 import br.com.animati.texturedicom.rendering.RenderHelper;
 import br.com.animati.texturedicom.rendering.RenderResult;
 import br.com.animati.texturedicom.rendering.RenderResultListener;
-import org.weasis.dicom.codec.TagD;
 
 /**
  *
@@ -56,14 +57,15 @@ public class TextureMeasurableLayer implements MeasurableLayer {
     private RenderedImage renderedAsSource;
     private volatile boolean dirty = true;
 
-    //Just for debug
+    // Just for debug
     private BufferedImage bufferedImage;
     private volatile boolean bufferedDirty;
 
     /**
      * Creates a measurable layer for the given view.
      *
-     * @param parent Parent view.
+     * @param parent
+     *            Parent view.
      */
     public TextureMeasurableLayer(final ViewTexture parent) {
         owner = parent;
@@ -162,13 +164,16 @@ public class TextureMeasurableLayer implements MeasurableLayer {
     /**
      * Used for DEBUG.
      *
-     * @param image Image to show.
-     * @param transform Transform to print graphics layer.
-     * @param mShape List of graphics.
+     * @param image
+     *            Image to show.
+     * @param transform
+     *            Transform to print graphics layer.
+     * @param mShape
+     *            List of graphics.
      */
     public void showOnFrame(final BufferedImage image, final AffineTransform transform, final List<Graphic> mShape) {
 
-        Graphics2D graphics = (Graphics2D) image.createGraphics();
+        Graphics2D graphics = image.createGraphics();
         graphics.setStroke(new BasicStroke(2));
         graphics.setPaint(Color.yellow);
         for (Graphic shape : mShape) {
@@ -196,7 +201,8 @@ public class TextureMeasurableLayer implements MeasurableLayer {
     /**
      * Makes a copy of a Buffered image.
      *
-     * @param bi Image to copy.
+     * @param bi
+     *            Image to copy.
      * @return Copy of image.
      */
     public static BufferedImage deepCopy(final BufferedImage bi) {
@@ -284,6 +290,27 @@ public class TextureMeasurableLayer implements MeasurableLayer {
     @Override
     public void setOffset(final Point p) {
         // Offset for measurement serialization: not used here.
+    }
+
+    @Override
+    public double pixelToRealValue(Number pixelValue) {
+        Number val = pixelValue;
+        if (val != null) {
+            return val.doubleValue();
+        }
+        return 0;
+    }
+
+    @Override
+    public double getPixelMin() {
+        // Not supported yet.
+        return 0;
+    }
+
+    @Override
+    public double getPixelMax() {
+        // Not supported yet.
+        return 0;
     }
 
 }

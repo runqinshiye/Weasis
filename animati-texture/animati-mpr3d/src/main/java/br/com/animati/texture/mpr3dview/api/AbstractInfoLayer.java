@@ -41,7 +41,7 @@ import br.com.animati.texture.mpr3dview.internal.Messages;
  * @author Gabriela Bauermann (gabriela@animati.com.br)
  * @version 2013, 21 sep
  */
-public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnnotation {
+public abstract class AbstractInfoLayer extends DefaultUUID implements LayerAnnotation {
 
     private static final int BORDER = 10;
     protected int border = BORDER;
@@ -65,7 +65,6 @@ public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnn
     protected Color highlightColor = new Color(255, 153, 153);
     protected Boolean visible = Boolean.TRUE;
 
-    
     @Override
     public int compareTo(Layer obj) {
         if (obj == null) {
@@ -88,14 +87,14 @@ public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnn
 
     @Override
     public void setName(String graphicLayerName) {
-     // Cannot change the name
+        // Cannot change the name
     }
 
     @Override
     public String getName() {
         return getType().toString();
     }
-    
+
     @Override
     public Integer getBorder() {
         return border;
@@ -469,7 +468,7 @@ public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnn
                 str += " " + unitToPaint[0].getAbbreviation();
 
                 double posx = canvasBounds.width / 2.0 - scaleSizex / 2.0;
-                double posy = canvasBounds.height - border;
+                double posy = canvasBounds.height - (double) border;
 
                 drawScale(str, scaleSizex, posx, posy, -1, 0);
             }
@@ -508,7 +507,7 @@ public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnn
                 String str = ajustLengthDisplay(scaleSizey * scale, unitToPaint);
                 str += " " + unitToPaint[0].getAbbreviation();
 
-                double posx = canvasBounds.width - border;
+                double posx = canvasBounds.width - (double) border;
                 double posy = canvasBounds.height / 2.0 - scaleSizey / 2.0;
 
                 drawScale(str, scaleSizey, posx, posy, -1, 1);
@@ -574,7 +573,7 @@ public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnn
             }
 
             // smallThick Outlines
-            if (divSquare > (90 / 12 * fontHeight)) {
+            if (divSquare > (90 / 12.0 * fontHeight)) {
                 double secondSquare = divSquare / 10.0;
                 for (int i = 0; i < divisor; i++) {
                     for (int k = 1; k < 10; k++) {
@@ -616,7 +615,7 @@ public abstract class AbstractInfoLayer extends DefaultUUID  implements LayerAnn
                 }
                 g2d.draw(line);
             }
-            if (divSquare > (90 / 12 * fontHeight)) {
+            if (divSquare > (90 / 12.0 * fontHeight)) {
                 double secondSquare = divSquare / 10.0;
                 for (int i = 0; i < divisor; i++) {
                     for (int k = 1; k < 10; k++) {
