@@ -474,6 +474,58 @@
 
 
 								<!-- ===================================== -->
+								<!-- Weasis 3D Modules -->
+								<!-- ===================================== -->
+								<artifactItem>
+									<groupId>br.com.animati</groupId>
+									<artifactId>animati-mpr3d</artifactId>
+									<version>${project.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>br.com.animati</groupId>
+									<artifactId>texture</artifactId>
+									<version>${project.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.weasis.thirdparty.org.jogamp</groupId>
+									<artifactId>jogamp</artifactId>
+									<version>${jogamp.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.weasis.thirdparty.org.jogamp</groupId>
+									<artifactId>jogamp-linux-x86</artifactId>
+									<version>${jogamp.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.weasis.thirdparty.org.jogamp</groupId>
+									<artifactId>jogamp-linux-x86-64</artifactId>
+									<version>${jogamp.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.weasis.thirdparty.org.jogamp</groupId>
+									<artifactId>jogamp-macosx-x86-64</artifactId>
+									<version>${jogamp.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.weasis.thirdparty.org.jogamp</groupId>
+									<artifactId>jogamp-windows-x86</artifactId>
+									<version>${jogamp.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.weasis.thirdparty.org.jogamp</groupId>
+									<artifactId>jogamp-windows-x86-64</artifactId>
+									<version>${jogamp.version}</version>
+									<outputDirectory>${tmp.bundle.dir}</outputDirectory>
+								</artifactItem>
+
+								<!-- ===================================== -->
 								<!-- Weasis Base bundles -->
 								<!-- ===================================== -->
 								<artifactItem>

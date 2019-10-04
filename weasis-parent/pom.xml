@@ -45,6 +45,7 @@
 		<jaxb.osgi.version>2.3.2</jaxb.osgi.version>
 		<com.sun.media.j3d.version>1.5.2</com.sun.media.j3d.version>
 		<tilecachetool.version>1.0.2</tilecachetool.version>
+		<jogamp.version>2.3.2</jogamp.version>
 
 		<assertj.version>3.12.2</assertj.version>
 		<powermock.version>2.0.2</powermock.version>
