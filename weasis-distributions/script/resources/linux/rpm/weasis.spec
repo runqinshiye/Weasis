@@ -12,8 +12,8 @@ Group: APPLICATION_GROUP
 
 Autoprov: 0
 Autoreq: 0
-%if "xPACKAGE_DEPENDENCIES" != x
-Requires: PACKAGE_DEPENDENCIES
+%if "xPACKAGE_CUSTOM_DEPENDENCIES" != x
+Requires: PACKAGE_CUSTOM_DEPENDENCIES
 %endif
 
 #avoid ARCH subfolder
