@@ -23,7 +23,7 @@
                 <configuration>
                     <instructions>
                         <Import-Package>!com.jogamp.openal,!com.jogamp.openal.util,!org.eclipse.swt.graphics,
-                            !org.eclipse.swt.layout,!org.eclipse.swt.widgets,com.jogamp.plugin.applet;resolution:=optional;
+                            !org.eclipse.swt.layout,!org.eclipse.swt.widgets,!com.jogamp.plugin.applet,!org.jdesktop.applet.util,
                             com.jogamp.plugin.ui;resolution:=optional,*</Import-Package>
                         <Export-Package>*</Export-Package>
 
