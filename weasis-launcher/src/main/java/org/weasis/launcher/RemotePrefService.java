@@ -1,15 +1,12 @@
 /*******************************************************************************
- * Copyright (C) 2009-2018 Weasis Team and others
- * 
- * This program and the accompanying materials are made
- * available under the terms of the Eclipse Public License 2.0
- * which is available at https://www.eclipse.org/legal/epl-2.0/
- * 
+ * Copyright (c) 2009-2020 Weasis Team and other contributors.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
  * SPDX-License-Identifier: EPL-2.0
- * 
- * Contributors:
- *     Nicolas Roduit - initial API and implementation
- ******************************************************************************/
+ *******************************************************************************/
 package org.weasis.launcher;
 
 import java.io.IOException;
@@ -27,8 +24,8 @@ import java.util.logging.Logger;
 
 public class RemotePrefService {
 
-    public static final String P_REMOTE_PREF_USER = "user";
-    public static final String P_REMOTE_PREF_PROFILE = "profile";
+    public static final String P_REMOTE_PREF_USER = "user"; //$NON-NLS-1$
+    public static final String P_REMOTE_PREF_PROFILE = "profile"; //$NON-NLS-1$
 
     private static final String TEXT_X_JAVA_PROP = "text/x-java-properties"; //$NON-NLS-1$
 
@@ -65,7 +62,7 @@ public class RemotePrefService {
     }
 
     private String getRemoteLauncherUrl() throws UnsupportedEncodingException {
-        return String.format("%s?%s=%s&%s=%s", remotePrefURL, P_REMOTE_PREF_USER, getEncodedValue(user),
+        return String.format("%s?%s=%s&%s=%s", remotePrefURL, P_REMOTE_PREF_USER, getEncodedValue(user), //$NON-NLS-1$
             P_REMOTE_PREF_PROFILE, getEncodedValue(profile));
     }
 

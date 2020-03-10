@@ -1,15 +1,13 @@
 /*******************************************************************************
- * Copyright (C) 2009-2018 Weasis Team and others
- * 
- * This program and the accompanying materials are made
- * available under the terms of the Eclipse Public License 2.0
- * which is available at https://www.eclipse.org/legal/epl-2.0/
- * 
- * SPDX-License-Identifier: EPL-2.0
- * 
- * Contributors:
- *     Nicolas Roduit - initial API and implementation
- ******************************************************************************/
+ * Copyright (c) 2009-2020 Weasis Team and other contributors.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
+ * which is available at https://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+ *******************************************************************************/
 package org.weasis.launcher;
 
 import java.awt.Desktop;
@@ -61,6 +59,11 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.Version;
 import org.osgi.util.tracker.ServiceTracker;
 
+/**
+ * 
+ * @author Richard S. Hall
+ * @author Nicolas Roduit
+ */
 public class WeasisLauncher {
 
     static {
@@ -150,13 +153,14 @@ public class WeasisLauncher {
     public static final String P_WEASIS_ACCEPT_DISCLAIMER = "weasis.accept.disclaimer"; //$NON-NLS-1$
     public static final String P_WEASIS_SHOW_RELEASE = "weasis.show.release"; //$NON-NLS-1$
     public static final String P_WEASIS_VERSION_RELEASE = "weasis.version.release"; //$NON-NLS-1$
-    public static final String P_WEASIS_I18N = "weasis.i18n";
+    public static final String P_WEASIS_I18N = "weasis.i18n"; //$NON-NLS-1$
     public static final String P_OS_NAME = "os.name"; //$NON-NLS-1$
     public static final String P_WEASIS_LOOK = "weasis.look"; //$NON-NLS-1$
     public static final String P_GOSH_ARGS = "gosh.args"; //$NON-NLS-1$
     public static final String P_WEASIS_CLEAN_CACHE = "weasis.clean.cache"; //$NON-NLS-1$
     public static final String P_HTTP_AUTHORIZATION = "http.authorization"; //$NON-NLS-1$
     public static final String P_NATIVE_LIB_SPEC = "native.library.spec"; //$NON-NLS-1$
+    public static final String P_WEASIS_MIN_NATIVE_VERSION = "weasis.min.native.version"; //$NON-NLS-1$
     public static final String F_RESOURCES = "resources"; //$NON-NLS-1$
     static final String MAC_OS_X = "Mac OS X"; //$NON-NLS-1$
 
@@ -197,6 +201,25 @@ public class WeasisLauncher {
         // Load local properties and clean if necessary the previous version
         WeasisLoader loader = loadProperties(serverProp, configData.getConfigOutput());
         WeasisMainFrame mainFrame = loader.getMainFrame();
+        
+        String minVersion = System.getProperty(P_WEASIS_MIN_NATIVE_VERSION);
+        if (Utils.hasText(minVersion)) {
+            EventQueue.invokeAndWait(() -> {
+                String appName = System.getProperty(P_WEASIS_NAME);
+                int response = JOptionPane.showOptionDialog(
+                    mainFrame.getRootPaneContainer() == null ? null : mainFrame.getRootPaneContainer().getContentPane(),
+                    String.format(
+                        Messages.getString("WeasisLauncher.update_min") + "\n\n" //$NON-NLS-1$ //$NON-NLS-2$
+                            + Messages.getString("WeasisLauncher.continue_local"), //$NON-NLS-1$
+                        appName, minVersion),
+                    null, JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE, null, null, null);
+
+                if (response != 0) {
+                    LOGGER.log(Level.SEVERE, "Do not continue the launch with the local version"); //$NON-NLS-1$
+                    System.exit(-1);
+                }
+            });
+        }
 
         // If enabled, register a shutdown hook to make sure the framework is
         // cleanly shutdown when the VM exits
@@ -695,7 +718,7 @@ public class WeasisLauncher {
             try {
                 remotePrefs = new RemotePrefService(remotePrefURL, serverProp, user, profileName);
                 Properties remote = remotePrefs.readLauncherPref(null);
-                currentProps.putAll(remote); // merger remote to local
+                currentProps.putAll(remote); // merge remote to local
                 if (remote.size() < currentProps.size()) {
                     // Force to have difference for saving preferences
                     serverProp.put("wp.init.diff.remote.pref", Boolean.TRUE.toString()); //$NON-NLS-1$
@@ -981,8 +1004,8 @@ public class WeasisLauncher {
             } else if (cdbl == null) {
                 String cdb = configData.getProperty(P_WEASIS_CODEBASE_URL, null); // $NON-NLS-1$
                 if (Utils.hasText(cdb)) {
-                    path = cdb.substring(0, cdb.lastIndexOf('/')) + "/weasis-i18n";
-                    WeasisLauncher.readProperties(new URI(path + "/buildNumber.properties"), modulesi18n);
+                    path = cdb.substring(0, cdb.lastIndexOf('/')) + "/weasis-i18n"; //$NON-NLS-1$
+                    WeasisLauncher.readProperties(new URI(path + "/buildNumber.properties"), modulesi18n); //$NON-NLS-1$
                     if (!modulesi18n.isEmpty()) {
                         System.setProperty(P_WEASIS_I18N, path);
                     }
@@ -994,7 +1017,7 @@ public class WeasisLauncher {
                 if (cdbl == null) {
                     cdbl = ConfigData.findLocalCodebase().getPath();
                 }
-                File file = new File(cdbl, "bundle-i18n" + File.separator  +"buildNumber.properties"); //$NON-NLS-1$
+                File file = new File(cdbl, "bundle-i18n" + File.separator + "buildNumber.properties"); //$NON-NLS-1$ //$NON-NLS-2$
                 if (file.canRead()) {
                     WeasisLauncher.readProperties(file.toURI(), modulesi18n);
                     if (!modulesi18n.isEmpty()) {

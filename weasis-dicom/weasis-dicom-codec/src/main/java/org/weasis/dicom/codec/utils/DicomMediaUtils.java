@@ -1,14 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2009-2018 Weasis Team and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v2.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v20.html
+ * Copyright (c) 2009-2020 Weasis Team and other contributors.
  *
- * Contributors:
- *     Nicolas Roduit - initial API and implementation
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-
 package org.weasis.dicom.codec.utils;
 
 import java.awt.Color;
@@ -72,7 +70,6 @@ import org.weasis.opencv.data.LookupTableCV;
 /**
  * @author Nicolas Roduit
  * @author Benoit Jacquemoud
- * @version $Rev$ $Date$
  */
 public class DicomMediaUtils {
 
@@ -844,8 +841,8 @@ public class DicomMediaUtils {
 
             if (mLutItems != null && containsRequiredModalityLUTDataAttributes(mLutItems)) {
                 boolean canApplyMLUT = true;
-                String modlality = TagD.getTagValue(tagable, Tag.Modality, String.class);
-                if ("XA".equals(modlality) || "XRF".equals(modlality)) { //$NON-NLS-1$ //$NON-NLS-2$
+                String modality = TagD.getTagValue(tagable, Tag.Modality, String.class);
+                if ("XA".equals(modality) || "XRF".equals(modality)) { //$NON-NLS-1$ //$NON-NLS-2$
                     // See PS 3.4 N.2.1.2.
                     String pixRel = mLutItems.getParent() == null ? null
                         : mLutItems.getParent().getString(Tag.PixelIntensityRelationship);
@@ -884,18 +881,11 @@ public class DicomMediaUtils {
                         LOGGER.trace("Modality LUT Sequence shall NOT be present if Rescale Intercept is present"); //$NON-NLS-1$
                     }
                     if (TagD.getTagValue(tagable, Tag.ModalityLUTType) == null) {
-                        LOGGER.trace("Modality Type is required if Modality LUT Sequence is present. "); //$NON-NLS-1$
+                        LOGGER.trace("Modality Type is required if Modality LUT Sequence is present."); //$NON-NLS-1$
                     }
                 } else if (TagD.getTagValue(tagable, Tag.RescaleIntercept) != null) {
                     if (TagD.getTagValue(tagable, Tag.RescaleSlope) == null) {
                         LOGGER.debug("Modality Rescale Slope is required if Rescale Intercept is present."); //$NON-NLS-1$
-                    }
-                } else {
-                    String modlality = TagD.getTagValue(tagable, Tag.Modality, String.class);
-                    if ("MR".equals(modlality) || "XA".equals(modlality) || "XRF".equals(modlality) //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                        || !"PT".equals(modlality)) { //$NON-NLS-1$
-                        LOGGER
-                            .trace("Modality Rescale Intercept is required if Modality LUT Sequence is not present. "); //$NON-NLS-1$
                     }
                 }
             }
@@ -978,15 +968,13 @@ public class DicomMediaUtils {
                 double[] windowCenter = TagD.getTagValue(tagable, Tag.WindowCenter, double[].class);
                 double[] windowWidth = TagD.getTagValue(tagable, Tag.WindowWidth, double[].class);
 
-                if (windowCenter == null && windowWidth == null) {
-                    return;
-                } else if (windowCenter == null) {
+                if (windowCenter == null && windowWidth != null) {
                     LOGGER.debug("VOI Window Center is required if Window Width is present"); //$NON-NLS-1$
-                } else if (windowWidth == null) {
+                } else if (windowCenter != null && windowWidth == null) {
                     LOGGER.debug("VOI Window Width is required if Window Center is present"); //$NON-NLS-1$
-                } else if (windowWidth.length != windowCenter.length) {
-                    LOGGER.debug("VOI Window Center and Width attributes have different number of values : {} // {}", //$NON-NLS-1$
-                        windowCenter, windowWidth);
+                } else if (windowCenter != null && windowWidth.length != windowCenter.length) {
+                    LOGGER.debug("VOI Window Center and Width attributes have different number of values : {} => {}", //$NON-NLS-1$
+                        windowCenter.length, windowWidth.length);
                 }
             }
         }

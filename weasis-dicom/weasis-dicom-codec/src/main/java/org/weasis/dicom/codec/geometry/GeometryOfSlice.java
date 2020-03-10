@@ -1,4 +1,4 @@
-/* Copyright (c) 2001-2015, David A. Clunie DBA Pixelmed Publishing. All rights reserved. */
+/* Copyright (c) 2001-2020, David A. Clunie DBA Pixelmed Publishing. All rights reserved. */
 
 package org.weasis.dicom.codec.geometry;
 
@@ -13,9 +13,9 @@ import javax.vecmath.Vector3d;
  * A class to describe the spatial geometry of a single cross-sectional image slice.
  * </p>
  *
- * Contributors:
- *     Nicolas Roduit - initial API and implementation
- *******************************************************************************/
+ * @author David A. Clunie
+ * @author Nicolas Roduit
+ */
 public class GeometryOfSlice {
 
     protected double[] rowArray;

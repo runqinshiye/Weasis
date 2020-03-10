@@ -1,12 +1,11 @@
 /*******************************************************************************
- * Copyright (c) 2009-2018 Weasis Team and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v2.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v20.html
+ * Copyright (c) 2009-2020 Weasis Team and other contributors.
  *
- * Contributors:
- *     Nicolas Roduit - initial API and implementation
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
 package org.weasis.base.ui.gui;
 
@@ -20,6 +19,7 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
+import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
@@ -1202,11 +1202,15 @@ public class WeasisWin {
                     try {
                         Thread.sleep(500L);
                         Robot robot = new Robot();
+                        Point old = MouseInfo.getPointerInfo().getLocation();
                         Point p = app.getLocationOnScreen();
-                        robot.mouseMove(p.x + app.getWidth() / 2, p.y + 5);
+                        int x = p.x + app.getWidth() / 2;
+                        int y = p.y + app.getHeight() / 2;
+                        robot.mouseMove(x, y);
                         // Simulate a mouse click
                         robot.mousePress(InputEvent.BUTTON1_MASK);
                         robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                        robot.mouseMove(old.x, old.y);
                     } catch (AWTException e1) {
                         // DO nothing
                     } catch (InterruptedException e) {

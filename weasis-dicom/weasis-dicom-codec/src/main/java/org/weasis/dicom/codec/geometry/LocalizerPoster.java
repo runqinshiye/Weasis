@@ -1,4 +1,4 @@
-/* Copyright (c) 2001-2015, David A. Clunie DBA Pixelmed Publishing. All rights reserved. */
+/* Copyright (c) 2001-2020, David A. Clunie DBA Pixelmed Publishing. All rights reserved. */
 
 package org.weasis.dicom.codec.geometry;
 
@@ -37,11 +37,9 @@ import org.weasis.core.api.gui.util.MathUtil;
  * Vector shapes = localizerPoster.getOutlineOnLocalizerForThisGeometry(postImageGeometry);
  * </pre>
  *
- * @see com.pixelmed.geometry.LocalizerPosterFactory
  * @see com.pixelmed.geometry.GeometryOfSlice
- * @see com.pixelmed.dicom.GeometryOfSliceFromAttributeList
  *
- * @author dclunie
+ * @author David A. Clunie
  */
 public abstract class LocalizerPoster {
 

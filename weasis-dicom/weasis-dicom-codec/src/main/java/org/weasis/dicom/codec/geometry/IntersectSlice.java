@@ -1,4 +1,4 @@
-/* Copyright (c) 2001-2015, David A. Clunie DBA Pixelmed Publishing. All rights reserved. */
+/* Copyright (c) 2001-2020, David A. Clunie DBA Pixelmed Publishing. All rights reserved. */
 
 package org.weasis.dicom.codec.geometry;
 
@@ -10,7 +10,7 @@ import javax.vecmath.Tuple3d;
 import javax.vecmath.Vector3d;
 
 /**
- * @author dclunie
+ * @author David A. Clunie
  */
 public class IntersectSlice extends LocalizerPoster {
 
