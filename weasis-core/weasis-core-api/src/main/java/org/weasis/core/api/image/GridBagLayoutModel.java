@@ -23,14 +23,16 @@ import java.util.Map;
 
 import javax.swing.Icon;
 import javax.xml.XMLConstants;
+import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.stream.XMLEventReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.GUIEntry;
 import org.weasis.core.api.service.WProperties;
 import org.weasis.core.api.util.Copyable;
-import org.weasis.core.api.util.StringUtil;
+import org.weasis.core.util.StringUtil;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -83,7 +85,10 @@ public class GridBagLayoutModel implements GUIEntry, Copyable<GridBagLayoutModel
         try {
             SAXParserFactory factory = SAXParserFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            factory.newSAXParser().parse(stream, new SAXAdapter());
+            SAXParser parser = factory.newSAXParser();
+            parser.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, ""); //$NON-NLS-1$
+            parser.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+            parser.parse(stream, new SAXAdapter());
         } catch (Exception e) {
             LOGGER.error("Loading layout xml", e); //$NON-NLS-1$
         }

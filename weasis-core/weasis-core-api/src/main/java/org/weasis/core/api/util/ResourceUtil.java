@@ -19,6 +19,7 @@ import javax.swing.ImageIcon;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.weasis.core.util.StringUtil;
 
 public class ResourceUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(ResourceUtil.class);
@@ -77,7 +78,7 @@ public class ResourceUtil {
             try {
                 return new ImageIcon(file.toURI().toURL());
             } catch (Exception e) {
-                LOGGER.error("Cannot read logo image:{}", e); //$NON-NLS-1$
+                LOGGER.error("Cannot read logo image:{}", filename, e); //$NON-NLS-1$
             }
         }
         return null;
