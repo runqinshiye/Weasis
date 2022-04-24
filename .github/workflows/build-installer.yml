@@ -88,7 +88,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '18.0.1+0-ea'
+          java-version: '18.0.1+0-ea.0.202204082357'
 
       - name: Download weasis-native
         uses: actions/download-artifact@v2
