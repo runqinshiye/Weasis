@@ -17,14 +17,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          cache: 'maven'
 
       - name: Build with Maven
         shell: bash
@@ -95,7 +88,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '18.0.1+0.0.202204082357'
+          java-version: '18.0.1+0-ea'
 
       - name: Download weasis-native
         uses: actions/download-artifact@v2
