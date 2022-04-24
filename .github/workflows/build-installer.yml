@@ -75,10 +75,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, platform: x64, wsystem: linux, warc: x86-64 }
+          # - { os: ubuntu-latest, platform: x64, wsystem: linux, warc: x86-64 }
           - { os: macos-latest, platform: x64, wsystem: macosx, warc: x86-64 }
           #  - { os: windows-latest, platform: x86, wsystem: windows, warc: x86 }
-          - { os: windows-latest, platform: x64, wsystem: windows, warc: x86-64 }
+          # - { os: windows-latest, platform: x64, wsystem: windows, warc: x86-64 }
 
     steps:
       - name: Set output version from build
@@ -94,8 +94,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: 'liberica'
-          java-version: '18'
+          distribution: 'temurin'
+          java-version: '18.0.1+0.0.202204082357'
 
       - name: Download weasis-native
         uses: actions/download-artifact@v2
