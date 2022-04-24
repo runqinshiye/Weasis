@@ -25,12 +25,15 @@ import javax.swing.JPopupMenu;
 import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Sequence;
 import org.dcm4che3.data.Tag;
+import org.dcm4che3.img.data.CIELab;
+import org.dcm4che3.img.data.PrDicomObject;
+import org.dcm4che3.img.lut.PresetWindowLevel;
+import org.dcm4che3.img.util.DicomObjectUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.ActionState;
 import org.weasis.core.api.gui.util.ActionW;
 import org.weasis.core.api.gui.util.ComboItemListener;
-import org.weasis.core.api.gui.util.MathUtil;
 import org.weasis.core.api.gui.util.RadioMenuItem;
 import org.weasis.core.api.image.CropOp;
 import org.weasis.core.api.image.ImageOpNode;
@@ -38,9 +41,10 @@ import org.weasis.core.api.image.OpManager;
 import org.weasis.core.api.image.SimpleOpManager;
 import org.weasis.core.api.image.WindowOp;
 import org.weasis.core.api.image.ZoomOp;
-import org.weasis.core.api.image.util.CIELab;
 import org.weasis.core.api.image.util.Unit;
 import org.weasis.core.api.media.data.MediaSeries;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.OtherIcon;
 import org.weasis.core.ui.editor.image.ViewButton;
 import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.editor.image.dockable.MeasureTool;
@@ -57,16 +61,17 @@ import org.weasis.core.ui.model.utils.exceptions.InvalidShapeException;
 import org.weasis.core.ui.util.TitleMenuItem;
 import org.weasis.core.util.EscapeChars;
 import org.weasis.core.util.LangUtil;
+import org.weasis.core.util.MathUtil;
 import org.weasis.dicom.codec.DicomImageElement;
 import org.weasis.dicom.codec.PRSpecialElement;
 import org.weasis.dicom.codec.PresentationStateReader;
 import org.weasis.dicom.codec.TagD;
-import org.weasis.dicom.codec.display.PresetWindowLevel;
 import org.weasis.dicom.codec.utils.DicomMediaUtils;
 import org.weasis.dicom.explorer.DicomModel;
 import org.weasis.dicom.explorer.pr.PrGraphicUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
+import org.weasis.opencv.op.lut.DefaultWlPresentation;
 
 public class PRManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PRManager.class);
@@ -78,6 +83,8 @@ public class PRManager {
   public static final String TAG_PR_ZOOM = "original.zoom";
   public static final String TAG_DICOM_LAYERS = "pr.layers";
 
+  private PRManager() {}
+
   public static void applyPresentationState(
       ViewCanvas<DicomImageElement> view, PresentationStateReader reader, DicomImageElement img) {
     if (view == null || reader == null || img == null) {
@@ -87,40 +94,25 @@ public class PRManager {
     // TODO should move to the model
     Map<String, Object> actionsInView = view.getActionsInView();
     reader.applySpatialTransformationModule(actionsInView);
-    List<PresetWindowLevel> presets = reader.getPresetCollection(img);
     ImageOpNode node = view.getDisplayOpManager().getNode(WindowOp.OP_NAME);
+    boolean pixelPadding = true;
     if (node != null) {
-      List<PresetWindowLevel> presetList =
-          img.getPresetList(
-              LangUtil.getNULLtoTrue((Boolean) node.getParam(ActionW.IMAGE_PIX_PADDING.cmd())));
-      PresetWindowLevel autoPR = getAutoLevelPreset(presets);
-      if (autoPR != null) {
-        presets.remove(autoPR);
-        PresetWindowLevel autoImg = getAutoLevelPreset(presetList);
-        if (!autoPR.equals(autoImg)) {
-          // It happens when PR contains a new Modality LUT
-          String name = org.weasis.dicom.codec.Messages.getString("PresetWindowLevel.full");
-          presets.add(
-              new PresetWindowLevel(
-                  name + " [PR]", // NON-NLS
-                  autoPR.getWindow(),
-                  autoPR.getLevel(),
-                  autoPR.getShape()));
-        }
-      }
-      presets.addAll(presetList);
+      pixelPadding =
+          LangUtil.getNULLtoTrue((Boolean) node.getParam(ActionW.IMAGE_PIX_PADDING.cmd()));
     }
-    PresetWindowLevel p = presets.get(0);
+    DefaultWlPresentation wlp = new DefaultWlPresentation(reader.getPrDicomObject(), pixelPadding);
+    List<PresetWindowLevel> presetList = img.getPresetList(wlp, true);
+    PresetWindowLevel p = presetList.get(0);
     actionsInView.put(ActionW.WINDOW.cmd(), p.getWindow());
     actionsInView.put(ActionW.LEVEL.cmd(), p.getLevel());
-    actionsInView.put(PRManager.PR_PRESETS, presets);
+    actionsInView.put(PRManager.PR_PRESETS, presetList);
     actionsInView.put(ActionW.PRESET.cmd(), p);
     actionsInView.put(ActionW.LUT_SHAPE.cmd(), p.getLutShape());
     actionsInView.put(ActionW.DEFAULT_PRESET.cmd(), true);
 
     applyPixelSpacing(view, reader, img);
 
-    GraphicModel graphicModel = PrGraphicUtil.getPresentationModel(reader.getDcmobj());
+    GraphicModel graphicModel = PrGraphicUtil.getPresentationModel(reader.getDicomObject());
     // GraphicModel graphicModel = null;
     List<GraphicLayer> layers =
         graphicModel == null
@@ -130,15 +122,6 @@ public class PRManager {
     if (layers != null) {
       view.setActionsInView(PRManager.TAG_DICOM_LAYERS, layers);
     }
-  }
-
-  private static PresetWindowLevel getAutoLevelPreset(List<PresetWindowLevel> presets) {
-    for (PresetWindowLevel presetWindowLevel : presets) {
-      if (presetWindowLevel.isAutoLevel()) {
-        return presetWindowLevel;
-      }
-    }
-    return null;
   }
 
   private static void applyPixelSpacing(
@@ -155,8 +138,8 @@ public class PRManager {
         changePixelSize(img, actionsInView, prPixSize);
         img.setPixelSpacingUnit(Unit.MILLIMETER);
         ActionState spUnitAction = EventManager.getInstance().getAction(ActionW.SPATIAL_UNIT);
-        if (spUnitAction instanceof ComboItemListener) {
-          ((ComboItemListener) spUnitAction).setSelectedItem(Unit.MILLIMETER);
+        if (spUnitAction instanceof ComboItemListener itemListener) {
+          itemListener.setSelectedItem(Unit.MILLIMETER);
         }
       } else {
         applyAspectRatio(img, actionsInView, prPixSize);
@@ -195,9 +178,9 @@ public class PRManager {
 
       PlanarImage source = view.getSourceImage();
       if (source != null) {
-        Rectangle imgBouds = ImageConversion.getBounds(source);
-        area = area.intersection(imgBouds);
-        if (area.width > 1 && area.height > 1 && !area.equals(imgBouds)) {
+        Rectangle imgBounds = ImageConversion.getBounds(source);
+        area = area.intersection(imgBounds);
+        if (area.width > 1 && area.height > 1 && !area.equals(imgBounds)) {
           SimpleOpManager opManager =
               Optional.ofNullable((SimpleOpManager) actionsInView.get(ActionW.PREPROCESSING.cmd()))
                   .orElseGet(SimpleOpManager::new);
@@ -230,13 +213,13 @@ public class PRManager {
     if (MathUtil.isDifferent(aspects[0], aspects[1])) {
       // set the aspects to the pixel size of the image to stretch the image rendering (square
       // pixel)
-      double[] pixelsize;
+      double[] pixelSize;
       if (aspects[1] < aspects[0]) {
-        pixelsize = new double[] {aspects[0] / aspects[1], 1.0};
+        pixelSize = new double[] {aspects[0] / aspects[1], 1.0};
       } else {
-        pixelsize = new double[] {1.0, aspects[1] / aspects[0]};
+        pixelSize = new double[] {1.0, aspects[1] / aspects[0]};
       }
-      changePixelSize(img, actionsInView, pixelsize);
+      changePixelSize(img, actionsInView, pixelSize);
       img.setPixelSpacingUnit(Unit.PIXEL);
       // TODO update graphics
     }
@@ -288,10 +271,16 @@ public class PRManager {
     Map<String, Object> actionsInView = view.getActionsInView();
 
     ArrayList<GraphicLayer> layers = null;
-    Attributes dcmobj = reader.getDcmobj();
-    if (dcmobj != null) {
-      Sequence gams = dcmobj.getSequence(Tag.GraphicAnnotationSequence);
-      Sequence layerSeqs = dcmobj.getSequence(Tag.GraphicLayerSequence);
+    Attributes attributes = reader.getDicomObject();
+    if (attributes != null) {
+      String imgSop = TagD.getTagValue(img, Tag.SOPInstanceUID, String.class);
+      int dicomFrame = 1;
+      if (img.getKey() instanceof Integer intVal) {
+        dicomFrame = intVal + 1;
+      }
+
+      Sequence gams = attributes.getSequence(Tag.GraphicAnnotationSequence);
+      Sequence layerSeqs = attributes.getSequence(Tag.GraphicLayerSequence);
 
       if (gams != null && layerSeqs != null) {
         Map<String, Attributes> glms = new HashMap<>(layerSeqs.size());
@@ -312,11 +301,11 @@ public class PRManager {
         double height = area == null ? modelArea.getHeight() : area.getHeight();
         AffineTransform inverse = null;
         if (rotation != 0 || flip) {
-          double offsetx = area == null ? 0.0 : area.getX() / area.getWidth();
-          double offsety = area == null ? 0.0 : area.getY() / area.getHeight();
+          double offsetX = area == null ? 0.0 : area.getX() / area.getWidth();
+          double offsetY = area == null ? 0.0 : area.getY() / area.getHeight();
           // Create inverse transformation for display coordinates (will convert in real
           // coordinates)
-          inverse = AffineTransform.getTranslateInstance(offsetx, offsety);
+          inverse = AffineTransform.getTranslateInstance(offsetX, offsetY);
           if (flip) {
             inverse.scale(-1.0, 1.0);
             inverse.translate(-1.0, 0.0);
@@ -331,7 +320,13 @@ public class PRManager {
         for (Attributes gram : gams) {
           String graphicLayerName = gram.getString(Tag.GraphicLayer);
           Attributes glm = glms.get(graphicLayerName);
-          if (glm == null || !PresentationStateReader.isModuleAppicable(gram, img)) {
+          if (glm == null
+              || !DicomObjectUtil.isImageFrameApplicableToReferencedImageSequence(
+                  DicomObjectUtil.getSequence(gram, Tag.ReferencedImageSequence),
+                  Tag.ReferencedFrameNumber,
+                  imgSop,
+                  dicomFrame,
+                  false)) {
             continue;
           }
 
@@ -348,21 +343,20 @@ public class PRManager {
                   glm, Tag.GraphicLayerRecommendedDisplayGrayscaleValue, null);
           int[] colorRgb =
               CIELab.dicomLab2rgb(
-                  DicomMediaUtils.getIntAyrrayFromDicomElement(
+                  DicomMediaUtils.getIntArrayFromDicomElement(
                       glm, Tag.GraphicLayerRecommendedDisplayCIELabValue, null));
-          if (colorRgb == null) {
+          if (colorRgb.length == 0) {
             colorRgb =
-                DicomMediaUtils.getIntAyrrayFromDicomElement(
+                DicomMediaUtils.getIntArrayFromDicomElement(
                     glm, Tag.GraphicLayerRecommendedDisplayRGBValue, null);
-          }
-          if (colorRgb == null && grayVal == null) {
-            Color c =
-                Optional.ofNullable(MeasureTool.viewSetting.getLineColor()).orElse(Color.YELLOW);
-            colorRgb = new int[] {c.getRed(), c.getGreen(), c.getBlue()};
+            if (colorRgb == null && grayVal == null) {
+              Color c =
+                  Optional.ofNullable(MeasureTool.viewSetting.getLineColor()).orElse(Color.YELLOW);
+              colorRgb = new int[] {c.getRed(), c.getGreen(), c.getBlue()};
+            }
           }
 
-          Color rgbColor =
-              PresentationStateReader.getRGBColor(grayVal == null ? 255 : grayVal, colorRgb);
+          Color rgbColor = DicomObjectUtil.getRGBColor(grayVal == null ? 255 : grayVal, colorRgb);
 
           Sequence gos = gram.getSequence(Tag.GraphicObjectSequence);
 
@@ -390,9 +384,7 @@ public class PRManager {
                   DicomMediaUtils.getFloatFromDicomElement(style, Tag.LineThickness, 1.0f);
               if (style != null) {
                 int[] rgb = CIELab.dicomLab2rgb(style.getInts(Tag.PatternOnColorCIELabValue));
-                if (rgb != null) {
-                  rgbColor = PresentationStateReader.getRGBColor(255, rgb);
-                }
+                rgbColor = DicomObjectUtil.getRGBColor(0xFFFF, rgb);
               }
 
               String[] textLines =
@@ -511,12 +503,7 @@ public class PRManager {
   public static ViewButton buildPrSelection(
       final View2d view, MediaSeries<DicomImageElement> series, DicomImageElement img) {
     if (view != null && series != null && img != null) {
-      Object key = img.getKey();
-      List<PRSpecialElement> prList =
-          DicomModel.getPrSpecialElements(
-              series,
-              TagD.getTagValue(img, Tag.SOPInstanceUID, String.class),
-              key instanceof Integer ? (Integer) key + 1 : null);
+      List<PRSpecialElement> prList = DicomModel.getPrSpecialElements(series, img);
       if (!prList.isEmpty()) {
         Object oldPR = view.getActionValue(ActionW.PR_STATE.cmd());
         if (oldPR == null
@@ -526,7 +513,7 @@ public class PRManager {
         }
         if (!ActionState.NoneLabel.NONE_SERIES.equals(oldPR)) {
           // Set the previous selected value, otherwise set the more recent PR by default
-          view.setPresentationState(prList.indexOf(oldPR) == -1 ? prList.get(0) : oldPR, true);
+          view.setPresentationState(!prList.contains(oldPR) ? prList.get(0) : oldPR, true);
         }
 
         int offset = series.size(null) > 1 ? 2 : 1;
@@ -543,8 +530,7 @@ public class PRManager {
                 (invoker, x, y) -> {
                   Object pr = view.getActionValue(ActionW.PR_STATE.cmd());
                   JPopupMenu popupMenu = new JPopupMenu();
-                  TitleMenuItem itemTitle =
-                      new TitleMenuItem(ActionW.PR_STATE.getTitle(), popupMenu.getInsets());
+                  TitleMenuItem itemTitle = new TitleMenuItem(ActionW.PR_STATE.getTitle());
                   popupMenu.add(itemTitle);
                   popupMenu.addSeparator();
                   ButtonGroup groupButtons = new ButtonGroup();
@@ -554,8 +540,7 @@ public class PRManager {
                         new RadioMenuItem(dcm.toString(), null, dcm, dcm == pr);
                     menuItem.addActionListener(
                         e -> {
-                          if (e.getSource() instanceof RadioMenuItem) {
-                            RadioMenuItem item = (RadioMenuItem) e.getSource();
+                          if (e.getSource() instanceof RadioMenuItem item) {
                             Object val = item.getUserObject();
                             view.setPresentationState(val, false);
                           }
@@ -565,12 +550,21 @@ public class PRManager {
                   }
                   popupMenu.show(invoker, x, y);
                 },
-                View2d.PR_ICON);
+                ResourceUtil.getIcon(OtherIcon.IMAGE_PRESENTATION).derive(24, 24),
+                ActionW.PR_STATE.getTitle());
 
         prButton.setVisible(true);
         return prButton;
       }
     }
     return null;
+  }
+
+  public static PrDicomObject getPrDicomObject(Object prElement) {
+    PRSpecialElement pr = null;
+    if (prElement instanceof PRSpecialElement specialElement) {
+      pr = specialElement;
+    }
+    return pr == null ? null : pr.getPrDicomObject();
   }
 }

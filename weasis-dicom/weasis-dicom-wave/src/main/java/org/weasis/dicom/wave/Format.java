@@ -30,7 +30,7 @@ public enum Format {
         Lead.V3, Lead.V6
       }),
 
-  FOUR_RYTHM(
+  FOUR_RHYTHM(
       Messages.getString("Format.rhythm"),
       4,
       4,
@@ -47,7 +47,7 @@ public enum Format {
         Lead.AVF,
         Lead.V3,
         Lead.V6,
-        Lead.RYTHM
+        Lead.RHYTHM
       });
 
   private final String value;
@@ -55,7 +55,7 @@ public enum Format {
   private final int ylayoutSize;
   private final Lead[] leads;
 
-  private Format(String value, int xlayoutSize, int ylayoutSize, Lead[] layoutNames) {
+  Format(String value, int xlayoutSize, int ylayoutSize, Lead[] layoutNames) {
     this.value = value;
     this.xlayoutSize = xlayoutSize;
     this.ylayoutSize = ylayoutSize;

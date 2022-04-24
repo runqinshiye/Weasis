@@ -29,9 +29,9 @@ import org.weasis.core.api.gui.util.AppProperties;
 import org.weasis.core.api.media.data.Codec;
 import org.weasis.core.api.service.AuditLog;
 import org.weasis.core.api.service.BundleTools;
-import org.weasis.core.util.LangUtil;
+import org.weasis.core.api.util.ResourceUtil;
 
-@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}")
+@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}") // NON-NLS
 public class Activator implements BundleActivator, ServiceListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(Activator.class);
 
@@ -47,12 +47,11 @@ public class Activator implements BundleActivator, ServiceListener {
     bundleContext.addServiceListener(
         this, String.format("(%s=%s)", Constants.OBJECTCLASS, Codec.class.getName())); // NON-NLS
 
-    // Allows to connect through a proxy initialized by Java Webstart
-    if (!LangUtil.geEmptytoTrue(System.getProperty("http.bundle.cache"))) {
-      ProxyUtils.setProxyFromJavaWebStart();
-    }
-
     initLoggerAndAudit(bundleContext);
+    File file = ResourceUtil.getResource("presets.xml");
+    if (file.canRead()) {
+      System.setProperty("dicom.presets.path", file.getPath());
+    }
   }
 
   @Override

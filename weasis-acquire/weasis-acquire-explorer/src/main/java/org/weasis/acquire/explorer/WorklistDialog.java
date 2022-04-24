@@ -10,13 +10,11 @@
 package org.weasis.acquire.explorer;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -26,15 +24,15 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.WindowConstants;
-import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListSelectionListener;
 import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Tag;
 import org.dcm4che3.net.Status;
-import org.weasis.acquire.explorer.core.bean.DefaultTagable;
+import org.weasis.acquire.explorer.core.bean.DefaultTaggable;
 import org.weasis.core.api.gui.util.GuiExecutor;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.media.data.TagW;
-import org.weasis.core.api.util.FontTools;
+import org.weasis.core.api.util.FontItem;
 import org.weasis.core.ui.util.SimpleTableModel;
 import org.weasis.core.ui.util.TableColumnAdjuster;
 import org.weasis.dicom.codec.TagD;
@@ -49,12 +47,9 @@ import org.weasis.dicom.tool.ModalityWorklist;
 public class WorklistDialog extends JDialog {
 
   private JLabel selection;
-  private JButton okButton;
-  private JButton cancelButton;
-  private JPanel footPanel;
 
-  private DicomNode calling;
-  private DicomNode called;
+  private final DicomNode calling;
+  private final DicomNode called;
 
   private JScrollPane tableContainer;
 
@@ -73,25 +68,26 @@ public class WorklistDialog extends JDialog {
 
   private void initComponents() {
     final JPanel rootPane = new JPanel();
-    rootPane.setBorder(new EmptyBorder(10, 15, 10, 15));
+    rootPane.setBorder(GuiUtils.getEmptyBorder(10, 15, 10, 15));
     this.setContentPane(rootPane);
 
     setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
     rootPane.setLayout(new BorderLayout(0, 0));
 
     jtable = new JTable();
-    jtable.setFont(FontTools.getFont10());
+    jtable.setFont(FontItem.SMALL.getFont());
     jtable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     jtable.setRowSelectionAllowed(true);
+    jtable.setShowHorizontalLines(true);
+    jtable.setShowVerticalLines(true);
     jtable.getTableHeader().setReorderingAllowed(false);
 
     tableContainer = new JScrollPane();
-    tableContainer.setBorder(BorderFactory.createEtchedBorder());
-    tableContainer.setPreferredSize(new Dimension(920, 400));
+    tableContainer.setPreferredSize(GuiUtils.getDimension(920, 400));
 
     this.getContentPane().add(tableContainer, BorderLayout.CENTER);
 
-    footPanel = new JPanel();
+    JPanel footPanel = new JPanel();
     FlowLayout flowLayout = (FlowLayout) footPanel.getLayout();
     flowLayout.setVgap(15);
     flowLayout.setAlignment(FlowLayout.RIGHT);
@@ -99,12 +95,12 @@ public class WorklistDialog extends JDialog {
     getContentPane().add(footPanel, BorderLayout.SOUTH);
     selection = new JLabel();
     footPanel.add(selection);
-    okButton = new JButton();
+    JButton okButton = new JButton();
     footPanel.add(okButton);
 
     okButton.setText(Messages.getString("WorklistDialog.apply"));
     okButton.addActionListener(e -> okButtonActionPerformed());
-    cancelButton = new JButton();
+    JButton cancelButton = new JButton();
     footPanel.add(cancelButton);
 
     cancelButton.setText(Messages.getString("WorklistDialog.cancel"));
@@ -140,8 +136,8 @@ public class WorklistDialog extends JDialog {
             row[j] = tags[j].getFormattedTagValue(tags[j].getValue(m), null);
           } else {
             Attributes parent = m;
-            for (int k = 0; k < pSeq.length; k++) {
-              Attributes p = parent.getNestedDataset(pSeq[k]);
+            for (int value : pSeq) {
+              Attributes p = parent.getNestedDataset(value);
               if (p == null) {
                 break;
               }
@@ -182,17 +178,17 @@ public class WorklistDialog extends JDialog {
                     JOptionPane.showMessageDialog(
                         this, state.getMessage(), null, JOptionPane.ERROR_MESSAGE));
         dispose();
-        throw new RuntimeException(state.getMessage());
+        throw new IllegalStateException(state.getMessage());
       }
       jtable.setModel(new SimpleTableModel(new String[] {}, new Object[][] {}));
-      tableContainer.setPreferredSize(new Dimension(450, 50));
+      tableContainer.setPreferredSize(GuiUtils.getDimension(450, 50));
     }
     tableContainer.setViewportView(jtable);
   }
 
   private boolean applySelection() {
     if (selectedItem != null) {
-      DefaultTagable tagable = new DefaultTagable();
+      DefaultTaggable taggable = new DefaultTaggable();
 
       TagW[] addTags =
           TagD.getTagFromIDs(
@@ -219,19 +215,19 @@ public class WorklistDialog extends JDialog {
               Tag.CurrentPatientLocation,
               Tag.PatientState);
       for (TagW t : addTags) {
-        t.readValue(selectedItem, tagable);
+        t.readValue(selectedItem, taggable);
       }
 
       Attributes seq = selectedItem.getNestedDataset(Tag.ScheduledProcedureStepSequence);
-      tagable.setTagNoNull(
+      taggable.setTagNoNull(
           TagD.get(Tag.StudyDescription),
           TagD.get(Tag.ScheduledProcedureStepDescription).getValue(seq));
       TagW tModality = TagD.get(Tag.Modality);
-      tagable.setTagNoNull(tModality, tModality.getValue(seq));
-      tagable.setTagNoNull(
+      taggable.setTagNoNull(tModality, tModality.getValue(seq));
+      taggable.setTagNoNull(
           TagD.get(Tag.StationName), TagD.get(Tag.ScheduledStationName).getValue(seq));
 
-      AcquireManager.getInstance().applyToGlobal(tagable);
+      AcquireManager.getInstance().applyToGlobal(taggable);
       selectedItem = null;
       selection.setText("");
       jtable.getSelectionModel().clearSelection();

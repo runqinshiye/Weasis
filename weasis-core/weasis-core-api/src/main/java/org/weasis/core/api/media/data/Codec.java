@@ -23,7 +23,7 @@ public interface Codec {
   /** @return the list of file extensions supported the reader */
   String[] getReaderExtensions();
 
-  /** @return the MIME types that can be write by the codec */
+  /** @return the MIME types that can be written by the codec */
   String[] getWriterMIMETypes();
 
   /** @return the list of file extensions supported the writer */
@@ -32,7 +32,7 @@ public interface Codec {
   MediaReader getMediaIO(URI media, String mimeType, Hashtable<String, Object> properties);
 
   /**
-   * @param mimeType
+   * @param mimeType the mime type value
    * @return true if the codec supports the MIME type
    */
   boolean isMimeTypeSupported(String mimeType);

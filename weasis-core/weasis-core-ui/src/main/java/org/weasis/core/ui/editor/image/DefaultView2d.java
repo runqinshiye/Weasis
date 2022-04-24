@@ -11,10 +11,10 @@ package org.weasis.core.ui.editor.image;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
@@ -22,13 +22,10 @@ import java.awt.GridBagConstraints;
 import java.awt.Paint;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
-import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.FocusEvent;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
@@ -49,19 +46,14 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
-import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.ImageIcon;
+import javax.swing.BorderFactory;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
-import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
-import javax.swing.TransferHandler;
-import javax.swing.border.BevelBorder;
 import javax.swing.border.Border;
-import javax.swing.border.EtchedBorder;
 import org.opencv.core.CvType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,9 +63,11 @@ import org.weasis.core.api.gui.util.ActionState;
 import org.weasis.core.api.gui.util.ActionW;
 import org.weasis.core.api.gui.util.ComboItemListener;
 import org.weasis.core.api.gui.util.Filter;
-import org.weasis.core.api.gui.util.MathUtil;
+import org.weasis.core.api.gui.util.GuiUtils;
+import org.weasis.core.api.gui.util.GuiUtils.IconColor;
 import org.weasis.core.api.gui.util.MouseActionAdapter;
 import org.weasis.core.api.gui.util.SliderChangeListener;
+import org.weasis.core.api.gui.util.SliderCineListener;
 import org.weasis.core.api.gui.util.ToggleButtonListener;
 import org.weasis.core.api.gui.util.WinUtil;
 import org.weasis.core.api.image.AffineTransformOp;
@@ -83,8 +77,9 @@ import org.weasis.core.api.image.ImageOpNode;
 import org.weasis.core.api.image.OpManager;
 import org.weasis.core.api.image.PseudoColorOp;
 import org.weasis.core.api.image.WindowOp;
+import org.weasis.core.api.image.ZoomOp.Interpolation;
+import org.weasis.core.api.image.cv.ImageCVIO;
 import org.weasis.core.api.image.op.ByteLutCollection;
-import org.weasis.core.api.image.util.ImageFiler;
 import org.weasis.core.api.image.util.KernelData;
 import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.image.util.Unit;
@@ -94,7 +89,9 @@ import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.media.data.SeriesComparator;
 import org.weasis.core.api.media.data.TagW;
 import org.weasis.core.api.service.AuditLog;
-import org.weasis.core.api.util.FontTools;
+import org.weasis.core.api.util.FontItem;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.Messages;
 import org.weasis.core.ui.docking.DockableTool;
 import org.weasis.core.ui.docking.UIManager;
@@ -121,6 +118,7 @@ import org.weasis.core.ui.util.DefaultAction;
 import org.weasis.core.ui.util.MouseEventDouble;
 import org.weasis.core.ui.util.TitleMenuItem;
 import org.weasis.core.util.LangUtil;
+import org.weasis.core.util.MathUtil;
 import org.weasis.core.util.StringUtil;
 import org.weasis.opencv.data.PlanarImage;
 
@@ -130,7 +128,6 @@ import org.weasis.opencv.data.PlanarImage;
  */
 public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     implements ViewCanvas<E> {
-  private static final long serialVersionUID = 4546307243696460899L;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultView2d.class);
 
@@ -152,17 +149,12 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     pointer[4] = new Line2D.Double(0.0, 5.0, 0.0, 40.0);
   }
 
-  public static final String PROP_LAYER_OFFSET = "layer.offset";
-
   public static final GraphicClipboard GRAPHIC_CLIPBOARD = new GraphicClipboard();
 
-  public static final Object antialiasingOff = RenderingHints.VALUE_ANTIALIAS_OFF;
-  public static final Object antialiasingOn = RenderingHints.VALUE_ANTIALIAS_ON;
-
   public static final Cursor EDIT_CURSOR =
-      DefaultView2d.getCustomCursor("editpoint.png", "Edit Point", 16, 16); // NON-NLS
+      ActionW.getImageCursor("editPoint.png", "Edit Point", 0.5f, 0.5f); // NON-NLS
   public static final Cursor HAND_CURSOR =
-      DefaultView2d.getCustomCursor("hand.gif", "hand", 16, 16); // NON-NLS
+      ActionW.getSvgCursor("hand.svg", "hand", 0.5f, 0.5f); // NON-NLS
   public static final Cursor WAIT_CURSOR = DefaultView2d.getNewCursor(Cursor.WAIT_CURSOR);
   public static final Cursor CROSS_CURSOR = DefaultView2d.getNewCursor(Cursor.CROSSHAIR_CURSOR);
   public static final Cursor MOVE_CURSOR = DefaultView2d.getNewCursor(Cursor.MOVE_CURSOR);
@@ -175,14 +167,11 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
   private final PanPoint startedDragPoint = new PanPoint(State.DRAGSTART);
   private int pointerType = 0;
 
-  protected final Color pointerColor1 = Color.black;
-  protected final Color pointerColor2 = Color.white;
-  protected final Border normalBorder =
-      new EtchedBorder(BevelBorder.LOWERED, Color.gray, Color.white);
+  protected static final Color pointerColor1 = Color.black;
+  protected static final Color pointerColor2 = Color.white;
   protected final Border focusBorder =
-      new EtchedBorder(BevelBorder.LOWERED, focusColor, focusColor);
-  protected final Border lostFocusBorder =
-      new EtchedBorder(BevelBorder.LOWERED, lostFocusColor, lostFocusColor);
+      BorderFactory.createMatteBorder(1, 1, 1, 1, IconColor.ACTIONS_YELLOW.getColor());
+  protected final Border viewBorder = BorderFactory.createMatteBorder(1, 1, 1, 1, Color.GRAY);
 
   protected final RenderedImageLayer<E> imageLayer;
   protected Panner<E> panner;
@@ -196,11 +185,11 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   protected final ImageViewerEventManager<E> eventManager;
 
-  public DefaultView2d(ImageViewerEventManager<E> eventManager) {
+  protected DefaultView2d(ImageViewerEventManager<E> eventManager) {
     this(eventManager, null);
   }
 
-  public DefaultView2d(ImageViewerEventManager<E> eventManager, ViewModel viewModel) {
+  protected DefaultView2d(ImageViewerEventManager<E> eventManager, ViewModel viewModel) {
     super(viewModel);
     this.eventManager = Objects.requireNonNull(eventManager);
     this.viewButtons = new ArrayList<>();
@@ -211,9 +200,9 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     initActionWState();
     graphicMouseHandler = new GraphicMouseHandler<>(this);
 
-    setBorder(normalBorder);
+    setBorder(viewBorder);
     setFocusable(true);
-    // Must be larger to the screens to be resize correctly by the container
+    // Must be larger to the screens to be resized correctly by the container
     setPreferredSize(new Dimension(4096, 4096));
     setMinimumSize(new Dimension(50, 50));
   }
@@ -243,7 +232,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
     actionsInView.put(ActionW.DRAWINGS.cmd(), true);
     actionsInView.put(LayerType.CROSSLINES.name(), true);
-    actionsInView.put(ActionW.INVERSESTACK.cmd(), false);
+    actionsInView.put(ActionW.INVERSE_STACK.cmd(), false);
     actionsInView.put(ActionW.FILTERED_SERIES.cmd(), null);
     actionsInView.put(ActionW.FLIP.cmd(), false);
     actionsInView.put(ActionW.ROTATION.cmd(), 0);
@@ -257,7 +246,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     disOp.setParamValue(
         AffineTransformOp.OP_NAME,
         AffineTransformOp.P_INTERPOLATION,
-        eventManager.getZoomSetting().getInterpolation());
+        Interpolation.getInterpolation(eventManager.getZoomSetting().getInterpolation()));
     disOp.setParamValue(AffineTransformOp.OP_NAME, AffineTransformOp.P_AFFINE_MATRIX, null);
     disOp.setParamValue(FilterOp.OP_NAME, FilterOp.P_KERNEL_DATA, KernelData.NONE);
     disOp.setParamValue(
@@ -276,36 +265,31 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
       if (synchButton == null) {
         synchButton =
             new ViewButton(
-                new ShowPopup() {
-
-                  @Override
-                  public void showPopup(Component invoker, int x, int y) {
-                    final SynchData synch = (SynchData) getActionValue(ActionW.SYNCH_LINK.cmd());
-                    if (synch == null) {
-                      return;
-                    }
-
-                    JPopupMenu popupMenu = new JPopupMenu();
-                    TitleMenuItem itemTitle =
-                        new TitleMenuItem(ActionW.SYNCH.getTitle(), popupMenu.getInsets());
-                    popupMenu.add(itemTitle);
-                    popupMenu.addSeparator();
-
-                    for (Entry<String, Boolean> a : synch.getActions().entrySet()) {
-                      JCheckBoxMenuItem menuItem = new JCheckBoxMenuItem(a.getKey(), a.getValue());
-                      menuItem.addActionListener(
-                          e -> {
-                            if (e.getSource() instanceof JCheckBoxMenuItem) {
-                              JCheckBoxMenuItem item = (JCheckBoxMenuItem) e.getSource();
-                              synch.getActions().put(item.getText(), item.isSelected());
-                            }
-                          });
-                      popupMenu.add(menuItem);
-                    }
-                    popupMenu.show(invoker, x, y);
+                (invoker, x, y) -> {
+                  final SynchData synch = (SynchData) getActionValue(ActionW.SYNCH_LINK.cmd());
+                  if (synch == null) {
+                    return;
                   }
+
+                  JPopupMenu popupMenu = new JPopupMenu();
+                  TitleMenuItem itemTitle = new TitleMenuItem(ActionW.SYNCH.getTitle());
+                  popupMenu.add(itemTitle);
+                  popupMenu.addSeparator();
+
+                  for (Entry<String, Boolean> a : synch.getActions().entrySet()) {
+                    JCheckBoxMenuItem menuItem = new JCheckBoxMenuItem(a.getKey(), a.getValue());
+                    menuItem.addActionListener(
+                        e -> {
+                          if (e.getSource() instanceof JCheckBoxMenuItem item) {
+                            synch.getActions().put(item.getText(), item.isSelected());
+                          }
+                        });
+                    popupMenu.add(menuItem);
+                  }
+                  popupMenu.show(invoker, x, y);
                 },
-                SYNCH_ICON);
+                ResourceUtil.getIcon(ActionIcon.SYNCH).derive(24, 24),
+                ActionW.SYNCH.getTitle());
         synchButton.setVisible(true);
         synchButton.setPosition(GridBagConstraints.SOUTHEAST);
       }
@@ -345,7 +329,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
       if (area.contains(p)) {
         try {
-          // Handle special case of non square pixel image
+          // Handle special case of non-square pixel image
           pixelInfo.setPosition(new Point(p.x, p.y));
           pixelInfo.setPixelSpacingUnit(imageElement.getPixelSpacingUnit());
           pixelInfo.setPixelSize(imageElement.getPixelSize());
@@ -386,9 +370,9 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
       childDS = new ArrayList<>(dragGraphList.size());
 
       for (DragGraphic dragGraph : dragGraphList) {
-        Draggable dragsequence = dragGraph.createMoveDrag();
-        if (dragsequence != null) {
-          childDS.add(dragsequence);
+        Draggable dragSequence = dragGraph.createMoveDrag();
+        if (dragSequence != null) {
+          childDS.add(dragSequence);
         }
       }
     }
@@ -442,19 +426,19 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   @Override
   public void setSeries(MediaSeries<E> newSeries, E selectedMedia) {
-    MediaSeries<E> oldsequence = this.series;
+    MediaSeries<E> oldSequence = this.series;
     this.series = newSeries;
 
-    if (oldsequence == null && newSeries == null) {
+    if (oldSequence == null && newSeries == null) {
       return;
     }
-    if (oldsequence != null
-        && oldsequence.equals(newSeries)
+    if (oldSequence != null
+        && oldSequence.equals(newSeries)
         && imageLayer.getSourceImage() != null) {
       return;
     }
 
-    closingSeries(oldsequence);
+    closingSeries(oldSequence);
 
     initActionWState();
     try {
@@ -465,12 +449,12 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
         if (selectedMedia == null) {
           media =
               newSeries.getMedia(
-                  tileOffset < 0 ? 0 : tileOffset,
+                  Math.max(tileOffset, 0),
                   (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
                   getCurrentSortComparator());
         }
         imageLayer.fireOpEvent(
-            new ImageOpEvent(ImageOpEvent.OpEvent.SeriesChange, series, media, null));
+            new ImageOpEvent(ImageOpEvent.OpEvent.SERIES_CHANGE, series, media, null));
         if (lens != null) {
           lens.setFreezeImage(null);
         }
@@ -522,10 +506,10 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     if (series != null) {
       series.setFocused(focused);
     }
-    if (focused && getBorder() == lostFocusBorder) {
+    if (focused && getBorder() == viewBorder) {
       setBorder(focusBorder);
     } else if (!focused && getBorder() == focusBorder) {
-      setBorder(lostFocusBorder);
+      setBorder(viewBorder);
     }
   }
 
@@ -534,7 +518,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     if (size == null) {
       size = (Integer) img.getTagValue(tag2);
     }
-    return (size == null) ? ImageFiler.TILESIZE : size;
+    return (size == null) ? ImageCVIO.TILE_SIZE : size;
   }
 
   protected Rectangle getImageBounds(E img) {
@@ -584,9 +568,9 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     if (img == null) {
       actionsInView.put(ActionW.SPATIAL_UNIT.cmd(), Unit.PIXEL);
       ActionState spUnitAction = eventManager.getAction(ActionW.SPATIAL_UNIT);
-      if (spUnitAction instanceof ComboItemListener) {
-        ((ComboItemListener) spUnitAction)
-            .setSelectedItemWithoutTriggerAction(actionsInView.get(ActionW.SPATIAL_UNIT.cmd()));
+      if (spUnitAction instanceof ComboItemListener<?> comboItemListener) {
+        comboItemListener.setSelectedItemWithoutTriggerAction(
+            actionsInView.get(ActionW.SPATIAL_UNIT.cmd()));
       }
       // Force the update for null image
       imageLayer.setEnableDispOperations(true);
@@ -602,22 +586,22 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
         actionsInView.put(ActionW.SPATIAL_UNIT.cmd(), img.getPixelSpacingUnit());
         if (eventManager.getSelectedViewPane() == this) {
           ActionState spUnitAction = eventManager.getAction(ActionW.SPATIAL_UNIT);
-          if (spUnitAction instanceof ComboItemListener) {
-            ((ComboItemListener) spUnitAction)
-                .setSelectedItemWithoutTriggerAction(actionsInView.get(ActionW.SPATIAL_UNIT.cmd()));
+          if (spUnitAction instanceof ComboItemListener<?> comboItemListener) {
+            comboItemListener.setSelectedItemWithoutTriggerAction(
+                actionsInView.get(ActionW.SPATIAL_UNIT.cmd()));
           }
         }
         actionsInView.put(ActionW.PREPROCESSING.cmd(), null);
         ActionState spUnitAction = eventManager.getAction(ActionW.SPATIAL_UNIT);
-        if (spUnitAction instanceof ComboItemListener) {
-          ((ComboItemListener) spUnitAction)
-              .setSelectedItemWithoutTriggerAction(actionsInView.get(ActionW.SPATIAL_UNIT.cmd()));
+        if (spUnitAction instanceof ComboItemListener<?> comboItemListener) {
+          comboItemListener.setSelectedItemWithoutTriggerAction(
+              actionsInView.get(ActionW.SPATIAL_UNIT.cmd()));
         }
 
         updateCanvas(img, false);
 
         imageLayer.fireOpEvent(
-            new ImageOpEvent(ImageOpEvent.OpEvent.ImageChange, series, img, null));
+            new ImageOpEvent(ImageOpEvent.OpEvent.IMAGE_CHANGE, series, img, null));
         resetZoom();
 
         imageLayer.setImage(img, (OpManager) actionsInView.get(ActionW.PREPROCESSING.cmd()));
@@ -669,8 +653,8 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
       List<DockableTool> tools = viewerPlugin.getToolPanel();
       synchronized (tools) {
         for (DockableTool p : tools) {
-          if (p instanceof GraphicSelectionListener) {
-            graphicManager.addGraphicSelectionListener((GraphicSelectionListener) p);
+          if (p instanceof GraphicSelectionListener selectionListener) {
+            graphicManager.addGraphicSelectionListener(selectionListener);
           }
         }
       }
@@ -714,8 +698,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
       ratio = DefaultViewModel.SCALE_MAX;
     }
     ActionState zoom = eventManager.getAction(ActionW.ZOOM);
-    if (zoom instanceof SliderChangeListener) {
-      SliderChangeListener z = (SliderChangeListener) zoom;
+    if (zoom instanceof SliderChangeListener z) {
       // Adjust the best fit value according to the possible range of the model zoom action.
       if (eventManager.getSelectedViewPane() == this) {
         // Set back the value to UI components as this value cannot be computed early.
@@ -728,11 +711,10 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     return ratio;
   }
 
-  @SuppressWarnings("rawtypes")
   protected boolean isDrawActionActive() {
-    ViewerPlugin container = WinUtil.getParentOfClass(this, ViewerPlugin.class);
+    ViewerPlugin<?> container = WinUtil.getParentOfClass(this, ViewerPlugin.class);
     if (container != null) {
-      final ViewerToolBar toolBar = container.getViewerToolBar();
+      final ViewerToolBar<?> toolBar = container.getViewerToolBar();
       if (toolBar != null) {
         return toolBar.isCommandActive(ActionW.MEASURE.cmd())
             || toolBar.isCommandActive(ActionW.DRAW.cmd());
@@ -792,8 +774,8 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     // Only apply when the panel size is not zero.
     if (getWidth() != 0 && getHeight() != 0) {
       getViewModel().setModelOffset(modelOffsetX, modelOffsetY);
-      Optional.ofNullable(panner).ifPresent(Panner<E>::updateImageSize);
-      Optional.ofNullable(lens).ifPresent(ZoomWin<E>::updateZoom);
+      Optional.ofNullable(panner).ifPresent(Panner::updateImageSize);
+      Optional.ofNullable(lens).ifPresent(ZoomWin::updateZoom);
       updateAffineTransform();
     }
   }
@@ -824,8 +806,8 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   @Override
   public Comparator<E> getCurrentSortComparator() {
-    SeriesComparator<E> sort = (SeriesComparator<E>) actionsInView.get(ActionW.SORTSTACK.cmd());
-    Boolean reverse = (Boolean) actionsInView.get(ActionW.INVERSESTACK.cmd());
+    SeriesComparator<E> sort = (SeriesComparator<E>) actionsInView.get(ActionW.SORT_STACK.cmd());
+    Boolean reverse = (Boolean) actionsInView.get(ActionW.INVERSE_STACK.cmd());
     return (reverse != null && reverse) ? sort.getReversOrderComparator() : sort;
   }
 
@@ -858,7 +840,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   @Override
   public void setSelected(Boolean selected) {
-    setBorder(selected ? focusBorder : normalBorder);
+    setBorder(selected ? focusBorder : viewBorder);
     // Remove the selection of graphics
     graphicManager.setSelectedGraphic(null);
     // Throws to the tool listener the current graphic selection.
@@ -877,25 +859,30 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   @Override
   public Font getLayerFont() {
-    int fontSize =
-        // Set font size according to the view size
-        (int)
-            Math.ceil(
-                10
-                    / ((this.getGraphics()
-                                .getFontMetrics(FontTools.getFont12())
-                                .stringWidth("0123456789")
-                            * 7.0)
-                        / getWidth()));
-    fontSize = fontSize < 6 ? 6 : fontSize > 16 ? 16 : fontSize;
-    return new Font(Font.SANS_SERIF, 0, fontSize);
+    Font font = FontItem.DEFAULT_SEMIBOLD.getFont();
+    return getLayerFont(getFontMetrics(font), getWidth());
+  }
+
+  public static Font getLayerFont(FontMetrics fontMetrics, int width) {
+    int minSize = fontMetrics.stringWidth("Cannot read this media!"); // NON-NLS
+    if (minSize * 6 > width) {
+      double ratio = (minSize * 6.0 - width) / minSize;
+      if (ratio < 1) {
+        return FontItem.SMALL_SEMIBOLD.getFont();
+      } else if (ratio < 2) {
+        return FontItem.MINI_SEMIBOLD.getFont();
+      } else {
+        return FontItem.MICRO_SEMIBOLD.getFont();
+      }
+    }
+    return fontMetrics.getFont();
   }
 
   /** paint routine */
   @Override
   public void paintComponent(Graphics g) {
-    if (g instanceof Graphics2D) {
-      draw((Graphics2D) g);
+    if (g instanceof Graphics2D graphics2D) {
+      draw(graphics2D);
     }
   }
 
@@ -932,11 +919,23 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   protected void drawOnTop(Graphics2D g2d) {}
 
+  public boolean requiredTextAntialiasing() {
+    Optional<SliderCineListener> cineAction =
+        eventManager.getAction(ActionW.SCROLL_SERIES, SliderCineListener.class);
+    // Prevent to slow down cine
+    return cineAction.isEmpty()
+        || !cineAction.get().isActionEnabled()
+        || !cineAction.get().isCining();
+  }
+
   @Override
   public void drawLayers(
       Graphics2D g2d, AffineTransform transform, AffineTransform inverseTransform) {
     if (LangUtil.getNULLtoTrue((Boolean) actionsInView.get(ActionW.DRAWINGS.cmd()))) {
+      Object[] oldRenderingHints =
+          GuiUtils.setRenderingHints(g2d, true, false, requiredTextAntialiasing());
       graphicManager.draw(g2d, transform, inverseTransform, null);
+      GuiUtils.resetRenderingHints(g2d, oldRenderingHints);
     }
   }
 
@@ -994,9 +993,9 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
   }
 
   @Override
-  public void changeZoomInterpolation(Integer interpolation) {
-    Integer val =
-        (Integer)
+  public void changeZoomInterpolation(Interpolation interpolation) {
+    Interpolation val =
+        (Interpolation)
             getDisplayOpManager()
                 .getParamValue(AffineTransformOp.OP_NAME, AffineTransformOp.P_INTERPOLATION);
     boolean update = !Objects.equals(val, interpolation);
@@ -1019,6 +1018,70 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     return imageLayer.getDisplayOpManager();
   }
 
+  public void propertyChange(SynchCineEvent synch) {
+    E imgElement = getImage();
+    graphicManager.deleteByLayerType(LayerType.CROSSLINES);
+
+    if (synch.getView() == this) {
+      if (tileOffset != 0) {
+        // Index could have changed when loading series.
+        imgElement =
+            series.getMedia(
+                synch.getSeriesIndex() + tileOffset,
+                (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
+                getCurrentSortComparator());
+      } else if (synch.getMedia() instanceof ImageElement) {
+        imgElement = (E) synch.getMedia();
+      }
+    } else if (synch.getLocation() != null) {
+      Boolean cutlines = (Boolean) actionsInView.get(ActionW.SYNCH_CROSSLINE.cmd());
+      if (cutlines != null && cutlines) {
+        if (LangUtil.getNULLtoTrue((Boolean) actionsInView.get(LayerType.CROSSLINES.name()))) {
+          // Compute cutlines from the location of selected image
+          computeCrosslines(synch.getLocation().doubleValue());
+        }
+      } else {
+        double location = synch.getLocation().doubleValue();
+        // TODO add a way in GUI to resynchronize series. Offset should be in Series tag and
+        // related
+        // to
+        // a specific series
+        // Double offset = (Double) actionsInView.get(ActionW.STACK_OFFSET.cmd());
+        // if (offset != null) {
+        // location += offset;
+        // }
+        imgElement =
+            series.getNearestImage(
+                location,
+                tileOffset,
+                (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
+                getCurrentSortComparator());
+
+        AuditLog.LOGGER.info("synch:series nb:{}", series.getSeriesNumber());
+      }
+    } else {
+      // When no 3D information on the slice position
+      imgElement =
+          series.getMedia(
+              synch.getSeriesIndex() + tileOffset,
+              (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
+              getCurrentSortComparator());
+
+      AuditLog.LOGGER.info("synch:series nb:{}", series.getSeriesNumber());
+    }
+
+    Double zoomFactor = (Double) actionsInView.get(ActionW.ZOOM.cmd());
+    // Avoid resetting zoom when the mode is not best fit
+    if (zoomFactor != null && zoomFactor >= 0.0) {
+      Object zoomType = actionsInView.get(ViewCanvas.ZOOM_TYPE_CMD);
+      actionsInView.put(ViewCanvas.ZOOM_TYPE_CMD, ZoomType.CURRENT);
+      setImage(imgElement);
+      actionsInView.put(ViewCanvas.ZOOM_TYPE_CMD, zoomType);
+    } else {
+      setImage(imgElement);
+    }
+  }
+
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
     if (series == null) {
@@ -1029,70 +1092,8 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     final String command = evt.getPropertyName();
     if (command.equals(ActionW.SYNCH.cmd())) {
       SynchEvent synch = (SynchEvent) evt.getNewValue();
-      if (synch instanceof SynchCineEvent) {
-        SynchCineEvent value = (SynchCineEvent) synch;
-
-        E imgElement = getImage();
-        graphicManager.deleteByLayerType(LayerType.CROSSLINES);
-
-        if (value.getView() == this) {
-          if (tileOffset != 0) {
-            // Index could have changed when loading series.
-            imgElement =
-                series.getMedia(
-                    value.getSeriesIndex() + tileOffset,
-                    (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
-                    getCurrentSortComparator());
-          } else if (value.getMedia() instanceof ImageElement) {
-            imgElement = (E) value.getMedia();
-          }
-        } else if (value.getLocation() != null) {
-          Boolean cutlines = (Boolean) actionsInView.get(ActionW.SYNCH_CROSSLINE.cmd());
-          if (cutlines != null && cutlines) {
-            if (LangUtil.getNULLtoTrue((Boolean) actionsInView.get(LayerType.CROSSLINES.name()))) {
-              // Compute cutlines from the location of selected image
-              computeCrosslines(value.getLocation().doubleValue());
-            }
-          } else {
-            double location = value.getLocation().doubleValue();
-            // TODO add a way in GUI to resynchronize series. Offset should be in Series tag and
-            // related
-            // to
-            // a specific series
-            // Double offset = (Double) actionsInView.get(ActionW.STACK_OFFSET.cmd());
-            // if (offset != null) {
-            // location += offset;
-            // }
-            imgElement =
-                series.getNearestImage(
-                    location,
-                    tileOffset,
-                    (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
-                    getCurrentSortComparator());
-
-            AuditLog.LOGGER.info("synch:series nb:{}", series.getSeriesNumber());
-          }
-        } else {
-          // When no 3D information on the slice position
-          imgElement =
-              series.getMedia(
-                  value.getSeriesIndex() + tileOffset,
-                  (Filter<E>) actionsInView.get(ActionW.FILTERED_SERIES.cmd()),
-                  getCurrentSortComparator());
-
-          AuditLog.LOGGER.info("synch:series nb:{}", series.getSeriesNumber());
-        }
-
-        Double zoomFactor = (Double) actionsInView.get(ActionW.ZOOM.cmd());
-        // Avoid to reset zoom when the mode is not best fit
-        if (zoomFactor != null && zoomFactor >= 0.0) {
-          Object zoomType = actionsInView.get(ViewCanvas.ZOOM_TYPE_CMD);
-          actionsInView.put(ViewCanvas.ZOOM_TYPE_CMD, ZoomType.CURRENT);
-          setImage(imgElement);
-          actionsInView.put(ViewCanvas.ZOOM_TYPE_CMD, zoomType);
-        } else {
-          setImage(imgElement);
-        }
+      if (synch instanceof SynchCineEvent cineEvent) {
+        propertyChange(cineEvent);
       } else {
         propertyChange(synch);
       }
@@ -1153,7 +1154,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
           zoom(0.0);
           actionsInView.put(ViewCanvas.ZOOM_TYPE_CMD, zoomType);
         }
-      } else if (command.equals(ActionW.LENSZOOM.cmd())) {
+      } else if (command.equals(ActionW.LENS_ZOOM.cmd())) {
         if (lens != null) {
           lens.setActionInView(ActionW.ZOOM.cmd(), entry.getValue());
           lens.updateZoom();
@@ -1240,19 +1241,19 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     MouseMotionListener[] motionListeners = this.getMouseMotionListeners();
     KeyListener[] keyListeners = this.getKeyListeners();
     MouseWheelListener[] wheelListeners = this.getMouseWheelListeners();
-    for (int i = 0; i < listener.length; i++) {
-      this.removeMouseListener(listener[i]);
+    for (MouseListener mouseListener : listener) {
+      this.removeMouseListener(mouseListener);
     }
-    for (int i = 0; i < motionListeners.length; i++) {
-      this.removeMouseMotionListener(motionListeners[i]);
+    for (MouseMotionListener motionListener : motionListeners) {
+      this.removeMouseMotionListener(motionListener);
     }
-    for (int i = 0; i < keyListeners.length; i++) {
-      this.removeKeyListener(keyListeners[i]);
+    for (KeyListener keyListener : keyListeners) {
+      this.removeKeyListener(keyListener);
     }
-    for (int i = 0; i < wheelListeners.length; i++) {
-      this.removeMouseWheelListener(wheelListeners[i]);
+    for (MouseWheelListener wheelListener : wheelListeners) {
+      this.removeMouseWheelListener(wheelListener);
     }
-    Optional.ofNullable(lens).ifPresent(ZoomWin<E>::disableMouseAndKeyListener);
+    Optional.ofNullable(lens).ifPresent(ZoomWin::disableMouseAndKeyListener);
   }
 
   @Override
@@ -1271,15 +1272,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
   public void keyTyped(KeyEvent e) {}
 
   @Override
-  public void keyReleased(KeyEvent e) {
-    if (e.getKeyCode() == KeyEvent.VK_C && e.isControlDown()) {
-      final ViewTransferHandler imageTransferHandler = new ViewTransferHandler();
-      imageTransferHandler.exportToClipboard(
-          DefaultView2d.this,
-          Toolkit.getDefaultToolkit().getSystemClipboard(),
-          TransferHandler.COPY);
-    }
-  }
+  public void keyReleased(KeyEvent e) {}
 
   @Override
   public void keyPressed(KeyEvent e) {
@@ -1289,7 +1282,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
         && (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_I)) {
       eventManager.fireSeriesViewerListeners(
           new SeriesViewerEvent(
-              eventManager.getSelectedView2dContainer(), null, null, EVENT.TOOGLE_INFO));
+              eventManager.getSelectedView2dContainer(), null, null, EVENT.TOGGLE_INFO));
     } else if (e.isAltDown() && e.getKeyCode() == KeyEvent.VK_L) {
       // Counterclockwise
       eventManager
@@ -1303,13 +1296,12 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     } else if (e.isAltDown() && e.getKeyCode() == KeyEvent.VK_F) {
       // Flip horizontal
       ActionState flipAction = eventManager.getAction(ActionW.FLIP);
-      if (flipAction instanceof ToggleButtonListener) {
-        ((ToggleButtonListener) flipAction)
-            .setSelected(!((ToggleButtonListener) flipAction).isSelected());
+      if (flipAction instanceof ToggleButtonListener flip) {
+        flip.setSelected(!flip.isSelected());
       }
     } else {
       Optional<ActionW> action =
-          eventManager.getLeftMouseActionFromkeyEvent(e.getKeyCode(), e.getModifiers());
+          eventManager.getLeftMouseActionFromKeyEvent(e.getKeyCode(), e.getModifiers());
       if (action.isPresent()) {
         eventManager.changeLeftMouseAction(action.get().cmd());
       } else {
@@ -1327,7 +1319,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     }
     if ((pointerType & HIGHLIGHTED_POINTER) == HIGHLIGHTED_POINTER
         && highlightedPosition.isHighlightedPosition()) {
-      // Display the position on the center of the pixel (constant position even with a high zoom
+      // Display the position in the center of the pixel (constant position even with a high zoom
       // factor)
       double offsetX =
           modelToViewLength(highlightedPosition.getX() + 0.5 - viewModel.getModelOffsetX());
@@ -1364,21 +1356,22 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   @Override
   public void drawPointer(Graphics2D g, Double x, Double y) {
+    Object[] oldRenderingHints = GuiUtils.setRenderingHints(g, true, true, false);
     float[] dash = {5.0f};
-    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     g.translate(x, y);
     g.setStroke(new BasicStroke(3.0f));
     g.setPaint(pointerColor1);
     for (int i = 1; i < pointer.length; i++) {
       g.draw(pointer[i]);
     }
-    g.setStroke(new BasicStroke(1.0f, 0, 0, 5.0f, dash, 0.0f));
+    g.setStroke(
+        new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 5.0f, dash, 0.0f));
     g.setPaint(pointerColor2);
     for (int i = 1; i < pointer.length; i++) {
       g.draw(pointer[i]);
     }
     g.translate(-x, -y);
-    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_DEFAULT);
+    GuiUtils.resetRenderingHints(g, oldRenderingHints);
   }
 
   protected void showPixelInfos(MouseEvent mouseevent) {
@@ -1391,7 +1384,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
           Math.max(
               oldBound.width,
               this.getGraphics()
-                      .getFontMetrics(getLayerFont())
+                      .getFontMetrics()
                       .stringWidth(
                           Messages.getString("DefaultView2d.pix")
                               + StringUtil.COLON_AND_SPACE
@@ -1469,43 +1462,20 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
   }
 
   @Override
-  public List<Action> getExportToClipboardAction() {
+  public List<Action> getExportActions() {
     List<Action> list = new ArrayList<>();
-
-    AbstractAction exportToClipboardAction =
+    DefaultAction exportAction =
         new DefaultAction(
-            Messages.getString("DefaultView2d.clipboard"),
-            new ImageIcon(DefaultView2d.class.getResource("/icon/16x16/camera.png")),
-            event -> {
-              final ViewTransferHandler imageTransferHandler = new ViewTransferHandler();
-              imageTransferHandler.exportToClipboard(
-                  DefaultView2d.this,
-                  Toolkit.getDefaultToolkit().getSystemClipboard(),
-                  TransferHandler.COPY);
-            });
-    exportToClipboardAction.putValue(
-        Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_MASK));
-    list.add(exportToClipboardAction);
-
-    // TODO exclude big images?
-    exportToClipboardAction =
-        new DefaultAction(
-            Messages.getString("DefaultView2d.clipboard_real"),
-            event -> {
-              final ImageTransferHandler imageTransferHandler = new ImageTransferHandler();
-              imageTransferHandler.exportToClipboard(
-                  DefaultView2d.this,
-                  Toolkit.getDefaultToolkit().getSystemClipboard(),
-                  TransferHandler.COPY);
-            });
-    list.add(exportToClipboardAction);
-
+            ActionW.EXPORT_VIEW.getTitle(),
+            ActionW.EXPORT_VIEW.getIcon(),
+            event -> ScreenshotDialog.showDialog(this));
+    list.add(exportAction);
     return list;
   }
 
-  public static final AffineTransform getAffineTransform(MouseEvent mouseevent) {
-    if (mouseevent != null && mouseevent.getSource() instanceof Image2DViewer) {
-      return ((Image2DViewer) mouseevent.getSource()).getAffineTransform();
+  public static AffineTransform getAffineTransform(MouseEvent mouseevent) {
+    if (mouseevent != null && mouseevent.getSource() instanceof Image2DViewer<?> viewer) {
+      return viewer.getAffineTransform();
     }
     return null;
   }
@@ -1533,7 +1503,7 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
     Object oldUnit = actionsInView.get(ActionW.SPATIAL_UNIT.cmd());
     initActionWState();
     imageLayer.fireOpEvent(
-        new ImageOpEvent(ImageOpEvent.OpEvent.ResetDisplay, series, getImage(), null));
+        new ImageOpEvent(ImageOpEvent.OpEvent.RESET_DISPLAY, series, getImage(), null));
     resetZoom();
     resetPan();
     imageLayer.setEnableDispOperations(true);
@@ -1572,18 +1542,5 @@ public abstract class DefaultView2d<E extends ImageElement> extends GraphicsPane
 
   public static Cursor getNewCursor(int type) {
     return new Cursor(type);
-  }
-
-  public static Cursor getCustomCursor(
-      String filename, String cursorName, int hotSpotX, int hotSpotY) {
-    Toolkit defaultToolkit = Toolkit.getDefaultToolkit();
-    ImageIcon icon = new ImageIcon(DefaultView2d.class.getResource("/icon/cursor/" + filename));
-    Dimension bestCursorSize =
-        defaultToolkit.getBestCursorSize(icon.getIconWidth(), icon.getIconHeight());
-    Point hotSpot =
-        new Point(
-            (hotSpotX * bestCursorSize.width) / icon.getIconWidth(),
-            (hotSpotY * bestCursorSize.height) / icon.getIconHeight());
-    return defaultToolkit.createCustomCursor(icon.getImage(), hotSpot, cursorName);
   }
 }

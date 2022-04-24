@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.Action;
@@ -51,13 +50,14 @@ import org.weasis.base.explorer.list.DiskFileList;
 import org.weasis.base.explorer.list.impl.JIThumbnailListPane;
 import org.weasis.core.api.explorer.DataExplorerView;
 import org.weasis.core.api.explorer.model.DataExplorerModel;
+import org.weasis.core.api.gui.Insertable;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.service.BundleTools;
 import org.weasis.core.ui.docking.PluginTool;
 import org.weasis.core.ui.docking.UIManager;
 import org.weasis.core.ui.util.DefaultAction;
 import org.weasis.core.ui.util.TitleMenuItem;
 
-@SuppressWarnings("serial")
 public class DefaultExplorer extends PluginTool implements DataExplorerView {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultExplorer.class);
 
@@ -66,7 +66,6 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
   public static final String BUTTON_NAME = "Explorer"; // NON-NLS
   public static final String NAME = Messages.getString("DefaultExplorer.name");
   public static final String P_LAST_DIR = "default.explorer.last.dir";
-  private static final String PREFERENCE_NODE = "view"; // NON-NLS
 
   protected FileTreeModel model;
   protected TreePath clickedPath;
@@ -74,10 +73,10 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
 
   protected boolean changed;
   private final JTree tree;
-  private JPanel jRootPanel = new JPanel();
+  private final JPanel jRootPanel = new JPanel();
 
   public DefaultExplorer(final FileTreeModel model, JIThumbnailCache thumbCache) {
-    super(BUTTON_NAME, NAME, POSITION.WEST, ExtendedMode.NORMALIZED, PluginTool.Type.EXPLORER, 10);
+    super(BUTTON_NAME, NAME, POSITION.WEST, ExtendedMode.NORMALIZED, Insertable.Type.EXPLORER, 10);
     if (model == null) {
       throw new IllegalArgumentException();
     }
@@ -107,9 +106,9 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
     JScrollPane treePane = new JScrollPane(tree);
     JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, treePane, jilist);
     splitPane.setOneTouchExpandable(true);
-    splitPane.setDividerLocation(200);
+    splitPane.setDividerLocation(GuiUtils.getScaleLength(200));
     // Provide minimum sizes for the two components in the split pane
-    Dimension minimumSize = new Dimension(150, 150);
+    Dimension minimumSize = GuiUtils.getDimension(150, 150);
     treePane.setMinimumSize(minimumSize);
     treePane.setMinimumSize(minimumSize);
 
@@ -230,13 +229,11 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
       return null;
     }
 
-    final Iterator<Path> iter = dir.iterator();
-    while (iter.hasNext()) {
+    for (Path path : dir) {
       if (!parentNode.isExplored()) {
         parentNode.explore();
       }
 
-      iter.next();
       final int count = tree.getModel().getChildCount(parentNode);
 
       for (int i = 0; i < count; i++) {
@@ -278,7 +275,7 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
     private void showPopup(final MouseEvent evt) {
       // Context menu
       if (SwingUtilities.isRightMouseButton(evt)) {
-        JPopupMenu popupMenu = DefaultExplorer.this.buidContexMenu(evt);
+        JPopupMenu popupMenu = DefaultExplorer.this.buildContextMenu(evt);
         if (popupMenu != null) {
           popupMenu.show(evt.getComponent(), evt.getX(), evt.getY());
         }
@@ -305,12 +302,11 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
     }
   }
 
-  public JPopupMenu buidContexMenu(final MouseEvent e) {
+  public JPopupMenu buildContextMenu(final MouseEvent e) {
 
     try {
       JPopupMenu popupMenu = new JPopupMenu();
-      TitleMenuItem itemTitle =
-          new TitleMenuItem(Messages.getString("DefaultExplorer.sel_path"), popupMenu.getInsets());
+      TitleMenuItem itemTitle = new TitleMenuItem(Messages.getString("DefaultExplorer.sel_path"));
       popupMenu.add(itemTitle);
       popupMenu.addSeparator();
 
@@ -435,7 +431,8 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
     tree.scrollPathToVisible(newPath);
   }
 
-  final class JITreeDiskWillExpandAdapter implements javax.swing.event.TreeWillExpandListener {
+  static final class JITreeDiskWillExpandAdapter
+      implements javax.swing.event.TreeWillExpandListener {
 
     @Override
     public void treeWillExpand(final TreeExpansionEvent e) throws ExpandVetoException {
@@ -459,16 +456,12 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
     @Override
     public void treeExpanded(final TreeExpansionEvent e) {
       final Thread runner =
-          new Thread() {
-
-            @Override
-            public void run() {
-              SwingUtilities.invokeLater(
-                  () ->
-                      Optional.ofNullable(DefaultExplorer.this.tree.getSelectionPath())
-                          .ifPresent(DefaultExplorer.this.tree::setSelectionPath));
-            }
-          };
+          new Thread(
+              () ->
+                  SwingUtilities.invokeLater(
+                      () ->
+                          Optional.ofNullable(DefaultExplorer.this.tree.getSelectionPath())
+                              .ifPresent(DefaultExplorer.this.tree::setSelectionPath)));
       runner.start();
     }
 
@@ -483,13 +476,7 @@ public class DefaultExplorer extends PluginTool implements DataExplorerView {
     @Override
     public void valueChanged(final TreeSelectionEvent e) {
       final Thread runner =
-          new Thread() {
-
-            @Override
-            public void run() {
-              SwingUtilities.invokeLater(() -> jTreeDiskValueChanged(e));
-            }
-          };
+          new Thread(() -> SwingUtilities.invokeLater(() -> jTreeDiskValueChanged(e)));
       runner.start();
     }
   }

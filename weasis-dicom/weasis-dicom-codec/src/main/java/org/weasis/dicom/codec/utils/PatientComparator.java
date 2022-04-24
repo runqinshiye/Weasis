@@ -47,13 +47,14 @@ public class PatientComparator {
     setBirthdate(TagUtil.getTagAttribute(xmler, TagD.get(Tag.PatientBirthDate).getKeyword(), null));
   }
 
-  public PatientComparator(TagReadable tagable) {
-    setPatientId(TagD.getTagValue(tagable, Tag.PatientID, String.class));
-    setIssuerOfPatientID(TagD.getTagValue(tagable, Tag.IssuerOfPatientID, String.class));
-    setName(TagD.getTagValue(tagable, Tag.PatientName, String.class));
-    setSex(TagD.getTagValue(tagable, Tag.PatientSex, String.class));
+  public PatientComparator(TagReadable taggable) {
+    setPatientId(TagD.getTagValue(taggable, Tag.PatientID, String.class));
+    setIssuerOfPatientID(TagD.getTagValue(taggable, Tag.IssuerOfPatientID, String.class));
+    setName(TagD.getTagValue(taggable, Tag.PatientName, String.class));
+    setSex(TagD.getTagValue(taggable, Tag.PatientSex, String.class));
     setBirthdate(
-        DateUtil.formatDicomDate(TagD.getTagValue(tagable, Tag.PatientBirthDate, LocalDate.class)));
+        DateUtil.formatDicomDate(
+            TagD.getTagValue(taggable, Tag.PatientBirthDate, LocalDate.class)));
   }
 
   public String buildPatientPseudoUID() {
@@ -67,21 +68,11 @@ public class PatientComparator {
       String[] split = property.split(",");
       for (String string : split) {
         switch (string) {
-          case "issuerOfPatientID":
-            buffer.append(issuerOfPatientID);
-            break;
-          case "patientId":
-            buffer.append(patientId);
-            break;
-          case "patientName":
-            buffer.append(name);
-            break;
-          case "patientBirthdate":
-            buffer.append(birthdate);
-            break;
-          case "patientSex":
-            buffer.append(sex);
-            break;
+          case "issuerOfPatientID" -> buffer.append(issuerOfPatientID);
+          case "patientId" -> buffer.append(patientId);
+          case "patientName" -> buffer.append(name);
+          case "patientBirthdate" -> buffer.append(birthdate);
+          case "patientSex" -> buffer.append(sex);
         }
       }
       return buffer.toString();

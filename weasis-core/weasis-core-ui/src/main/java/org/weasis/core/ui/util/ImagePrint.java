@@ -21,11 +21,11 @@ import java.awt.print.Paper;
 import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.Size2DSyntax;
 import javax.print.attribute.standard.MediaPrintableArea;
 import javax.print.attribute.standard.MediaSize;
 import javax.print.attribute.standard.MediaSizeName;
@@ -34,11 +34,11 @@ import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.weasis.core.api.gui.util.MathUtil;
 import org.weasis.core.api.image.LayoutConstraints;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.ui.Messages;
 import org.weasis.core.ui.editor.image.ExportImage;
+import org.weasis.core.util.MathUtil;
 import org.weasis.opencv.data.PlanarImage;
 
 public class ImagePrint implements Printable {
@@ -47,8 +47,8 @@ public class ImagePrint implements Printable {
   private static final double POINTS_PER_INCH = 72.0;
 
   private Point printLoc;
-  private PrintOptions printOptions;
-  private ExportLayout<? extends ImageElement> layout;
+  private final PrintOptions printOptions;
+  private final ExportLayout<? extends ImageElement> layout;
 
   public ImagePrint(ExportLayout<? extends ImageElement> layout, PrintOptions printOptions) {
     this.layout = layout;
@@ -65,16 +65,13 @@ public class ImagePrint implements Printable {
   }
 
   private static OrientationRequested mapOrientation(final int orientation) {
-    switch (orientation) {
-      case PageFormat.LANDSCAPE:
-        return OrientationRequested.LANDSCAPE;
-      case PageFormat.REVERSE_LANDSCAPE:
-        return OrientationRequested.REVERSE_LANDSCAPE;
-      case PageFormat.PORTRAIT:
-        return OrientationRequested.PORTRAIT;
-      default:
-        throw new IllegalArgumentException("The given value is no valid PageFormat orientation.");
-    }
+    return switch (orientation) {
+      case PageFormat.LANDSCAPE -> OrientationRequested.LANDSCAPE;
+      case PageFormat.REVERSE_LANDSCAPE -> OrientationRequested.REVERSE_LANDSCAPE;
+      case PageFormat.PORTRAIT -> OrientationRequested.PORTRAIT;
+      default -> throw new IllegalArgumentException(
+          "The given value is no valid PageFormat orientation.");
+    };
   }
 
   public void print() {
@@ -96,8 +93,8 @@ public class ImagePrint implements Printable {
         new MediaPrintableArea(
             0.25f,
             0.25f,
-            mediaSize.getX(MediaSize.INCH) - 0.5f,
-            mediaSize.getY(MediaSize.INCH) - 0.5f,
+            mediaSize.getX(Size2DSyntax.INCH) - 0.5f,
+            mediaSize.getY(Size2DSyntax.INCH) - 0.5f,
             MediaPrintableArea.INCH);
     aset.add(printableArea);
     aset.add(mapOrientation(pf.getOrientation()));
@@ -108,8 +105,8 @@ public class ImagePrint implements Printable {
         pj.print(aset);
       } catch (Exception e) {
         // check for the annoying 'Printer is not accepting job' error.
-        if (e.getMessage().indexOf("accepting job") != -1) { // NON-NLS
-          // recommend prompting the user at this point if they want to force it
+        if (e.getMessage().contains("accepting job")) { // NON-NLS
+          // recommend prompting the user at this point if they want to force it,
           // so they'll know there may be a problem.
           int response =
               JOptionPane.showConfirmDialog(
@@ -175,17 +172,15 @@ public class ImagePrint implements Printable {
     double wx = 0.0;
 
     final Map<LayoutConstraints, Component> elements = layout.layoutModel.getConstraints();
-    Iterator<Entry<LayoutConstraints, Component>> enumVal = elements.entrySet().iterator();
-    while (enumVal.hasNext()) {
-      Entry<LayoutConstraints, Component> e = enumVal.next();
+    for (Entry<LayoutConstraints, Component> e : elements.entrySet()) {
       LayoutConstraints key = e.getKey();
       Component value = e.getValue();
 
       ExportImage<? extends ImageElement> image = null;
       Point2D.Double pad = new Point2D.Double(0.0, 0.0);
 
-      if (value instanceof ExportImage) {
-        image = (ExportImage) value;
+      if (value instanceof ExportImage<? extends ImageElement> exportImage) {
+        image = exportImage;
         formatImage(image, key, placeholder, pad);
       }
 

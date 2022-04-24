@@ -10,16 +10,14 @@
 package org.weasis.acquire.explorer.gui.model.renderer;
 
 import java.awt.Component;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import org.weasis.acquire.explorer.media.MediaSource;
 
 public class MediaSourceListCellRenderer extends JLabel implements ListCellRenderer<MediaSource> {
-  private static final long serialVersionUID = -8043563870643819771L;
 
-  public MediaSourceListCellRenderer(JComboBox<MediaSource> combo) {
+  public MediaSourceListCellRenderer() {
     setOpaque(true);
     setHorizontalAlignment(LEFT);
     setVerticalAlignment(CENTER);

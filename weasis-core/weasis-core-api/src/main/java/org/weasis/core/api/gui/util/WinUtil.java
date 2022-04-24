@@ -33,8 +33,8 @@ public class WinUtil {
 
   public static JFrame getParentJFrame(Component c) {
     for (Container p = c.getParent(); p != null; p = p.getParent()) {
-      if (p instanceof JFrame) {
-        return (JFrame) p;
+      if (p instanceof JFrame frame) {
+        return frame;
       }
     }
     return null;
@@ -42,8 +42,8 @@ public class WinUtil {
 
   public static Frame getParentFrame(Component c) {
     for (Container p = c.getParent(); p != null; p = p.getParent()) {
-      if (p instanceof Frame) {
-        return (Frame) p;
+      if (p instanceof Frame frame) {
+        return frame;
       }
     }
     return null;
@@ -51,20 +51,20 @@ public class WinUtil {
 
   public static Dialog getParentDialog(Component c) {
     for (Container p = c.getParent(); p != null; p = p.getParent()) {
-      if (p instanceof Dialog) {
-        return (Dialog) p;
+      if (p instanceof Dialog dialog) {
+        return dialog;
       }
     }
     return null;
   }
 
   public static RootPaneContainer getRootPaneContainer(Component c) {
-    if (c instanceof RootPaneContainer) {
-      return (RootPaneContainer) c;
+    if (c instanceof RootPaneContainer container) {
+      return container;
     }
     for (Container p = c.getParent(); p != null; p = p.getParent()) {
-      if (p instanceof RootPaneContainer) {
-        return (RootPaneContainer) p;
+      if (p instanceof RootPaneContainer container) {
+        return container;
       }
     }
     return null;
@@ -76,9 +76,9 @@ public class WinUtil {
 
   @SuppressWarnings("unchecked")
   public static <T> T getParentOfClass(Component component, Class<T> class1) {
-    Object obj = component;
+    Component obj = component;
     while (obj != null && !class1.isAssignableFrom(obj.getClass())) {
-      obj = ((Component) (obj)).getParent();
+      obj = obj.getParent();
     }
     return (T) (obj);
   }
@@ -112,9 +112,9 @@ public class WinUtil {
     // pointer position
     GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
     GraphicsDevice[] gd = ge.getScreenDevices();
-    for (int i = 0; i < gd.length; i++) {
-      if (gd[i].getType() == GraphicsDevice.TYPE_RASTER_SCREEN) {
-        GraphicsConfiguration dgc = gd[i].getDefaultConfiguration();
+    for (GraphicsDevice graphicsDevice : gd) {
+      if (graphicsDevice.getType() == GraphicsDevice.TYPE_RASTER_SCREEN) {
+        GraphicsConfiguration dgc = graphicsDevice.getDefaultConfiguration();
         if (dgc.getBounds().contains(p)) {
           gc = dgc;
           break;
@@ -130,8 +130,8 @@ public class WinUtil {
     GraphicsDevice[] gd = ge.getScreenDevices();
     Rectangle screenBounds = null;
     Rectangle intersect = null;
-    for (int i = 0; i < gd.length; i++) {
-      GraphicsConfiguration config = gd[i].getDefaultConfiguration();
+    for (GraphicsDevice graphicsDevice : gd) {
+      GraphicsConfiguration config = graphicsDevice.getDefaultConfiguration();
       Rectangle b = config.getBounds();
       Rectangle intersection = bound.intersection(b);
       if (intersection.width > 0 && intersection.height > 0) {
@@ -209,11 +209,13 @@ public class WinUtil {
 
   private static void center(Component component) {
     Container container = component != null ? component.getParent() : null;
-    Window window = SwingUtilities.getWindowAncestor(container);
-    if (window == null) {
-      centerOnScreen(component);
-    } else {
-      center(component, window);
+    if (container != null) {
+      Window window = SwingUtilities.getWindowAncestor(container);
+      if (window == null) {
+        centerOnScreen(component);
+      } else {
+        center(component, window);
+      }
     }
   }
 

@@ -16,7 +16,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,19 +48,15 @@ public class LoadRemoteDicomManifest extends ExplorerTask<Boolean, String> {
   private final List<LoadSeries> loadSeriesList = new ArrayList<>();
   private final PropertyChangeListener propertyChangeListener =
       evt -> {
-        if (evt instanceof ObservableEvent) {
-          ObservableEvent event = (ObservableEvent) evt;
-          if (event.getNewValue() instanceof LoadSeries) {
-            LoadSeries s = (LoadSeries) event.getNewValue();
-            BasicAction cmd = event.getActionCommand();
-            if (ObservableEvent.BasicAction.LOADING_STOP.equals(cmd)
-                || ObservableEvent.BasicAction.LOADING_CANCEL.equals(cmd)) {
-              checkDownloadIssues(s);
-            } else if (ObservableEvent.BasicAction.LOADING_START.equals(cmd)) {
-              if (!loadSeriesList.contains(s)) {
-                loadSeriesList.add(s);
-              }
-            }
+        if (evt instanceof ObservableEvent event
+            && event.getNewValue() instanceof LoadSeries series) {
+          BasicAction cmd = event.getActionCommand();
+          if (ObservableEvent.BasicAction.LOADING_STOP.equals(cmd)
+              || ObservableEvent.BasicAction.LOADING_CANCEL.equals(cmd)) {
+            checkDownloadIssues(series);
+          } else if (ObservableEvent.BasicAction.LOADING_START.equals(cmd)
+              && !loadSeriesList.contains(series)) {
+            loadSeriesList.add(series);
           }
         }
       };
@@ -148,14 +143,13 @@ public class LoadRemoteDicomManifest extends ExplorerTask<Boolean, String> {
   @Override
   protected Boolean doInBackground() throws Exception {
     try {
-      Iterator<String> iter = xmlFiles.iterator();
-      while (iter.hasNext()) {
-        downloadManifest(iter);
+      for (String xmlFile : xmlFiles) {
+        downloadManifest(xmlFile);
       }
     } catch (DownloadException e) {
       LOGGER.error("Download failed", e);
       if (tryDownloadingAgain(e)) {
-        LOGGER.info("Try donloaging again: {}", xmlFiles);
+        LOGGER.info("Try downloading again: {}", xmlFiles);
         LoadRemoteDicomManifest mf = new LoadRemoteDicomManifest(xmlFiles, dicomModel);
         mf.retryNb.set(retryNb.get());
         mf.execute();
@@ -168,19 +162,16 @@ public class LoadRemoteDicomManifest extends ExplorerTask<Boolean, String> {
     return true;
   }
 
-  private void downloadManifest(Iterator<String> iter) throws DownloadException {
+  private void downloadManifest(String path) throws DownloadException {
     try {
-      URI uri = NetworkUtil.getURI(iter.next());
+      URI uri = NetworkUtil.getURI(path);
       Collection<LoadSeries> wadoTasks = DownloadManager.buildDicomSeriesFromXml(uri, dicomModel);
-      iter.remove();
 
-      if (wadoTasks != null) {
-        loadSeriesList.addAll(wadoTasks);
-        boolean downloadImmediately =
-            BundleTools.SYSTEM_PREFERENCES.getBooleanProperty(
-                SeriesDownloadPrefView.DOWNLOAD_IMMEDIATELY, true);
-        startDownloadingSeries(wadoTasks, downloadImmediately);
-      }
+      loadSeriesList.addAll(wadoTasks);
+      boolean downloadImmediately =
+          BundleTools.SYSTEM_PREFERENCES.getBooleanProperty(
+              SeriesDownloadPrefView.DOWNLOAD_IMMEDIATELY, true);
+      startDownloadingSeries(wadoTasks, downloadImmediately);
     } catch (URISyntaxException | MalformedURLException e) {
       LOGGER.error("Loading manifest", e);
     }
@@ -193,7 +184,7 @@ public class LoadRemoteDicomManifest extends ExplorerTask<Boolean, String> {
     }
 
     // Sort tasks from the download priority order (low number has a higher priority), TASKS
-    // is sorted from low to high priority).
-    Collections.sort(DownloadManager.TASKS, Collections.reverseOrder(new PriorityTaskComparator()));
+    // is sorted from low to high priority.
+    DownloadManager.TASKS.sort(Collections.reverseOrder(new PriorityTaskComparator()));
   }
 }

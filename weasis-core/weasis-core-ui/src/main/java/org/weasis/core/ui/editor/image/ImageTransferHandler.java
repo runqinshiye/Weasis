@@ -11,19 +11,20 @@ package org.weasis.core.ui.editor.image;
 
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import javax.swing.JComponent;
 import javax.swing.TransferHandler;
-import org.weasis.core.api.gui.Image2DViewer;
 import org.weasis.core.api.image.SimpleOpManager;
-import org.weasis.core.api.image.ZoomOp;
-import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
 
 public class ImageTransferHandler extends TransferHandler implements Transferable {
-  private static final long serialVersionUID = 7716040872158831560L;
 
   private static final DataFlavor[] flavors = {DataFlavor.imageFlavor};
-  private SimpleOpManager disOp;
+  private final SimpleOpManager disOp;
+
+  public ImageTransferHandler(SimpleOpManager disOp) {
+    this.disOp = disOp;
+  }
 
   @Override
   public int getSourceActions(JComponent c) {
@@ -31,29 +32,13 @@ public class ImageTransferHandler extends TransferHandler implements Transferabl
   }
 
   @Override
-  public boolean canImport(JComponent comp, DataFlavor flavor[]) {
+  public boolean canImport(JComponent comp, DataFlavor[] flavor) {
     return false;
   }
 
   @Override
   public Transferable createTransferable(JComponent comp) {
-    // Clear
-    disOp = null;
-    // TODO make only one export function with a dialog to choose to disable zoom (real size), add
-    // graphics,
-    // anonymize and other default remove annotations
-    if (comp instanceof Image2DViewer) {
-      Image2DViewer<?> view2DPane = (Image2DViewer<?>) comp;
-      PlanarImage src = view2DPane.getSourceImage();
-      if (src != null) {
-        SimpleOpManager opManager = view2DPane.getImageLayer().getDisplayOpManager().copy();
-        opManager.removeImageOperationAction(opManager.getNode(ZoomOp.OP_NAME));
-        opManager.setFirstNode(src);
-        disOp = opManager;
-        return this;
-      }
-    }
-    return null;
+    return this;
   }
 
   @Override
@@ -62,11 +47,11 @@ public class ImageTransferHandler extends TransferHandler implements Transferabl
   }
 
   @Override
-  public Object getTransferData(DataFlavor flavor) {
+  public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
     if (isDataFlavorSupported(flavor)) {
       return ImageConversion.toBufferedImage(disOp.process());
     }
-    return null;
+    throw new UnsupportedFlavorException(flavor);
   }
 
   @Override

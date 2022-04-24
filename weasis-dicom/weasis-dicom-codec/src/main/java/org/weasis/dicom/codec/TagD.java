@@ -17,6 +17,7 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 import static java.time.temporal.ChronoField.YEAR;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -25,13 +26,13 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLInputFactory;
@@ -39,11 +40,10 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import org.dcm4che3.data.Attributes;
-import org.dcm4che3.data.DatePrecision;
 import org.dcm4che3.data.ElementDictionary;
 import org.dcm4che3.data.Tag;
 import org.dcm4che3.data.VR;
-import org.dcm4che3.util.DateUtils;
+import org.dcm4che3.img.util.DateTimeUtils;
 import org.dcm4che3.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,6 @@ import org.weasis.core.util.StringUtil;
 import org.weasis.dicom.codec.utils.DicomMediaUtils;
 
 public class TagD extends TagW {
-  private static final long serialVersionUID = 8923709877411396802L;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TagD.class);
 
@@ -84,7 +83,7 @@ public class TagD extends TagW {
     private final String value;
     private final String displayValue;
 
-    private Sex(String value, String displayValue) {
+    Sex(String value, String displayValue) {
       this.value = value;
       this.displayValue = displayValue;
     }
@@ -119,7 +118,7 @@ public class TagD extends TagW {
 
     private final String tag;
 
-    private Level(String tag) {
+    Level(String tag) {
       this.tag = tag;
     }
 
@@ -227,7 +226,7 @@ public class TagD extends TagW {
     this.retired = false;
   }
 
-  public VR getValueRerpesentation() {
+  public VR getValueRepresentation() {
     return vr;
   }
 
@@ -238,7 +237,7 @@ public class TagD extends TagW {
     try {
       return vr.vmOf(value);
     } catch (Exception e) {
-      LOGGER.error("Cannot evaluate mulitplicity from DICOM VR", e);
+      LOGGER.error("Cannot evaluate multiplicity from DICOM VR", e);
     }
     return getValueMultiplicity(value);
   }
@@ -271,21 +270,18 @@ public class TagD extends TagW {
     } else if (!privateCreatorID.equals(other.privateCreatorID)) {
       return false;
     }
-    if (vr != other.vr) {
-      return false;
-    }
-    return true;
+    return vr == other.vr;
   }
 
   @Override
   public Object getValue(Object data) {
     Object value = null;
-    if (data instanceof Attributes) {
-      value = readValue((Attributes) data);
-    } else if (data instanceof XMLStreamReader) {
-      value = readValue((XMLStreamReader) data);
-    } else if (data instanceof String) {
-      value = readValue((String) data);
+    if (data instanceof Attributes attributes) {
+      value = readValue(attributes);
+    } else if (data instanceof XMLStreamReader xmlStreamReader) {
+      value = readValue(xmlStreamReader);
+    } else if (data instanceof String s) {
+      value = readValue(s);
     }
     return value;
   }
@@ -413,13 +409,13 @@ public class TagD extends TagW {
     } else if (TagType.DICOM_DATETIME.equals(type)) {
       if (vmMax > 1) {
         String[] ss = toStrings(data);
-        LocalDateTime[] is = new LocalDateTime[ss.length];
+        Temporal[] is = new Temporal[ss.length];
         for (int i = 0; i < is.length; i++) {
-          is[i] = TagD.getDicomDateTime(null, data);
+          is[i] = TagD.getDicomDateTime(data);
         }
         value = is;
       } else {
-        value = TagD.getDicomDateTime(null, data);
+        value = TagD.getDicomDateTime(data);
       }
     } else if (TagType.INTEGER.equals(type)) {
       if (vmMax > 1) {
@@ -460,7 +456,7 @@ public class TagD extends TagW {
     } else if (TagType.DICOM_SEQUENCE.equals(type)) {
       value = data;
     } else {
-      value = data.getBytes();
+      value = data.getBytes(StandardCharsets.UTF_8);
     }
 
     return value;
@@ -487,8 +483,8 @@ public class TagD extends TagW {
     }
 
     if (TagType.DICOM_PERSON_NAME.equals(type)) {
-      if (value instanceof String[]) {
-        return Arrays.asList((String[]) value).stream()
+      if (value instanceof String[] strings) {
+        return Arrays.stream(strings)
             .map(TagD::getDicomPersonName)
             .collect(Collectors.joining(", "));
       }
@@ -568,27 +564,19 @@ public class TagD extends TagW {
       int eventType;
       while (xmler.hasNext()) {
         eventType = xmler.next();
-        switch (eventType) {
-          case XMLStreamConstants.START_ELEMENT:
-            String key = xmler.getName().getLocalPart();
-            if ("dataelements".equals(key)) { // NON-NLS
-              while (xmler.hasNext()) {
-                eventType = xmler.next();
-                switch (eventType) {
-                  case XMLStreamConstants.START_ELEMENT:
-                    key = xmler.getName().getLocalPart();
-                    if ("el".equals(key)) {
-                      readElement(xmler, map);
-                    }
-                    break;
-                  default:
-                    break;
+        if (eventType == XMLStreamConstants.START_ELEMENT) {
+          String key = xmler.getName().getLocalPart();
+          if ("dataelements".equals(key)) { // NON-NLS
+            while (xmler.hasNext()) {
+              eventType = xmler.next();
+              if (eventType == XMLStreamConstants.START_ELEMENT) {
+                key = xmler.getName().getLocalPart();
+                if ("el".equals(key)) {
+                  readElement(xmler, map);
                 }
               }
             }
-            break;
-          default:
-            break;
+          }
         }
       }
     } catch (Exception e) {
@@ -732,22 +720,22 @@ public class TagD extends TagW {
     return key == null ? null : tags.get(key);
   }
 
-  public static Object getTagValue(TagReadable tagable, int tagID) {
-    if (tagable != null) {
+  public static Object getTagValue(TagReadable taggable, int tagID) {
+    if (taggable != null) {
       String key = getKeywordFromTag(tagID, null);
       if (key != null) {
-        return tagable.getTagValue(tags.get(key));
+        return taggable.getTagValue(tags.get(key));
       }
     }
     return null;
   }
 
-  public static <T> T getTagValue(TagReadable tagable, int tagID, Class<T> type) {
-    if (tagable != null) {
+  public static <T> T getTagValue(TagReadable taggable, int tagID, Class<T> type) {
+    if (taggable != null) {
       String key = getKeywordFromTag(tagID, null);
       if (key != null) {
         try {
-          return type.cast(tagable.getTagValue(tags.get(key)));
+          return type.cast(taggable.getTagValue(tags.get(key)));
         } catch (ClassCastException e) {
           LOGGER.error("Cannot cast the value of \"{}\" into {}", key, type, e);
         }
@@ -766,7 +754,7 @@ public class TagD extends TagW {
         }
       }
     }
-    return list.toArray(new TagW[list.size()]);
+    return list.toArray(new TagW[0]);
   }
 
   public static TagW getUID(Level level) {
@@ -791,13 +779,7 @@ public class TagD extends TagW {
   public static LocalDate getDicomDate(String date) {
     if (StringUtil.hasText(date)) {
       try {
-        if (date.length() > 8) {
-          StringBuilder buf = new StringBuilder(8);
-          // Try to fix old format yyyy.mm.dd (prior DICOM3.0)
-          date.chars().filter(Character::isDigit).forEachOrdered(i -> buf.append((char) i));
-          return LocalDate.parse(buf.toString().trim(), DICOM_DATE);
-        }
-        return LocalDate.parse(date, DICOM_DATE);
+        return DateTimeUtils.parseDA(date);
       } catch (Exception e) {
         LOGGER.error("Parse DICOM date", e);
       }
@@ -808,30 +790,18 @@ public class TagD extends TagW {
   public static LocalTime getDicomTime(String time) {
     if (StringUtil.hasText(time)) {
       try {
-        return LocalTime.parse(time.trim(), DICOM_TIME);
-      } catch (Exception e) {
-        try {
-          StringBuilder buf = new StringBuilder(8);
-          // Try to fix old format HH:MM:SS.frac (prior DICOM3.0)
-          time.chars().filter(i -> ':' != (char) i).forEachOrdered(i -> buf.append((char) i));
-          return LocalTime.parse(buf.toString().trim(), DICOM_TIME);
-        } catch (Exception e1) {
-          LOGGER.error("Parse DICOM time", e1);
-        }
+        return DateTimeUtils.parseTM(time);
+      } catch (Exception e1) {
+        LOGGER.error("Parse DICOM time", e1);
       }
     }
     return null;
   }
 
-  public static LocalDateTime getDicomDateTime(TimeZone tz, String value) {
-    return getDicomDateTime(tz, value, false);
-  }
-
-  public static LocalDateTime getDicomDateTime(TimeZone tz, String value, boolean ceil) {
+  public static Temporal getDicomDateTime(String value) {
     if (StringUtil.hasText(value)) {
       try {
-        Date date = DateUtils.parseDT(tz, value, ceil, new DatePrecision());
-        return LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+        return DateTimeUtils.parseDT(value);
       } catch (Exception e) {
         LOGGER.error("Parse DICOM dateTime", e);
       }
@@ -850,9 +820,9 @@ public class TagD extends TagW {
     return LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
   }
 
-  public static LocalDateTime dateTime(int dateID, int timeID, TagReadable tagable) {
-    LocalDate date = TagD.getTagValue(tagable, dateID, LocalDate.class);
-    LocalTime time = TagD.getTagValue(tagable, timeID, LocalTime.class);
+  public static LocalDateTime dateTime(int dateID, int timeID, TagReadable taggable) {
+    LocalDate date = TagD.getTagValue(taggable, dateID, LocalDate.class);
+    LocalTime time = TagD.getTagValue(taggable, timeID, LocalTime.class);
     if (date == null) {
       return null;
     }
@@ -884,7 +854,7 @@ public class TagD extends TagW {
         if (TagType.DICOM_TIME.equals(type)) {
           return getDicomTime(val);
         } else if (TagType.DICOM_DATETIME.equals(type)) {
-          return getDicomDateTime(null, val);
+          return getDicomDateTime(val);
         } else {
           return getDicomDate(val);
         }
@@ -913,7 +883,7 @@ public class TagD extends TagW {
           if (TagType.TIME.equals(type)) {
             vals[i] = getDicomTime(strs[i]);
           } else if (TagType.DATETIME.equals(type)) {
-            vals[i] = getDicomDateTime(null, strs[i]);
+            vals[i] = getDicomDateTime(strs[i]);
           } else {
             vals[i] = getDicomDate(strs[i]);
           }
@@ -954,15 +924,11 @@ public class TagD extends TagW {
     }
 
     // Remove the last character and leading 0
-    StringBuilder builder =
-        new StringBuilder(value.substring(0, value.length() - 1).replaceFirst("^0+(?!$)", ""));
-    builder.append(" ");
-    builder.append(unit);
-    return builder.toString();
+    return value.substring(0, value.length() - 1).replaceFirst("^0+(?!$)", "") + " " + unit;
   }
 
   /**
-   * @param name
+   * @param name the person name
    * @return return the name (e.g. Smith, John), representing the "lexical name order"
    */
   public static String getDicomPersonName(String name) {

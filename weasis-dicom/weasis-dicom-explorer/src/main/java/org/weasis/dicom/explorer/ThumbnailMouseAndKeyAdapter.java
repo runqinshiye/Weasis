@@ -32,6 +32,7 @@ import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import org.dcm4che3.data.Tag;
 import org.weasis.core.api.explorer.DataExplorerView;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.MediaElement;
 import org.weasis.core.api.media.data.MediaSeries;
@@ -40,6 +41,8 @@ import org.weasis.core.api.media.data.MediaSeriesGroup;
 import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.media.data.SeriesThumbnail;
 import org.weasis.core.api.media.data.TagW;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.docking.UIManager;
 import org.weasis.core.ui.editor.DefaultMimeAppFactory;
 import org.weasis.core.ui.editor.SeriesViewer;
@@ -65,8 +68,8 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
   public void mouseClicked(MouseEvent e) {
     if (e.getClickCount() == 2) {
       final SeriesSelectionModel selList = getSeriesSelectionModel();
-      selList.setOpenningSeries(true);
-      Map<String, Object> props = Collections.synchronizedMap(new HashMap<String, Object>());
+      selList.setOpeningSeries(true);
+      Map<String, Object> props = Collections.synchronizedMap(new HashMap<>());
       props.put(ViewerPluginBuilder.CMP_ENTRY_BUILD_NEW_VIEWER, true);
       props.put(ViewerPluginBuilder.BEST_DEF_LAYOUT, false);
       props.put(ViewerPluginBuilder.OPEN_IN_SELECTION, true);
@@ -82,7 +85,7 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
       ViewerPluginBuilder builder = new ViewerPluginBuilder(plugin, list, dicomModel, props);
       ViewerPluginBuilder.openSequenceInPlugin(builder);
 
-      selList.setOpenningSeries(false);
+      selList.setOpeningSeries(false);
     }
   }
 
@@ -127,26 +130,31 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
       for (final SeriesViewerFactory viewerFactory : plugins) {
         JMenu menuFactory = new JMenu(viewerFactory.getUIName());
         menuFactory.setIcon(viewerFactory.getIcon());
+        GuiUtils.applySelectedIconEffect(menuFactory);
 
         JMenuItem item4 = new JMenuItem(Messages.getString("DicomExplorer.open"));
         item4.addActionListener(
             e -> {
-              selList.setOpenningSeries(true);
+              selList.setOpeningSeries(true);
               ViewerPluginBuilder.openSequenceInPlugin(
                   viewerFactory, seriesList, dicomModel, true, true);
-              selList.setOpenningSeries(false);
+              selList.setOpeningSeries(false);
             });
         menuFactory.add(item4);
 
         // Exclude system factory
         if (viewerFactory.canExternalizeSeries()) {
-          item4 = new JMenuItem(Messages.getString("DicomExplorer.open_win"));
+          item4 =
+              new JMenuItem(
+                  Messages.getString("DicomExplorer.open_win"),
+                  ResourceUtil.getIcon(ActionIcon.OPEN_NEW_TAB));
+          GuiUtils.applySelectedIconEffect(item4);
           item4.addActionListener(
               e -> {
-                selList.setOpenningSeries(true);
+                selList.setOpeningSeries(true);
                 ViewerPluginBuilder.openSequenceInPlugin(
                     viewerFactory, seriesList, dicomModel, false, true);
-                selList.setOpenningSeries(false);
+                selList.setOpeningSeries(false);
               });
           menuFactory.add(item4);
 
@@ -154,16 +162,16 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
           final GraphicsDevice[] gd = ge.getScreenDevices();
           if (gd.length > 0) {
             JMenu subMenu = new JMenu(Messages.getString("DicomExplorer.open_screen"));
-            for (int i = 0; i < gd.length; i++) {
-              GraphicsConfiguration config = gd[i].getDefaultConfiguration();
+            for (GraphicsDevice graphicsDevice : gd) {
+              GraphicsConfiguration config = graphicsDevice.getDefaultConfiguration();
               final Rectangle b = config.getBounds();
               item4 = new JMenuItem(config.getDevice().toString());
               item4.addActionListener(
                   e -> {
-                    selList.setOpenningSeries(true);
+                    selList.setOpeningSeries(true);
                     ViewerPluginBuilder.openSequenceInPlugin(
                         viewerFactory, seriesList, dicomModel, false, true, b);
-                    selList.setOpenningSeries(false);
+                    selList.setOpeningSeries(false);
                   });
               subMenu.add(item4);
             }
@@ -175,10 +183,10 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
           item4 = new JMenuItem(Messages.getString("DicomExplorer.add"));
           item4.addActionListener(
               e -> {
-                selList.setOpenningSeries(true);
+                selList.setOpeningSeries(true);
                 ViewerPluginBuilder.openSequenceInPlugin(
                     viewerFactory, seriesList, dicomModel, true, false);
-                selList.setOpenningSeries(false);
+                selList.setOpeningSeries(false);
               });
           menuFactory.add(item4);
         }
@@ -187,7 +195,10 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
 
         if (viewerFactory instanceof MimeSystemAppFactory) {
           final JMenuItem item5 =
-              new JMenuItem(Messages.getString("DicomExplorer.open_info"), null);
+              new JMenuItem(
+                  Messages.getString("DicomExplorer.open_info"),
+                  ResourceUtil.getIcon(ActionIcon.METADATA));
+          GuiUtils.applySelectedIconEffect(item5);
           item5.addActionListener(
               e -> {
                 SeriesViewer<?> viewer = viewerFactory.createSeriesViewer(null);
@@ -209,11 +220,9 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
                   MediaSeriesGroup studyGroup = dicomModel.getParent(series, DicomModel.study);
                   synchronized (dicomModel) {
                     for (MediaSeriesGroup seq : dicomModel.getChildren(studyGroup)) {
-                      if (seq instanceof Series) {
-                        Series s = (Series) seq;
-                        if (fruid.equals(TagD.getTagValue(s, Tag.FrameOfReferenceUID))) {
-                          selList.add(s);
-                        }
+                      if (seq instanceof Series<?> s
+                          && fruid.equals(TagD.getTagValue(s, Tag.FrameOfReferenceUID))) {
+                        selList.add(s);
                       }
                     }
                   }
@@ -230,13 +239,10 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
                   MediaSeriesGroup studyGroup = dicomModel.getParent(series, DicomModel.study);
                   synchronized (dicomModel) {
                     for (MediaSeriesGroup seq : dicomModel.getChildren(studyGroup)) {
-                      if (seq instanceof Series) {
-                        Series s = (Series) seq;
-                        if (fruid.equals(TagD.getTagValue(s, Tag.FrameOfReferenceUID))) {
-                          if (ImageOrientation.hasSameOrientation(series, s)) {
-                            selList.add(s);
-                          }
-                        }
+                      if (seq instanceof Series s
+                          && fruid.equals(TagD.getTagValue(s, Tag.FrameOfReferenceUID))
+                          && ImageOrientation.hasSameOrientation(series, s)) {
+                        selList.add(s);
                       }
                     }
                   }
@@ -248,12 +254,18 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
         if (selList.size() == 1 && loadSeries != null) {
           if (loadSeries.isStopped()) {
             popupMenu.add(new JSeparator());
-            JMenuItem item3 = new JMenuItem(Messages.getString("LoadSeries.resume"));
+            JMenuItem item3 =
+                new JMenuItem(
+                    Messages.getString("LoadSeries.resume"),
+                    ResourceUtil.getIcon(ActionIcon.EXECUTE));
             item3.addActionListener(e -> loadSeries.resume());
             popupMenu.add(item3);
           } else if (!loadSeries.isDone()) {
             popupMenu.add(new JSeparator());
-            JMenuItem item3 = new JMenuItem(Messages.getString("LoadSeries.stop"));
+            JMenuItem item3 =
+                new JMenuItem(
+                    Messages.getString("LoadSeries.stop"),
+                    ResourceUtil.getIcon(ActionIcon.SUSPEND));
             item3.addActionListener(e -> loadSeries.stop());
             popupMenu.add(item3);
           }
@@ -366,12 +378,12 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
       if (selList.isEmpty()) {
         selList.add(series);
       }
-      selList.setOpenningSeries(true);
+      selList.setOpeningSeries(true);
       ViewerPluginBuilder.openSequenceInDefaultPlugin(
-          new ArrayList<MediaSeries<? extends MediaElement>>(selList), dicomModel, true, true);
-      selList.setOpenningSeries(false);
-      if (e.getSource() instanceof JComponent) {
-        ((JComponent) e.getSource()).requestFocusInWindow();
+          new ArrayList<>(selList), dicomModel, true, true);
+      selList.setOpeningSeries(false);
+      if (e.getSource() instanceof JComponent jComponent) {
+        jComponent.requestFocusInWindow();
       }
       e.consume();
     } else if (code == KeyEvent.VK_DOWN) {
@@ -396,8 +408,8 @@ public class ThumbnailMouseAndKeyAdapter extends MouseAdapter implements KeyList
 
   public static SeriesSelectionModel getSeriesSelectionModel() {
     DataExplorerView explorer = UIManager.getExplorerplugin(DicomExplorer.NAME);
-    return explorer instanceof DicomExplorer
-        ? ((DicomExplorer) explorer).getSelectionList()
+    return explorer instanceof DicomExplorer model
+        ? model.getSelectionList()
         : new SeriesSelectionModel(null);
   }
 }

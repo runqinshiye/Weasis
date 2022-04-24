@@ -20,12 +20,11 @@ import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 import org.weasis.acquire.explorer.core.bean.SeriesGroup;
 
-@SuppressWarnings("serial")
 public class SerieButtonList extends JScrollPane {
 
   private static final JPanel serieButtonPane = new JPanel();
 
-  private SortedSet<SerieButton> serieButtonSet = new TreeSet<>();
+  private final SortedSet<SeriesButton> seriesButtonSet = new TreeSet<>();
 
   public SerieButtonList() {
     super(
@@ -35,39 +34,39 @@ public class SerieButtonList extends JScrollPane {
     serieButtonPane.setLayout(new BoxLayout(serieButtonPane, BoxLayout.Y_AXIS));
   }
 
-  public void addButton(SerieButton btn) {
+  public void addButton(SeriesButton btn) {
     Dimension dim = btn.getPreferredSize();
     dim.width = 210;
     btn.setPreferredSize(dim);
     dim = btn.getMaximumSize();
     dim.width = 210;
     btn.setMaximumSize(dim);
-    serieButtonSet.add(btn);
-    int index = serieButtonSet.headSet(btn).size();
+    seriesButtonSet.add(btn);
+    int index = seriesButtonSet.headSet(btn).size();
     serieButtonPane.add(btn, index);
   }
 
-  public Optional<SerieButton> getButton(final SeriesGroup seriesGroup) {
-    return serieButtonSet.stream().filter(sb -> sb.getSerie().equals(seriesGroup)).findAny();
+  public Optional<SeriesButton> getButton(final SeriesGroup seriesGroup) {
+    return seriesButtonSet.stream().filter(sb -> sb.getSeries().equals(seriesGroup)).findAny();
   }
 
-  public Set<SerieButton> getButtons() {
-    return serieButtonSet;
+  public Set<SeriesButton> getButtons() {
+    return seriesButtonSet;
   }
 
-  private void remove(SerieButton btn) {
-    if (serieButtonSet.remove(btn)) {
+  private void remove(SeriesButton btn) {
+    if (seriesButtonSet.remove(btn)) {
       serieButtonPane.remove(btn);
     }
   }
 
-  public Optional<SerieButton> getFirstSerieButton() {
-    return serieButtonSet.stream().sorted().findFirst();
+  public Optional<SeriesButton> getFirstSerieButton() {
+    return seriesButtonSet.stream().sorted().findFirst();
   }
 
   public void removeBySerie(final SeriesGroup seriesGroup) {
-    serieButtonSet.stream()
-        .filter(sb -> sb.getSerie().equals(seriesGroup))
+    seriesButtonSet.stream()
+        .filter(sb -> sb.getSeries().equals(seriesGroup))
         .findFirst()
         .ifPresent(this::remove);
   }

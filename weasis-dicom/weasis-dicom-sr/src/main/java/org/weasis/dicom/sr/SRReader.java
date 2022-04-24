@@ -51,7 +51,7 @@ public class SRReader {
     return dicomSR;
   }
 
-  public Attributes getDcmobj() {
+  public Attributes getAttributes() {
     return dcmItems;
   }
 
@@ -221,8 +221,8 @@ public class SRReader {
         Sequence sequenceElt = c.getAttributes().getSequence(Tag.ReferencedSOPSequence);
         if (sequenceElt != null && !sequenceElt.isEmpty()) {
           html.append(continuous || noCodeName ? " " : StringUtil.COLON_AND_SPACE);
-          for (int i = 0; i < sequenceElt.size(); i++) {
-            SOPInstanceReference sopRef = new SOPInstanceReference(sequenceElt.get(i));
+          for (Attributes attributes : sequenceElt) {
+            SOPInstanceReference sopRef = new SOPInstanceReference(attributes);
             html.append(sopRef.getReferencedSOPClassUID());
             html.append(" (SOP Instance UID"); // NON-NLS
             html.append(StringUtil.COLON_AND_SPACE);
@@ -237,7 +237,7 @@ public class SRReader {
           for (Attributes attributes : sc) {
             SRDocumentContent c2 = new SRDocumentContent(attributes);
             String id = getReferencedContentItemIdentifier(c2.getReferencedContentItemIdentifier());
-            SRImageReference imgRef = null;
+            SRImageReference imgRef;
             if (id == null) {
               imgRef = getReferencedImage(map, level, attributes);
               id = level;
@@ -288,7 +288,7 @@ public class SRReader {
 
       int[] refs = c.getReferencedContentItemIdentifier();
       if (refs != null) {
-        html.append(Messages.getString("SRReader.content_ref") + StringUtil.COLON_AND_SPACE);
+        html.append(Messages.getString("SRReader.content_ref")).append(StringUtil.COLON_AND_SPACE);
         String id = getReferencedContentItemIdentifier(refs);
         html.append("<a href=\"#"); // NON-NLS
         html.append(id);

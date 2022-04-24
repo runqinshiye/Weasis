@@ -16,6 +16,7 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.List;
+import org.weasis.core.util.MathUtil;
 
 public final class GeomUtil {
 
@@ -58,9 +59,7 @@ public final class GeomUtil {
    *     0 is returned if any argument is invalid
    */
   public static double getAngleRad(Point2D ptA, Point2D ptB) {
-    return (ptA != null && ptB != null)
-        ? Math.atan2(ptA.getY() - ptB.getY(), ptB.getX() - ptA.getX())
-        : null;
+    return Math.atan2(ptA.getY() - ptB.getY(), ptB.getX() - ptA.getX());
   }
 
   /**
@@ -68,7 +67,7 @@ public final class GeomUtil {
    *     0 is returned if any argument is invalid
    */
   public static double getAngleDeg(Point2D ptA, Point2D ptB) {
-    return (ptA != null && ptB != null) ? Math.toDegrees(getAngleRad(ptA, ptB)) : null;
+    return Math.toDegrees(getAngleRad(ptA, ptB));
   }
 
   /**
@@ -167,13 +166,16 @@ public final class GeomUtil {
       return null;
     }
 
-    Point2D ptA = line1.getP1(), ptB = line1.getP2();
-    Point2D ptC = line2.getP1(), ptD = line2.getP2();
+    Point2D ptA = line1.getP1();
+    Point2D ptB = line1.getP2();
+    Point2D ptC = line2.getP1();
+    Point2D ptD = line2.getP2();
 
     Line2D line3 = new Line2D.Double(ptA, ptC);
     Line2D line4 = new Line2D.Double(ptB, ptD);
 
-    Point2D ptM, ptN;
+    Point2D ptM;
+    Point2D ptN;
 
     if (line3.intersectsLine(line4)) {
       ptM = new Point2D.Double((ptA.getX() + ptD.getX()) / 2, (ptA.getY() + ptD.getY()) / 2);
@@ -294,9 +296,12 @@ public final class GeomUtil {
       return null;
     }
 
-    double ax = ptA.getX(), ay = ptA.getY();
-    double bx = ptB.getX(), by = ptB.getY();
-    double cx = ptC.getX(), cy = ptC.getY();
+    double ax = ptA.getX();
+    double ay = ptA.getY();
+    double bx = ptB.getX();
+    double by = ptB.getY();
+    double cx = ptC.getX();
+    double cy = ptC.getY();
 
     double r = ((ay - cy) * (ay - by) + (ax - cx) * (ax - bx)) / Point2D.distanceSq(ax, ay, bx, by);
 
@@ -354,13 +359,10 @@ public final class GeomUtil {
     double abX = ptB.getX() - ptA.getX();
     double abY = ptB.getY() - ptA.getY();
 
-    double perpX = -abY;
-    double perpY = abX;
     double perpSize = Math.sqrt(abX * abX + abY * abY);
-    ;
 
-    double sideVectorX = dist * perpX / perpSize;
-    double sideVectorY = dist * perpY / perpSize;
+    double sideVectorX = dist * -abY / perpSize;
+    double sideVectorY = dist * abX / perpSize;
 
     Point2D ptC = new Point2D.Double(ptA.getX() + sideVectorX, ptA.getY() + sideVectorY);
     Point2D ptD = new Point2D.Double(ptB.getX() + sideVectorX, ptB.getY() + sideVectorY);
@@ -369,7 +371,7 @@ public final class GeomUtil {
   }
 
   /**
-   * @param ptList
+   * @param ptList the list of Point2D
    * @return center point
    */
   public static Point2D getCircleCenter(List<Point2D> ptList) {
@@ -377,16 +379,13 @@ public final class GeomUtil {
       return null;
     }
 
-    switch (ptList.size()) {
-      case 3:
-        return getCircleCenter(ptList.get(0), ptList.get(1), ptList.get(2));
-      case 2:
-        return new Point2D.Double(
-            (ptList.get(0).getX() + ptList.get(1).getX()) / 2.0,
-            (ptList.get(0).getY() + ptList.get(1).getY()) / 2.0);
-      default:
-        return null;
-    }
+    return switch (ptList.size()) {
+      case 3 -> getCircleCenter(ptList.get(0), ptList.get(1), ptList.get(2));
+      case 2 -> new Point2D.Double(
+          (ptList.get(0).getX() + ptList.get(1).getX()) / 2.0,
+          (ptList.get(0).getY() + ptList.get(1).getY()) / 2.0);
+      default -> null;
+    };
   }
 
   public static Point2D getCircleCenter(Point2D ptA, Point2D ptB, Point2D ptC) {
@@ -443,10 +442,10 @@ public final class GeomUtil {
 
   /**
    * Extract rotation Angle from a given AffineTransform Matrix.<br>
-   * This function handle cases of mirror image flip about some axis. This changes right handed
-   * coordinate system into a left handed system. Hence, returned angle has an opposite value.
+   * This function handle cases of mirror image flip about some axis. This changes right-handed
+   * coordinate system into a left-handed system. Hence, returned angle has an opposite value.
    *
-   * @param transform
+   * @param transform the AffineTransform value
    * @return angle in the range of [ -PI ; PI ]
    */
   public static double extractAngleRad(AffineTransform transform) {
@@ -469,8 +468,8 @@ public final class GeomUtil {
   /**
    * Do a scaling transformation around the anchor point
    *
-   * @param shape
-   * @param scalingFactor
+   * @param shape the Shape value
+   * @param scalingFactor the scaling factor
    * @param anchorPoint can be null
    * @return null if either shape is null or scaling factor is zero
    */

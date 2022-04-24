@@ -34,7 +34,6 @@ import org.weasis.core.ui.model.utils.bean.Measurement;
 import org.weasis.core.ui.util.MouseEventDouble;
 
 public class CalibrationGraphic extends LineGraphic {
-  private static final long serialVersionUID = -6996238746877983645L;
 
   public CalibrationGraphic() {
     super();
@@ -71,7 +70,7 @@ public class CalibrationGraphic extends LineGraphic {
           if (image != null) {
             AcquireImageInfo info = AcquireManager.findByImage(image);
             if (info != null) {
-              List<AcquireImageInfo> list = AcquireManager.findbySeries(info.getSeries());
+              List<AcquireImageInfo> list = AcquireManager.findBySeries(info.getSeries());
               for (AcquireImageInfo acquireImageInfo : list) {
                 ImageElement img = acquireImageInfo.getImage();
                 if (img != image) {
@@ -86,7 +85,7 @@ public class CalibrationGraphic extends LineGraphic {
 
       mouseevent.consume();
       view.getEventManager()
-          .getAction(EditionToolFactory.DRAW_EDITON, ComboItemListener.class)
+          .getAction(EditionToolFactory.DRAW_EDITION, ComboItemListener.class)
           .ifPresent(a -> a.setSelectedItem(CalibrationPanel.CALIBRATION_LINE_GRAPHIC));
     }
   }

@@ -9,43 +9,39 @@
  */
 package org.weasis.dicom.sr;
 
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import org.weasis.core.api.gui.util.ActionW;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.editor.image.ImageViewerPlugin;
 import org.weasis.core.ui.util.WtoolBar;
 import org.weasis.dicom.explorer.DicomFieldsView;
 
-@SuppressWarnings("serial")
 public class SrToolBar extends WtoolBar {
 
   public SrToolBar(int index) {
     super(Messages.getString("SrToolBar.title"), index);
 
-    final JButton printButton =
-        new JButton(new ImageIcon(ImageViewerPlugin.class.getResource("/icon/32x32/printer.png")));
+    final JButton printButton = new JButton(ResourceUtil.getToolBarIcon(ActionIcon.PRINT));
     printButton.setToolTipText(Messages.getString("SRContainer.print_layout"));
     printButton.addActionListener(
         e -> {
           ImageViewerPlugin<?> container =
               SRContainer.SR_EVENT_MANAGER.getSelectedView2dContainer();
-          if (container instanceof SRContainer) {
-            ((SRContainer) container).printCurrentView();
+          if (container instanceof SRContainer srContainer) {
+            srContainer.printCurrentView();
           }
         });
     add(printButton);
 
-    final JButton metaButton =
-        new JButton(
-            new ImageIcon(ImageViewerPlugin.class.getResource("/icon/32x32/dcm-header.png")));
+    final JButton metaButton = new JButton(ResourceUtil.getToolBarIcon(ActionIcon.METADATA));
     metaButton.setToolTipText(ActionW.SHOW_HEADER.getTitle());
     metaButton.addActionListener(
         e -> {
           ImageViewerPlugin<?> container =
               SRContainer.SR_EVENT_MANAGER.getSelectedView2dContainer();
-          if (container instanceof SRContainer) {
-            DicomFieldsView.displayHeaderForSpecialElement(
-                container, ((SRContainer) container).getSeries());
+          if (container instanceof SRContainer srContainer) {
+            DicomFieldsView.displayHeaderForSpecialElement(container, srContainer.getSeries());
           }
         });
     add(metaButton);

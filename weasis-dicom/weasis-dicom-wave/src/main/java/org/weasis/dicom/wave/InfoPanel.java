@@ -18,11 +18,11 @@ import javax.swing.BoundedRangeModel;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import org.weasis.core.api.gui.util.ActionW;
-import org.weasis.core.api.gui.util.DecFormater;
-import org.weasis.core.api.gui.util.JMVUtils;
+import org.weasis.core.api.gui.util.DecFormatter;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.gui.util.JSliderW;
 import org.weasis.core.api.gui.util.SliderChangeListener;
-import org.weasis.core.api.util.FontTools;
+import org.weasis.core.api.util.FontItem;
 import org.weasis.core.api.util.LocalUtil;
 import org.weasis.core.ui.editor.image.ImageViewerEventManager;
 import org.weasis.core.ui.editor.image.ImageViewerPlugin;
@@ -30,15 +30,14 @@ import org.weasis.core.ui.model.utils.imp.DefaultViewModel;
 import org.weasis.core.util.StringUtil;
 
 class InfoPanel extends JPanel {
-  private static final long serialVersionUID = -470038831713011257L;
 
-  private JLabel lead = new JLabel(" ");
-  private JLabel maximum = new JLabel();
-  private JLabel minimum = new JLabel();
+  private final JLabel lead = new JLabel(" ");
+  private final JLabel maximum = new JLabel();
+  private final JLabel minimum = new JLabel();
 
-  private JLabel currentLabel = new JLabel();
-  private JLabel miliVolt = new JLabel();
-  private JLabel seconds = new JLabel();
+  private final JLabel currentLabel = new JLabel();
+  private final JLabel milliVolt = new JLabel();
+  private final JLabel seconds = new JLabel();
 
   public InfoPanel(double zoomRatio) {
     GridBagLayout gridBagLayout = new GridBagLayout();
@@ -52,14 +51,14 @@ class InfoPanel extends JPanel {
           public void stateChanged(BoundedRangeModel model) {
             ImageViewerPlugin<?> container =
                 WaveContainer.ECG_EVENT_MANAGER.getSelectedView2dContainer();
-            if (container instanceof WaveContainer) {
-              ((WaveContainer) container).setZoomRatio(toModelValue(model.getValue()));
+            if (container instanceof WaveContainer waveContainer) {
+              waveContainer.setZoomRatio(toModelValue(model.getValue()));
             }
           }
 
           @Override
           public String getValueToDisplay() {
-            return DecFormater.percentTwoDecimal(getRealValue());
+            return DecFormatter.percentTwoDecimal(getRealValue());
           }
 
           @Override
@@ -78,17 +77,17 @@ class InfoPanel extends JPanel {
         };
     sliderListener.enableAction(true);
     JSliderW zoomSlider = sliderListener.createSlider(0, true);
-    JMVUtils.setPreferredWidth(zoomSlider, 250, 250);
+    GuiUtils.setPreferredWidth(zoomSlider, 250, 250);
     GridBagConstraints gbcPanel = new GridBagConstraints();
     gbcPanel.fill = GridBagConstraints.NONE;
     gbcPanel.gridx = 0;
     gbcPanel.gridy = 0;
-    add(zoomSlider.getParent(), gbcPanel);
+    add(zoomSlider, gbcPanel);
 
     JPanel main = new JPanel();
     main.setLayout(new GridLayout(3, 2, 25, 0));
-    lead.setFont(FontTools.getFont12Bold());
-    currentLabel.setFont(FontTools.getFont12Bold());
+    lead.setFont(FontItem.DEFAULT_SEMIBOLD.getFont());
+    currentLabel.setFont(FontItem.DEFAULT_SEMIBOLD.getFont());
 
     main.add(lead);
     main.add(currentLabel);
@@ -97,7 +96,7 @@ class InfoPanel extends JPanel {
     main.add(seconds);
 
     main.add(maximum);
-    main.add(miliVolt);
+    main.add(milliVolt);
 
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.insets = new Insets(0, 15, 0, 10);
@@ -141,11 +140,11 @@ class InfoPanel extends JPanel {
 
   public void setCurrentValues(double sec, double mV) {
     if (sec < 0) {
-      clearValue(currentLabel, seconds, miliVolt);
+      clearValue(currentLabel, seconds, milliVolt);
     } else {
       currentLabel.setText(Messages.getString("InfoPanel.cursor"));
       seconds.setText(MarkerAnnotation.secondFormatter.format(sec));
-      miliVolt.setText(MarkerAnnotation.mVFormatter.format(mV));
+      milliVolt.setText(MarkerAnnotation.mVFormatter.format(mV));
     }
   }
 

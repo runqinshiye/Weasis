@@ -11,12 +11,12 @@ package org.weasis.core.ui.model.utils.imp;
 
 import jakarta.xml.bind.annotation.XmlAttribute;
 import jakarta.xml.bind.annotation.XmlID;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.weasis.core.ui.model.utils.UUIDable;
 
 public class DefaultUUID implements UUIDable {
-  private static final long serialVersionUID = -3178169761934642523L;
 
   private String uuid;
 
@@ -41,26 +41,20 @@ public class DefaultUUID implements UUIDable {
   }
 
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((uuid == null) ? 0 : uuid.hashCode());
-    return result;
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DefaultUUID that = (DefaultUUID) o;
+    return uuid.equals(that.uuid);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (!(obj instanceof DefaultUUID)) {
-      return false;
-    }
-    DefaultUUID other = (DefaultUUID) obj;
-    if (!uuid.equals(other.uuid)) {
-      return false;
-    }
-    return true;
+  public int hashCode() {
+    return Objects.hash(uuid);
   }
 
   @Override

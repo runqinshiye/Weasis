@@ -14,7 +14,7 @@ import java.util.EnumMap;
 import java.util.List;
 import org.dcm4che3.data.Attributes;
 import org.weasis.core.api.media.data.TagW;
-import org.weasis.core.api.media.data.Tagable;
+import org.weasis.core.api.media.data.Taggable;
 import org.weasis.dicom.codec.TagD.Level;
 
 public class TagManager {
@@ -22,11 +22,11 @@ public class TagManager {
 
   public TagManager() {
     this.levelMap = new EnumMap<>(Level.class);
-    this.levelMap.put(Level.PATIENT, new ArrayList<TagW>());
-    this.levelMap.put(Level.STUDY, new ArrayList<TagW>());
-    this.levelMap.put(Level.SERIES, new ArrayList<TagW>());
-    this.levelMap.put(Level.INSTANCE, new ArrayList<TagW>());
-    this.levelMap.put(Level.FRAME, new ArrayList<TagW>());
+    this.levelMap.put(Level.PATIENT, new ArrayList<>());
+    this.levelMap.put(Level.STUDY, new ArrayList<>());
+    this.levelMap.put(Level.SERIES, new ArrayList<>());
+    this.levelMap.put(Level.INSTANCE, new ArrayList<>());
+    this.levelMap.put(Level.FRAME, new ArrayList<>());
   }
 
   public void addTag(int tagID, Level level) {
@@ -53,7 +53,7 @@ public class TagManager {
     return list != null && list.contains(tag);
   }
 
-  public void readTags(Level level, Attributes header, Tagable tags) {
+  public void readTags(Level level, Attributes header, Taggable tags) {
     if (level == null || header == null || tags == null) {
       return;
     }

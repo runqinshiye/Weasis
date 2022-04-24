@@ -19,9 +19,9 @@ import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.assertj.core.api.Fail;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.weasis.core.ui.model.graphic.AbstractGraphic;
 import org.weasis.core.ui.model.graphic.DragGraphic;
 import org.weasis.core.ui.model.graphic.Graphic;
@@ -31,7 +31,7 @@ import org.weasis.core.ui.test.utils.XmlSerialisationHelper;
 /**
  * Graphic helper for general testing. Test serialization/deserialization of basic and complete
  * objects Test copy() of objects It is possible to add more test with methods <code>
- * additionnalTestsFor<<b>name of the test</b>></code>
+ * additionalTestsFor<<b>name of the test</b>></code>
  *
  * @author ylar - Yannick LARVOR (ylarvor@smarwavesa.com)
  * @param <E> Class implementing {@link Graphic}
@@ -42,7 +42,6 @@ public abstract class GraphicTester<E extends Graphic> extends XmlSerialisationH
   protected E graphic;
   protected E deserializedGraphic;
 
-  String tpl;
   String serializationGraphic;
 
   protected List<Point2D> pts;
@@ -57,12 +56,12 @@ public abstract class GraphicTester<E extends Graphic> extends XmlSerialisationH
 
   public abstract E getExpectedDeserializeCompleteGraphic();
 
-  @Before
+  @BeforeEach
   public void setUp() {
     pts = new ArrayList<>();
   }
 
-  protected void checkSerializetion(String expectedGraphic) {
+  protected void checkSerialization(String expectedGraphic) {
     assertThat(serializationGraphic).isEqualTo(TPL_XML_PREFIX + expectedGraphic);
   }
 
@@ -92,7 +91,7 @@ public abstract class GraphicTester<E extends Graphic> extends XmlSerialisationH
         | IllegalAccessException
         | NoSuchMethodException
         | InvocationTargetException e) {
-      Assert.fail("Cannot create instance");
+      Fail.fail("Cannot create instance");
     }
     return null;
   }
@@ -119,12 +118,12 @@ public abstract class GraphicTester<E extends Graphic> extends XmlSerialisationH
 
     String expected = format(getTemplate(), getParameters());
 
-    checkSerializetion(expected);
+    checkSerialization(expected);
     checkDeserialization();
   }
 
   /**
-   * Check an empty object can be reconstruct from an XML correctly.
+   * Check an empty object can be reconstructed from an XML correctly.
    *
    * @since v2.5.0 - ylar - Creation
    */
@@ -157,7 +156,7 @@ public abstract class GraphicTester<E extends Graphic> extends XmlSerialisationH
   }
 
   /**
-   * Check an object with points can be reconstruct from an XML correctly.
+   * Check an object with points can be reconstructed from an XML correctly.
    *
    * @since v2.5.0 - ylar - Creation
    */
@@ -245,11 +244,7 @@ public abstract class GraphicTester<E extends Graphic> extends XmlSerialisationH
     checkDefaultValues(result);
   }
 
-  /**
-   * Check values that never change during serialization
-   *
-   * @param result
-   */
+  /** Check values that never change during serialization */
   protected void checkDefaultValues(Graphic result) {
     assertThat(result.getSelected()).isNotNull().isEqualTo(Graphic.DEFAULT_SELECTED);
   }

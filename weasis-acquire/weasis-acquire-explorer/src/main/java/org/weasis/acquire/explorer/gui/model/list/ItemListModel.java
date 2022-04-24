@@ -15,13 +15,12 @@ import org.weasis.acquire.explorer.core.ItemList;
 import org.weasis.acquire.explorer.core.ItemList.Interval;
 
 public class ItemListModel<T> extends AbstractListModel<T> {
-  private static final long serialVersionUID = 4350497424368257421L;
 
   protected final PropertyChangeListener itemListChangeListener;
   protected ItemList<T> itemList = null;
 
   public ItemListModel() {
-    this(new ItemList<T>());
+    this(new ItemList<>());
   }
 
   public ItemListModel(ItemList<T> newItemList) {
@@ -63,18 +62,14 @@ public class ItemListModel<T> extends AbstractListModel<T> {
 
   protected PropertyChangeListener getPropertyChangeListener() {
     return evt -> {
-      if (evt.getNewValue() instanceof Interval) {
-        Interval interval = (Interval) evt.getNewValue();
+      if (evt.getNewValue() instanceof Interval interval) {
         switch (ItemList.eProperty.valueOf(evt.getPropertyName())) {
-          case INTERVAL_ADDED:
-            fireIntervalAdded(ItemListModel.this, interval.getMin(), interval.getMax());
-            break;
-          case INTERVAL_REMOVED:
-            fireIntervalRemoved(ItemListModel.this, interval.getMin(), interval.getMax());
-            break;
-          case CONTENT_CHANGED:
-            fireContentsChanged(ItemListModel.this, interval.getMin(), interval.getMax());
-            break;
+          case INTERVAL_ADDED -> fireIntervalAdded(
+              ItemListModel.this, interval.getMin(), interval.getMax());
+          case INTERVAL_REMOVED -> fireIntervalRemoved(
+              ItemListModel.this, interval.getMin(), interval.getMax());
+          case CONTENT_CHANGED -> fireContentsChanged(
+              ItemListModel.this, interval.getMin(), interval.getMax());
         }
       }
     };

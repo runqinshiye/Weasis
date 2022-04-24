@@ -14,42 +14,38 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.osgi.service.prefs.Preferences;
-import org.weasis.core.api.gui.util.DecFormater;
+import org.weasis.core.api.gui.util.DecFormatter;
 import org.weasis.core.api.image.OpManager;
 import org.weasis.core.api.image.PseudoColorOp;
 import org.weasis.core.api.image.WindowOp;
 import org.weasis.core.api.image.op.ByteLut;
 import org.weasis.core.api.image.op.ByteLutCollection;
 import org.weasis.core.api.image.util.Unit;
-import org.weasis.core.api.image.util.WindLevelParameters;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.service.BundlePreferences;
+import org.weasis.core.api.util.FontTools;
 import org.weasis.core.ui.editor.image.DisplayByteLut;
 import org.weasis.core.ui.editor.image.HistogramData;
 import org.weasis.core.ui.editor.image.PixelInfo;
 import org.weasis.core.ui.editor.image.ViewButton;
 import org.weasis.core.ui.editor.image.ViewCanvas;
-import org.weasis.core.ui.model.graphic.AbstractGraphicLabel;
 import org.weasis.core.ui.model.utils.imp.DefaultUUID;
 import org.weasis.core.ui.pref.ViewSetting;
 import org.weasis.core.util.StringUtil;
 import org.weasis.opencv.data.PlanarImage;
+import org.weasis.opencv.op.lut.WlParams;
 
 public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultUUID
     implements LayerAnnotation {
-
-  private static final long serialVersionUID = 1338490067849040408L;
 
   public static final String P_ALL_VIEWS = "annotations.all.views";
   public static final AtomicBoolean applyToAllView = new AtomicBoolean(true);
@@ -95,11 +91,17 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
   protected double thickLength = 15.0;
   protected boolean showBottomScale = true;
   protected String name;
+  protected boolean useGlobalPreferences;
 
-  public AbstractInfoLayer(ViewCanvas<E> view2DPane) {
+  protected AbstractInfoLayer(ViewCanvas<E> view2DPane) {
+    this(view2DPane, true);
+  }
+
+  protected AbstractInfoLayer(ViewCanvas<E> view2DPane, boolean useGlobalPreferences) {
     this.view2DPane = view2DPane;
     this.pixelInfoBound = new Rectangle();
     this.preloadingProgressBound = new Rectangle();
+    this.useGlobalPreferences = useGlobalPreferences;
   }
 
   public static void applyPreferences(Preferences prefs) {
@@ -108,9 +110,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
       Preferences pref = p.node("infolayer"); // NON-NLS
       applyToAllView.set(pref.getBoolean("allViews", true));
 
-      Iterator<Entry<String, Boolean>> d = defaultDisplayPreferences.entrySet().iterator();
-      while (d.hasNext()) {
-        Entry<String, Boolean> v = d.next();
+      for (Entry<String, Boolean> v : defaultDisplayPreferences.entrySet()) {
         v.setValue(pref.getBoolean(conversionMapForStorage.get(v.getKey()), v.getValue()));
       }
     }
@@ -122,9 +122,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
       Preferences pref = p.node("infolayer"); // NON-NLS
       BundlePreferences.putBooleanPreferences(pref, "allViews", applyToAllView.get());
 
-      Iterator<Entry<String, String>> d = conversionMapForStorage.entrySet().iterator();
-      while (d.hasNext()) {
-        Entry<String, String> v = d.next();
+      for (Entry<String, String> v : conversionMapForStorage.entrySet()) {
         BundlePreferences.putBooleanPreferences(
             pref, v.getValue(), defaultDisplayPreferences.get(v.getKey()));
       }
@@ -144,7 +142,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
   }
 
   @Override
-  public Boolean isShowBottomScale() {
+  public boolean isShowBottomScale() {
     return showBottomScale;
   }
 
@@ -174,12 +172,12 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
   }
 
   @Override
-  public Integer getBorder() {
+  public int getBorder() {
     return border;
   }
 
   @Override
-  public void setBorder(Integer border) {
+  public void setBorder(int border) {
     this.border = border;
   }
 
@@ -209,8 +207,8 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
   }
 
   @Override
-  public Boolean getDisplayPreferences(String item) {
-    if (applyToAllView.get()) {
+  public boolean getDisplayPreferences(String item) {
+    if (useGlobalPreferences && applyToAllView.get()) {
       return Optional.ofNullable(defaultDisplayPreferences.get(item)).orElse(Boolean.FALSE);
     }
     return Optional.ofNullable(
@@ -219,7 +217,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
   }
 
   @Override
-  public Boolean setDisplayPreferencesValue(String displayItem, Boolean selected) {
+  public boolean setDisplayPreferencesValue(String displayItem, boolean selected) {
     Boolean selected2 = getDisplayPreferences(displayItem);
     displayPreferences.put(displayItem, selected);
     return !Objects.equals(selected, selected2);
@@ -251,13 +249,10 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     return r;
   }
 
-  public void drawLUT(Graphics2D g2, Rectangle bound, float midfontHeight) {
-    WindLevelParameters p = getWinLeveParameters();
+  public void drawLUT(Graphics2D g2, Rectangle bound, float midFontHeight) {
+    WlParams p = getWinLeveParameters();
     if (p != null && bound.height > 350) {
       DisplayByteLut lut = getLut(p);
-      if (lut == null) {
-        return;
-      }
       byte[][] table = lut.getLutTable();
       float length = table[0].length;
 
@@ -299,15 +294,16 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
       double binFactor = (pixMax - pixMin) / (length - 1);
       double stepWindow = (pixMax - pixMin) / separation;
 
+      float shiftY = midFontHeight / 2f - g2.getFontMetrics().getDescent();
       Line2D.Float line = new Line2D.Float();
       for (int i = 0; i <= separation; i++) {
         float posY = y + i * step;
         line.setLine(x - 5f, posY, x - 1f, posY);
         g2.draw(line);
         double level = data.getLayer().pixelToRealValue((separation - i) * stepWindow + pixMin);
-        String str = DecFormater.allNumber(level);
-        AbstractGraphicLabel.paintFontOutline(
-            g2, str, x - g2.getFontMetrics().stringWidth(str) - 7, posY + midfontHeight);
+        String str = DecFormatter.allNumber(level);
+        FontTools.paintFontOutline(
+            g2, str, x - g2.getFontMetrics().stringWidth(str) - 7, posY + shiftY);
       }
       rect.setRect(x - 1f, y - 1f, 21f, length + 2f);
       g2.draw(rect);
@@ -323,7 +319,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     }
   }
 
-  private WindLevelParameters getWinLeveParameters() {
+  private WlParams getWinLeveParameters() {
     if (view2DPane != null) {
       OpManager dispOp = view2DPane.getDisplayOpManager();
       WindowOp wlOp = (WindowOp) dispOp.getNode(WindowOp.OP_NAME);
@@ -334,7 +330,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     return null;
   }
 
-  private DisplayByteLut getLut(WindLevelParameters p) {
+  private DisplayByteLut getLut(WlParams p) {
     DisplayByteLut lut = null;
     if (view2DPane != null) {
       int channels = view2DPane.getSourceImage().channels();
@@ -374,15 +370,14 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
 
     double scale = image.getPixelSize() / zoomFactor;
     double scaleSizex =
-        ajustShowScale(
+        adjustShowScale(
             scale,
             (int) Math.min(zoomFactor * source.width() * image.getRescaleX(), bound.width / 2.0));
 
     if (showBottomScale && scaleSizex > 50.0d) {
       Unit[] unit = {image.getPixelSpacingUnit()};
-      String str = ajustLengthDisplay(scaleSizex * scale, unit);
+      String str = adjustLengthDisplay(scaleSizex * scale, unit);
       g2d.setStroke(new BasicStroke(1.0F));
-      g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       g2d.setPaint(Color.BLACK);
 
       double posx = bound.width / 2.0 - scaleSizex / 2.0;
@@ -393,7 +388,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
       g2d.draw(getOutLine(line));
       line.setLine(posx + scaleSizex, posy - thickLength, posx + scaleSizex, posy);
       g2d.draw(getOutLine(line));
-      int divisor = str.indexOf("5") == -1 ? str.indexOf("2") == -1 ? 10 : 2 : 5;
+      int divisor = !str.contains("5") ? !str.contains("2") ? 10 : 2 : 5;
       double midThick = thickLength * 2.0 / 3.0;
       double smallThick = thickLength / 3.0;
       double divSquare = scaleSizex / divisor;
@@ -434,30 +429,27 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
           }
         }
       }
-      g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_DEFAULT);
       String pixSizeDesc = image.getPixelSizeCalibrationDescription();
       if (StringUtil.hasText(pixSizeDesc)) {
-        AbstractGraphicLabel.paintFontOutline(
+        FontTools.paintFontOutline(
             g2d, pixSizeDesc, (float) (posx + scaleSizex + 5), (float) posy - fontHeight);
       }
       str += " " + unit[0].getAbbreviation();
-      AbstractGraphicLabel.paintFontOutline(
-          g2d, str, (float) (posx + scaleSizex + 5), (float) posy);
+      FontTools.paintFontOutline(g2d, str, (float) (posx + scaleSizex + 5), (float) posy);
     }
 
     double scaleSizeY =
-        ajustShowScale(
+        adjustShowScale(
             scale,
             (int) Math.min(zoomFactor * source.height() * image.getRescaleY(), bound.height / 2.0));
 
     if (scaleSizeY > 30.0d) {
       Unit[] unit = {image.getPixelSpacingUnit()};
-      String str = ajustLengthDisplay(scaleSizeY * scale, unit);
+      String str = adjustLengthDisplay(scaleSizeY * scale, unit);
 
       float strokeWidth = g2d.getFont().getSize() / 15.0f;
-      strokeWidth = strokeWidth < 1.0f ? 1.0f : strokeWidth;
+      strokeWidth = Math.max(strokeWidth, 1.0f);
       g2d.setStroke(new BasicStroke(strokeWidth));
-      g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       g2d.setPaint(Color.black);
 
       double posx = border - 1.5f; // -1.5 for outline
@@ -468,7 +460,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
       g2d.draw(getOutLine(line));
       line.setLine(posx, posy + scaleSizeY, posx + thickLength, posy + scaleSizeY);
       g2d.draw(getOutLine(line));
-      int divisor = str.indexOf("5") == -1 ? str.indexOf("2") == -1 ? 10 : 2 : 5;
+      int divisor = !str.contains("5") ? !str.contains("2") ? 10 : 2 : 5;
       double divSquare = scaleSizeY / divisor;
       double midThick = thickLength * 2.0 / 3.0;
       double smallThick = thickLength / 3.0;
@@ -509,14 +501,12 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
         }
       }
 
-      g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_DEFAULT);
-
-      AbstractGraphicLabel.paintFontOutline(
+      FontTools.paintFontOutline(
           g2d, str + " " + unit[0].getAbbreviation(), (int) posx, (int) (posy - 5 * strokeWidth));
     }
   }
 
-  private double ajustShowScale(double ratio, int maxLength) {
+  public static double adjustShowScale(double ratio, int maxLength) {
     int digits = (int) ((Math.log(maxLength * ratio) / Math.log(10)) + 1);
     double scaleLength = Math.pow(10, digits);
     double scaleSize = scaleLength / ratio;
@@ -533,7 +523,7 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     return scaleSize;
   }
 
-  public double findGeometricSuite(double length) {
+  public static double findGeometricSuite(double length) {
     int shift = (int) ((Math.log(length) / Math.log(10)) + 0.1);
     int firstDigit = (int) (length / Math.pow(10, shift) + 0.5);
     if (firstDigit == 5) {
@@ -542,41 +532,41 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     return 2.0;
   }
 
-  public String ajustLengthDisplay(double scaleLength, Unit[] unit) {
-    double ajustScaleLength = scaleLength;
+  public static String adjustLengthDisplay(double scaleLength, Unit[] unit) {
+    double adjustScaleLength = scaleLength;
 
-    Unit ajustUnit = unit[0];
+    Unit adjustUnit = unit[0];
 
     if (scaleLength < 1.0) {
-      Unit down = ajustUnit;
+      Unit down = adjustUnit;
       while ((down = down.getDownUnit()) != null) {
         double length = scaleLength * down.getConversionRatio(unit[0].getConvFactor());
         if (length > 1) {
-          ajustUnit = down;
-          ajustScaleLength = length;
+          adjustUnit = down;
+          adjustScaleLength = length;
           break;
         }
       }
     } else if (scaleLength > 10.0) {
-      Unit up = ajustUnit;
+      Unit up = adjustUnit;
       while ((up = up.getUpUnit()) != null) {
         double length = scaleLength * up.getConversionRatio(unit[0].getConvFactor());
         if (length < 1) {
           break;
         }
-        ajustUnit = up;
-        ajustScaleLength = length;
+        adjustUnit = up;
+        adjustScaleLength = length;
       }
     }
     // Trick to keep the value as a return parameter
-    unit[0] = ajustUnit;
-    if (ajustScaleLength < 1.0) {
-      return ajustScaleLength < 0.001
-          ? DecFormater.scientificFormat(ajustScaleLength)
-          : DecFormater.fourDecimal(ajustScaleLength);
+    unit[0] = adjustUnit;
+    if (adjustScaleLength < 1.0) {
+      return adjustScaleLength < 0.001
+          ? DecFormatter.scientificFormat(adjustScaleLength)
+          : DecFormatter.fourDecimal(adjustScaleLength);
     }
-    return ajustScaleLength > 50000.0
-        ? DecFormater.scientificFormat(ajustScaleLength)
-        : DecFormater.twoDecimal(ajustScaleLength);
+    return adjustScaleLength > 50000.0
+        ? DecFormatter.scientificFormat(adjustScaleLength)
+        : DecFormatter.twoDecimal(adjustScaleLength);
   }
 }

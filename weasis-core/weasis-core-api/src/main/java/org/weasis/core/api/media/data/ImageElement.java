@@ -19,21 +19,28 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import org.opencv.core.Core.MinMaxLocResult;
+import org.opencv.core.CvType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.ActionW;
-import org.weasis.core.api.gui.util.MathUtil;
-import org.weasis.core.api.image.LutShape;
 import org.weasis.core.api.image.OpManager;
+import org.weasis.core.api.image.SimpleOpManager;
+import org.weasis.core.api.image.WindowOp;
 import org.weasis.core.api.image.ZoomOp;
 import org.weasis.core.api.image.cv.CvUtil;
 import org.weasis.core.api.image.measure.MeasurementsAdapter;
 import org.weasis.core.api.image.util.Unit;
 import org.weasis.core.api.util.ThreadUtil;
+import org.weasis.core.util.MathUtil;
+import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
 import org.weasis.opencv.op.ImageProcessor;
+import org.weasis.opencv.op.lut.DefaultWlPresentation;
+import org.weasis.opencv.op.lut.LutShape;
+import org.weasis.opencv.op.lut.WlParams;
+import org.weasis.opencv.op.lut.WlPresentation;
 
 public class ImageElement extends MediaElement {
   private static final Logger LOGGER = LoggerFactory.getLogger(ImageElement.class);
@@ -42,7 +49,7 @@ public class ImageElement extends MediaElement {
       ThreadUtil.buildNewSingleThreadExecutor("Image Loader"); // NON-NLS
 
   private static final NativeCache<ImageElement, PlanarImage> mCache =
-      new NativeCache<ImageElement, PlanarImage>(Runtime.getRuntime().maxMemory() / 2) {
+      new NativeCache<>(Runtime.getRuntime().maxMemory() / 2) {
 
         @Override
         protected void afterEntryRemove(ImageElement key, PlanarImage img) {
@@ -82,32 +89,22 @@ public class ImageElement extends MediaElement {
   protected void findMinMaxValues(PlanarImage img, boolean exclude8bitImage)
       throws OutOfMemoryError {
     // This function can be called several times from the inner class Load.
-    // Do not compute min and max it has already be done
+    // Do not compute min and max it has already been done
 
     if (img != null && !isImageAvailable()) {
-
-      if (ImageConversion.convertToDataType(img.type()) == DataBuffer.TYPE_BYTE
-          && exclude8bitImage) {
-        this.minPixelValue = 0.0;
-        this.maxPixelValue = 255.0;
-      } else {
-        MinMaxLocResult val = ImageProcessor.findMinMaxValues(img.toMat());
-        if (val != null) {
-          this.minPixelValue = val.minVal;
-          this.maxPixelValue = val.maxVal;
-        }
-
-        // Handle special case when min and max are equal, ex. black image
-        // + 1 to max enables to display the correct value
-        if (this.minPixelValue.equals(this.maxPixelValue)) {
-          this.maxPixelValue += 1.0;
-        }
-      }
+      MinMaxLocResult res = ImageProcessor.findRawMinMaxValues(img, exclude8bitImage);
+      this.minPixelValue = res.minVal;
+      this.maxPixelValue = res.maxVal;
     }
   }
 
   public boolean isImageAvailable() {
     return maxPixelValue != null && minPixelValue != null;
+  }
+
+  public void resetImageAvailable() {
+    this.maxPixelValue = null;
+    this.minPixelValue = null;
   }
 
   protected boolean isGrayImage(RenderedImage source) {
@@ -116,27 +113,27 @@ public class ImageElement extends MediaElement {
         && !(source.getColorModel() instanceof IndexColorModel);
   }
 
-  public LutShape getDefaultShape(boolean pixelPadding) {
+  public LutShape getDefaultShape(WlPresentation wlp) {
     return LutShape.LINEAR;
   }
 
-  public double getDefaultWindow(boolean pixelPadding) {
-    return getMaxValue(null, pixelPadding) - getMinValue(null, pixelPadding);
+  public double getDefaultWindow(WlPresentation wlp) {
+    return getMaxValue(wlp) - getMinValue(wlp);
   }
 
-  public double getDefaultLevel(boolean pixelPadding) {
+  public double getDefaultLevel(WlPresentation wlp) {
     if (isImageAvailable()) {
-      double min = getMinValue(null, pixelPadding);
-      return min + (getMaxValue(null, pixelPadding) - min) / 2.0;
+      double min = getMinValue(wlp);
+      return min + (getMaxValue(wlp) - min) / 2.0;
     }
     return 0.0f;
   }
 
-  public double getMaxValue(TagReadable tagable, boolean pixelPadding) {
+  public double getMaxValue(WlPresentation wlp) {
     return getPixelMax();
   }
 
-  public double getMinValue(TagReadable tagable, boolean pixelPadding) {
+  public double getMinValue(WlPresentation wlp) {
     return getPixelMin();
   }
 
@@ -189,7 +186,7 @@ public class ImageElement extends MediaElement {
   }
 
   public ZoomOp getRectifyAspectRatioZoomOp() {
-    // Rectify non square pixel image in the first operation
+    // Rectify non-square pixel image in the first operation
     if (MathUtil.isDifferent(pixelSizeX, pixelSizeY)) {
       ZoomOp node = new ZoomOp();
       node.setName("rectifyAspectRatio");
@@ -220,19 +217,11 @@ public class ImageElement extends MediaElement {
     return pixelSizeCalibrationDescription;
   }
 
-  public Number pixelToRealValue(Number pixelValue, TagReadable tagable, boolean pixelPadding) {
+  public Number pixelToRealValue(Number pixelValue, WlPresentation wlp) {
     return pixelValue;
   }
 
-  public LookupTableCV getVOILookup(
-      TagReadable tagable,
-      Double window,
-      Double level,
-      Double minLevel,
-      Double maxLevel,
-      LutShape shape,
-      boolean fillLutOutside,
-      boolean pixelPadding) {
+  public LookupTableCV getVOILookup(WlParams wl) {
     return null;
   }
 
@@ -265,12 +254,10 @@ public class ImageElement extends MediaElement {
     if (image != null) {
       PlanarImage img = getImage();
       PlanarImage img2 = image.getImage();
-      if (img != null
+      return img != null
           && img2 != null
           && getRescaleWidth(img.width()) == image.getRescaleWidth(img2.width())
-          && getRescaleHeight(img.height()) == image.getRescaleHeight(img2.height())) {
-        return true;
-      }
+          && getRescaleHeight(img.height()) == image.getRescaleHeight(img2.height());
     }
     return false;
   }
@@ -300,8 +287,9 @@ public class ImageElement extends MediaElement {
         (params == null) ? null : (Boolean) params.get(ActionW.IMAGE_PIX_PADDING.cmd());
 
     pixelPadding = (pixelPadding == null) ? Boolean.TRUE : pixelPadding;
-    window = (window == null) ? getDefaultWindow(pixelPadding) : window;
-    level = (level == null) ? getDefaultLevel(pixelPadding) : level;
+    DefaultWlPresentation pr = new DefaultWlPresentation(null, pixelPadding);
+    window = (window == null) ? getDefaultWindow(pr) : window;
+    level = (level == null) ? getDefaultLevel(pr) : level;
 
     return getDefaultRenderedImage(this, imageSource, window, level, pixelPadding);
   }
@@ -309,13 +297,6 @@ public class ImageElement extends MediaElement {
   /**
    * Apply window/level to the image source. Note: this method cannot be used with a
    * DicomImageElement as image parameter.
-   *
-   * @param image
-   * @param source
-   * @param window
-   * @param level
-   * @param pixelPadding
-   * @return
    */
   public static PlanarImage getDefaultRenderedImage(
       ImageElement image, PlanarImage source, double window, double level, boolean pixelPadding) {
@@ -343,21 +324,45 @@ public class ImageElement extends MediaElement {
     return ImageProcessor.rescaleToByte(source.toMat(), slope, yInt);
   }
 
-  public static PlanarImage getDefaultRenderedImage(
-      ImageElement image, PlanarImage source, boolean pixelPadding) {
-    return getDefaultRenderedImage(
-        image,
-        source,
-        image.getDefaultWindow(pixelPadding),
-        image.getDefaultLevel(pixelPadding),
-        true);
+  public SimpleOpManager buildSimpleOpManager(
+      boolean img16, boolean padding, boolean shutter, boolean overlay, double ratio) {
+    return buildSimpleOpManager(img16, padding, ratio);
   }
 
-  /**
-   * Returns the full size, original image. Returns null if the image is not loaded.
-   *
-   * @return
-   */
+  public SimpleOpManager buildSimpleOpManager(boolean img16, boolean padding, double ratio) {
+    SimpleOpManager manager = new SimpleOpManager();
+    PlanarImage image = getImage(null);
+    if (image != null) {
+      if (img16) {
+        if (CvType.depth(image.type()) == CvType.CV_16S) {
+          ImageCV dstImg = new ImageCV();
+          image.toImageCV().convertTo(dstImg, CvType.CV_16UC(image.channels()), 1.0, 32768);
+          image = dstImg;
+        }
+      } else {
+        manager.addImageOperationAction(new WindowOp());
+        manager.setParamValue(WindowOp.OP_NAME, WindowOp.P_IMAGE_ELEMENT, this);
+        manager.setParamValue(WindowOp.OP_NAME, ActionW.IMAGE_PIX_PADDING.cmd(), padding);
+      }
+
+      ZoomOp node = new ZoomOp();
+      node.setParam(ZoomOp.P_RATIO_X, getRescaleX() * ratio);
+      node.setParam(ZoomOp.P_RATIO_Y, getRescaleY() * ratio);
+      node.setParam(ZoomOp.P_INTERPOLATION, ZoomOp.Interpolation.BICUBIC);
+      manager.addImageOperationAction(node);
+
+      manager.setFirstNode(image);
+    }
+    return manager;
+  }
+
+  public static PlanarImage getDefaultRenderedImage(
+      ImageElement image, PlanarImage source, WlParams wl) {
+    return getDefaultRenderedImage(
+        image, source, image.getDefaultWindow(wl), image.getDefaultLevel(wl), true);
+  }
+
+  /** Returns the full size, original image. Returns null if the image is not loaded. */
   public PlanarImage getImage(OpManager manager) {
     return getImage(manager, true);
   }
@@ -395,6 +400,9 @@ public class ImageElement extends MediaElement {
       if (manager.getFirstNodeInputImage() != cacheImage || manager.needProcessing()) {
         manager.setFirstNode(cacheImage);
         img = manager.process();
+        // Compute again the min/max with the manager (preprocessing)
+        resetImageAvailable();
+        findMinMaxValues(img, true);
       }
 
       if (img != null) {
@@ -423,9 +431,9 @@ public class ImageElement extends MediaElement {
         // We don't need the result, so cancel the task too
         future.cancel(true);
       } catch (ExecutionException e) {
-        if (e.getCause() instanceof OutOfMemoryError) {
+        if (e.getCause() instanceof OutOfMemoryError memoryError) {
           setAsLoaded();
-          throw (OutOfMemoryError) e.getCause();
+          throw memoryError;
         } else {
           readable = false;
           LOGGER.error("Cannot read pixel data!: {}", this, e);
@@ -446,12 +454,6 @@ public class ImageElement extends MediaElement {
 
   public boolean isReadable() {
     return readable;
-  }
-
-  @Override
-  public void dispose() {
-    // Let the soft reference mechanism dispose the display image
-    super.dispose();
   }
 
   class Load implements Callable<PlanarImage> {

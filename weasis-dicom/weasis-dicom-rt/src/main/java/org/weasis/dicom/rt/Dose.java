@@ -38,7 +38,6 @@ import org.weasis.opencv.op.ImageConversion;
  * @author Nicolas Roduit
  */
 public class Dose extends HashMap<Integer, Dvh> {
-  private static final long serialVersionUID = -1659662753587452881L;
 
   private String sopInstanceUid;
   private double[] imagePositionPatient;
@@ -61,9 +60,8 @@ public class Dose extends HashMap<Integer, Dvh> {
   private Pair<double[], double[]> dosePixLUT;
 
   public Dose() {
-    // Default threshold in mm to determine the max difference from slicePosition to closest dose
-    // frame without
-    // interpolation
+    // Default threshold in mm to determine the max difference from slicePosition to the closest
+    // dose frame without interpolation
     this.doseSlicePositionThreshold = 0.5;
     this.doseMax = 0.0;
   }

@@ -31,12 +31,13 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.weasis.core.api.gui.util.JMVUtils;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.service.BundlePreferences;
 import org.weasis.core.api.util.ResourceUtil;
 import org.weasis.core.util.FileUtil;
 import org.weasis.core.util.StringUtil;
 import org.weasis.dicom.codec.TransferSyntax;
+import org.weasis.dicom.codec.utils.DicomResource;
 import org.weasis.dicom.explorer.Messages;
 import org.weasis.dicom.explorer.pref.node.DicomWebNode.WebType;
 
@@ -54,7 +55,8 @@ public abstract class AbstractDicomNode {
   public enum Type {
     DICOM(Messages.getString("AbstractDicomNode.dcm_node"), "dicomNodes.xml"),
     DICOM_CALLING(
-        Messages.getString("AbstractDicomNode.dcm_calling_node"), "dicomCallingNodes.xml"),
+        Messages.getString("AbstractDicomNode.dcm_calling_node"),
+        DicomResource.CALLING_NODES.getPath()),
     PRINTER(Messages.getString("AbstractDicomNode.dcm_printer"), "dicomPrinterNodes.xml"),
     WEB(Messages.getString("AbstractDicomNode.dcm_web_node"), "dicomWebNodes.xml");
 
@@ -98,7 +100,7 @@ public abstract class AbstractDicomNode {
     CGET("C-GET"), // NON-NLS
     WADO("WADO-URI"); // NON-NLS
 
-    String title;
+    final String title;
 
     RetrieveType(String title) {
       this.title = title;
@@ -117,7 +119,7 @@ public abstract class AbstractDicomNode {
   private UsageType usageType;
   private boolean local;
 
-  public AbstractDicomNode(String description, Type type, UsageType usageType) {
+  protected AbstractDicomNode(String description, Type type, UsageType usageType) {
     if (type == null) {
       throw new IllegalArgumentException("Type cannot be null");
     }
@@ -275,12 +277,8 @@ public abstract class AbstractDicomNode {
         int eventType;
         while (xmler.hasNext()) {
           eventType = xmler.next();
-          switch (eventType) {
-            case XMLStreamConstants.START_ELEMENT:
-              readDicomNodes(xmler, list, type, local, usage, webType);
-              break;
-            default:
-              break;
+          if (eventType == XMLStreamConstants.START_ELEMENT) {
+            readDicomNodes(xmler, list, type, local, usage, webType);
           }
         }
       } catch (Exception e) {
@@ -303,12 +301,8 @@ public abstract class AbstractDicomNode {
     if (T_NODES.equals(key)) {
       while (xmler.hasNext()) {
         int eventType = xmler.next();
-        switch (eventType) {
-          case XMLStreamConstants.START_ELEMENT:
-            readDicomNode(xmler, list, type, local, usage, webType);
-            break;
-          default:
-            break;
+        if (eventType == XMLStreamConstants.START_ELEMENT) {
+          readDicomNode(xmler, list, type, local, usage, webType);
         }
       }
     }
@@ -381,7 +375,7 @@ public abstract class AbstractDicomNode {
               (JComboBox<DefaultDicomNode>) comboBox,
               type);
     }
-    JMVUtils.showCenterScreen(dialog, comboBox);
+    GuiUtils.showCenterScreen(dialog, comboBox);
   }
 
   public static void editNodeActionPerformed(JComboBox<? extends AbstractDicomNode> comboBox) {
@@ -406,7 +400,7 @@ public abstract class AbstractDicomNode {
                   (JComboBox<DefaultDicomNode>) comboBox,
                   type);
         }
-        JMVUtils.showCenterScreen(dialog, comboBox);
+        GuiUtils.showCenterScreen(dialog, comboBox);
       } else {
         JOptionPane.showMessageDialog(
             comboBox,
@@ -446,8 +440,7 @@ public abstract class AbstractDicomNode {
 
   public static void addTooltipToComboList(final JComboBox<? extends AbstractDicomNode> combo) {
     Object comp = combo.getUI().getAccessibleChild(combo, 0);
-    if (comp instanceof BasicComboPopup) {
-      final BasicComboPopup popup = (BasicComboPopup) comp;
+    if (comp instanceof final BasicComboPopup popup) {
       popup
           .getList()
           .getSelectionModel()

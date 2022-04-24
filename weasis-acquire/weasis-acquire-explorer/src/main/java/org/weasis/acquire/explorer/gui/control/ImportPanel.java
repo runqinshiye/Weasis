@@ -9,7 +9,6 @@
  */
 package org.weasis.acquire.explorer.gui.control;
 
-import java.awt.Dimension;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -24,20 +23,18 @@ import org.weasis.acquire.explorer.gui.central.ImageGroupPane;
 import org.weasis.acquire.explorer.gui.dialog.AcquireImportDialog;
 import org.weasis.acquire.explorer.gui.list.AcquireThumbnailListPane;
 import org.weasis.core.api.gui.task.CircularProgressBar;
-import org.weasis.core.api.gui.util.JMVUtils;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.gui.util.WinUtil;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.MediaElement;
-import org.weasis.core.api.util.FontTools;
 import org.weasis.core.api.util.ThreadUtil;
 
 public class ImportPanel extends JPanel {
-  private static final long serialVersionUID = -8658686020451614960L;
 
   public static final ExecutorService IMPORT_IMAGES =
       ThreadUtil.buildNewSingleThreadExecutor("ImportImage");
 
-  private JButton importBtn = new JButton(Messages.getString("ImportPanel.import"));
+  private final JButton importBtn = new JButton(Messages.getString("ImportPanel.import"));
   private final CircularProgressBar progressBar = new CircularProgressBar(0, 100);
 
   private final ImageGroupPane centralPane;
@@ -49,16 +46,14 @@ public class ImportPanel extends JPanel {
   public ImportPanel(AcquireThumbnailListPane<MediaElement> mainPanel, ImageGroupPane centralPane) {
     this.centralPane = centralPane;
 
-    importBtn.setPreferredSize(new Dimension(150, 40));
-    importBtn.setFont(FontTools.getFont12Bold());
-
+    importBtn.setPreferredSize(GuiUtils.getDimension(150, 40));
     importBtn.addActionListener(
         e -> {
           List<ImageElement> selected =
               AcquireManager.toImageElement(mainPanel.getSelectedValuesList());
           if (!selected.isEmpty()) {
             AcquireImportDialog dialog = new AcquireImportDialog(this, selected);
-            JMVUtils.showCenterScreen(dialog, WinUtil.getParentWindow(mainPanel));
+            GuiUtils.showCenterScreen(dialog, WinUtil.getParentWindow(mainPanel));
           }
         });
     add(importBtn);
@@ -74,9 +69,9 @@ public class ImportPanel extends JPanel {
   public void importImageList(
       Collection<ImageElement> toImport, SeriesGroup searchedSeries, int maxRangeInMinutes) {
 
-    ImportTask imporTask = new ImportTask(toImport, searchedSeries, maxRangeInMinutes);
+    ImportTask importTask = new ImportTask(toImport, searchedSeries, maxRangeInMinutes);
 
-    imporTask.addPropertyChangeListener(
+    importTask.addPropertyChangeListener(
         evt -> {
           if ("progress".equals(evt.getPropertyName())) {
             int progress = (Integer) evt.getNewValue();
@@ -96,7 +91,7 @@ public class ImportPanel extends JPanel {
           }
         });
 
-    IMPORT_IMAGES.execute(imporTask);
+    IMPORT_IMAGES.execute(importTask);
   }
 
   public boolean isLoading() {

@@ -14,12 +14,11 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Composite;
 import java.awt.Container;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
@@ -36,22 +35,22 @@ import java.awt.event.MouseListener;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JViewport;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.AppProperties;
 import org.weasis.core.api.gui.util.GhostGlassPane;
+import org.weasis.core.api.gui.util.GuiUtils;
+import org.weasis.core.api.gui.util.GuiUtils.IconColor;
 import org.weasis.core.api.image.OpManager;
 import org.weasis.core.api.media.data.MediaSeries.MEDIA_POSITION;
+import org.weasis.core.api.util.FontItem;
 import org.weasis.core.api.util.FontTools;
 import org.weasis.core.util.FileUtil;
 
@@ -61,11 +60,10 @@ public class SeriesThumbnail extends Thumbnail
         DragSourceListener,
         DragSourceMotionListener,
         FocusListener {
-  private static final long serialVersionUID = 2359304176364341395L;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SeriesThumbnail.class);
 
-  private static final int BUTTON_SIZE_HALF = 7;
+  private static final int BUTTON_SIZE_HALF = GuiUtils.getScaleLength(7);
   private static final Polygon startButton =
       new Polygon(
           new int[] {0, 2 * BUTTON_SIZE_HALF, 0},
@@ -79,13 +77,9 @@ public class SeriesThumbnail extends Thumbnail
       AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f);
 
   private MediaSeries.MEDIA_POSITION mediaPosition = MediaSeries.MEDIA_POSITION.MIDDLE;
-  // Get the closest cursor size regarding to the platform
-  private final Border onMouseOverBorderFocused =
-      new CompoundBorder(new EmptyBorder(2, 2, 0, 2), new LineBorder(Color.orange, 2));
-  private final Border onMouseOverBorder =
-      new CompoundBorder(new EmptyBorder(2, 2, 0, 2), new LineBorder(new Color(255, 224, 178), 2));
-  private final Border outMouseOverBorder =
-      new CompoundBorder(new EmptyBorder(2, 2, 0, 2), BorderFactory.createEtchedBorder());
+
+  private final Border thumbnailBorder = new EmptyBorder(5, 5, 0, 5);
+
   private JProgressBar progressBar;
   private final MediaSeries<? extends MediaElement> series;
   private Point dragPressed = null;
@@ -109,8 +103,9 @@ public class SeriesThumbnail extends Thumbnail
       }
     }
     /*
-     * Do not remove the image from the cache after building the thumbnail when the series is associated to a
-     * explorerModel (stream should be closed at least when closing the application or when free the cache).
+     * Do not remove the image from the cache after building the thumbnail when the series is
+     * associated to a explorerModel (stream should be closed at least when closing the application
+     * or when free the cache).
      */
     init(media, series.getTagValue(TagW.ExplorerModel) != null, null);
   }
@@ -118,7 +113,7 @@ public class SeriesThumbnail extends Thumbnail
   @Override
   protected void init(MediaElement media, boolean keepMediaCache, OpManager opManager) {
     super.init(media, keepMediaCache, opManager);
-    setBorder(outMouseOverBorder);
+    setBorder(thumbnailBorder);
   }
 
   public JProgressBar getProgressBar() {
@@ -168,11 +163,7 @@ public class SeriesThumbnail extends Thumbnail
     MediaElement media = series.getMedia(position, null, null);
     // Handle special case for DICOM SR
     if (media == null) {
-      List<MediaElement> specialElements =
-          (List<MediaElement>) series.getTagValue(TagW.DicomSpecialElementList);
-      if (specialElements != null && !specialElements.isEmpty()) {
-        media = specialElements.get(0);
-      }
+      media = series.getFirstSpecialElement();
     }
     if (file != null || media != null) {
       mediaPosition = position;
@@ -198,12 +189,15 @@ public class SeriesThumbnail extends Thumbnail
   }
 
   public synchronized void setThumbnailSize(int thumbnailSize) {
-    boolean update = this.thumbnailSize != thumbnailSize;
-    if (update) {
-      Object media = series.getMedia(mediaPosition, null, null);
-      this.thumbnailSize = thumbnailSize;
+    int size = GuiUtils.getScaleLength(thumbnailSize);
+    if (this.thumbnailSize != size) {
+      this.thumbnailSize = GuiUtils.getScaleLength(size);
+      MediaElement media = series.getMedia(mediaPosition, null, null);
+      if (media == null) {
+        media = series.getFirstSpecialElement();
+      }
       removeImageFromCache();
-      buildThumbnail((MediaElement) media, series.getTagValue(TagW.ExplorerModel) != null, null);
+      buildThumbnail(media, series.getTagValue(TagW.ExplorerModel) != null, null);
     }
   }
 
@@ -317,80 +311,89 @@ public class SeriesThumbnail extends Thumbnail
   @Override
   protected void drawOverIcon(Graphics2D g2d, int x, int y, int width, int height) {
     if (dragPressed == null) {
-      setBorder(
-          series.isSelected()
-              ? series.isFocused() ? onMouseOverBorderFocused : onMouseOverBorder
-              : outMouseOverBorder);
+      Object[] oldRenderingHints = GuiUtils.setRenderingHints(g2d, true, false, true);
+      int inset = GuiUtils.getScaleLength(2);
       if (series.isOpen()) {
+        if (series.isSelected() && series.isFocused()) {
+          g2d.setPaint(IconColor.ACTIONS_YELLOW.getColor());
+        } else {
+          g2d.setPaint(IconColor.ACTIONS_GREEN.getColor());
+        }
+        int size = inset * 5;
+        g2d.fillArc(x + inset, y + inset, size, size, 0, 360);
         g2d.setPaint(Color.BLACK);
-        g2d.fillRect(x, y, 11, 11);
-        g2d.setPaint(Color.GREEN);
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.fillArc(x + 2, y + 2, 7, 7, 0, 360);
-        g2d.setRenderingHint(
-            RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_DEFAULT);
+        g2d.drawArc(x + inset, y + inset, size, size, 0, 360);
       }
 
-      g2d.setFont(FontTools.getFont10());
-      int fontHeight = (int) (FontTools.getAccurateFontHeight(g2d) + 1.5f);
+      g2d.setFont(
+          width > DEFAULT_SIZE
+              ? FontItem.MINI_SEMIBOLD.getFont()
+              : FontItem.MICRO_SEMIBOLD.getFont());
+      FontMetrics fontMetrics = g2d.getFontMetrics();
+      final int fontHeight = fontMetrics.getHeight();
+      int descent = g2d.getFontMetrics().getDescent();
       Integer splitNb = (Integer) series.getTagValue(TagW.SplitSeriesNumber);
       if (splitNb != null) {
         String nb = "#" + splitNb;
         int w = g2d.getFontMetrics().stringWidth(nb);
-        g2d.setPaint(Color.BLACK);
-        int sx = x + width - 2 - w;
-        g2d.fillRect(sx - 2, y, w + 4, fontHeight);
-        g2d.setPaint(Color.ORANGE);
-        g2d.drawString(nb, sx, y + fontHeight - 3);
+        int sx = x + width - inset - w;
+        FontTools.paintColorFontOutline(
+            g2d,
+            nb,
+            sx,
+            y + inset + fontHeight - (float) descent,
+            IconColor.ACTIONS_BLUE.getColor());
       }
 
-      String nbImg = "[" + series.size(null) + "]";
-      int hbleft = y + height - 3;
-      int w = g2d.getFontMetrics().stringWidth(nbImg);
-      g2d.setPaint(Color.BLACK);
-      g2d.fillRect(x, y + height - fontHeight, w + 4, fontHeight);
-      g2d.setPaint(Color.ORANGE);
-      g2d.drawString(nbImg, x + 2, hbleft);
+      int number = series.size(null);
+      if (number > 0) {
+        FontTools.paintColorFontOutline(
+            g2d,
+            String.valueOf(number),
+            x + (float) inset,
+            y + height - (float) (inset + descent),
+            IconColor.ACTIONS_BLUE.getColor());
+      }
 
       // To avoid concurrency issue
       final JProgressBar bar = progressBar;
       if (bar != null) {
         if (series.getFileSize() > 0.0) {
           g2d.drawString(
-              FileUtil.humanReadableByte(series.getFileSize(), false), x + 2, hbleft - 12);
+              FileUtil.humanReadableByte(series.getFileSize(), false),
+              x + inset,
+              y + height - fontHeight - inset * 2);
         }
         if (bar.isVisible()) {
           // Draw in the bottom right corner of thumbnail
-          int shiftx = thumbnailSize - bar.getWidth();
-          int shifty = thumbnailSize - bar.getHeight();
-          g2d.translate(shiftx, shifty);
+          double shiftX = (double) thumbnailSize - bar.getWidth();
+          double shiftY = (double) thumbnailSize - bar.getHeight();
+          g2d.translate(shiftX, shiftY);
           bar.paint(g2d);
+          g2d.translate(-shiftX, -shiftY);
 
           // Draw in the top right corner
           SeriesImporter seriesLoader = series.getSeriesLoader();
           if (seriesLoader != null) {
             boolean stopped = seriesLoader.isStopped();
-
-            g2d.translate(-shiftx, -shifty);
-            shiftx = thumbnailSize - stopButton.width;
-            shifty = 5;
-            g2d.translate(shiftx, shifty);
-            g2d.setColor(Color.RED);
+            shiftX = (double) thumbnailSize - stopButton.width;
+            shiftY = thumbnailSize - bar.getHeight() - stopButton.height - inset * 3.0;
+            g2d.translate(shiftX, shiftY);
+            g2d.setColor(IconColor.ACTIONS_RED.color);
             g2d.setComposite(stopped ? TRANSPARENT_COMPOSITE : SOLID_COMPOSITE);
             g2d.fill(stopButton);
+            g2d.translate(-shiftX, -shiftY);
 
-            g2d.translate(-shiftx, -shifty);
-            shiftx = shiftx - 3 * BUTTON_SIZE_HALF;
-            shifty = 5;
-            g2d.translate(shiftx, shifty);
-            g2d.setColor(Color.GREEN);
+            shiftX = shiftX - 3 * BUTTON_SIZE_HALF;
+            g2d.translate(shiftX, shiftY);
+            g2d.setColor(IconColor.ACTIONS_GREEN.color);
             g2d.setComposite(stopped ? SOLID_COMPOSITE : TRANSPARENT_COMPOSITE);
             g2d.fill(startButton);
-
-            g2d.translate(-shiftx, -shifty);
+            g2d.translate(-shiftX, -shiftY);
           }
         }
       }
+      GuiUtils.resetRenderingHints(g2d, oldRenderingHints);
     }
   }
 
@@ -411,10 +414,12 @@ public class SeriesThumbnail extends Thumbnail
       JProgressBar bar = progressBar;
       if (bar.isVisible()) {
         Point p = e.getPoint();
-        Insets bd = this.getInsets();
-        p.translate(-(thumbnailSize + bd.left - stopButton.width), -6 - bd.top);
+        int inset = GuiUtils.getScaleLength(2);
+        int shiftX = thumbnailSize - stopButton.width;
+        int shiftY = thumbnailSize - bar.getHeight() - stopButton.height - inset * 3;
+        p.translate(-shiftX, -shiftY);
         Rectangle rect = stopButton.getBounds();
-        rect.grow(2, 2);
+        rect.grow(inset, inset);
         if (rect.contains(p)) {
           SeriesImporter loader = series.getSeriesLoader();
           if (loader != null) {

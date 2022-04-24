@@ -30,7 +30,7 @@ public interface Layer extends Comparable<Layer>, UUIDable {
   /**
    * Set a name to the layer. The default value is null and toString() gets the layer type name.
    *
-   * @param layerName
+   * @param layerName the layer name
    */
   void setName(String layerName);
 
@@ -43,6 +43,6 @@ public interface Layer extends Comparable<Layer>, UUIDable {
     }
     int thisVal = this.getLevel();
     int anotherVal = obj.getLevel();
-    return thisVal < anotherVal ? -1 : (thisVal == anotherVal ? 0 : 1);
+    return Integer.compare(thisVal, anotherVal);
   }
 }

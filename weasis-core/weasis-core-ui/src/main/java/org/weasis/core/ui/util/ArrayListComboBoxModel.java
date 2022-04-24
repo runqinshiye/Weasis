@@ -17,13 +17,12 @@ import javax.swing.AbstractListModel;
 import javax.swing.ComboBoxModel;
 import javax.swing.MutableComboBoxModel;
 
-@SuppressWarnings("serial")
 public class ArrayListComboBoxModel<E> extends AbstractListModel<E>
     implements MutableComboBoxModel<E>, ComboBoxModel<E> {
 
   private Object selectedItem;
   private final List<E> items;
-  private Comparator<E> comparator;
+  private final Comparator<E> comparator;
 
   public ArrayListComboBoxModel() {
     this(null, null);

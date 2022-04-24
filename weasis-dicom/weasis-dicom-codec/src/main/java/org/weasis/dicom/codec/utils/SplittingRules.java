@@ -91,7 +91,7 @@ public class SplittingRules {
     XMLStreamReader xmler = null;
     InputStream stream = null;
     try {
-      File file = ResourceUtil.getResource("series-splitting-rules.xml"); // NON-NLS
+      File file = ResourceUtil.getResource(DicomResource.SERIES_SPITTING_RULES);
       if (!file.canRead()) {
         return;
       }
@@ -105,15 +105,11 @@ public class SplittingRules {
       int eventType;
       while (xmler.hasNext()) {
         eventType = xmler.next();
-        switch (eventType) {
-          case XMLStreamConstants.START_ELEMENT:
-            String key = xmler.getName().getLocalPart();
-            if ("modalities".equals(key)) { // NON-NLS
-              readModalities(xmler);
-            }
-            break;
-          default:
-            break;
+        if (eventType == XMLStreamConstants.START_ELEMENT) {
+          String key = xmler.getName().getLocalPart();
+          if ("modalities".equals(key)) { // NON-NLS
+            readModalities(xmler);
+          }
         }
       }
     } catch (Exception e) {
@@ -127,27 +123,23 @@ public class SplittingRules {
   private void readModalities(XMLStreamReader xmler) throws XMLStreamException {
     while (xmler.hasNext()) {
       int eventType = xmler.next();
-      switch (eventType) {
-        case XMLStreamConstants.START_ELEMENT:
-          String key = xmler.getName().getLocalPart();
-          if ("modality".equals(key) && xmler.getAttributeCount() >= 1) { // NON-NLS
-            String name = xmler.getAttributeValue(null, "name"); // NON-NLS
-            Modality m = getModdality(name);
-            if (m != null) {
-              try {
-                String extend = xmler.getAttributeValue(null, "extend"); // NON-NLS
-                SplittingModalityRules splitRules =
-                    new SplittingModalityRules(m, getSplittingModalityRules(extend));
-                readModality(splitRules, xmler);
-                rules.put(m, splitRules);
-              } catch (Exception e) {
-                LOGGER.error("Modality {} cannot be read from series-splitting-rules.xml", name, e);
-              }
+      if (eventType == XMLStreamConstants.START_ELEMENT) {
+        String key = xmler.getName().getLocalPart();
+        if ("modality".equals(key) && xmler.getAttributeCount() >= 1) { // NON-NLS
+          String name = xmler.getAttributeValue(null, "name"); // NON-NLS
+          Modality m = getModality(name);
+          if (m != null) {
+            try {
+              String extend = xmler.getAttributeValue(null, "extend"); // NON-NLS
+              SplittingModalityRules splitRules =
+                  new SplittingModalityRules(m, getSplittingModalityRules(extend));
+              readModality(splitRules, xmler);
+              rules.put(m, splitRules);
+            } catch (Exception e) {
+              LOGGER.error("Modality {} cannot be read from series-splitting-rules.xml", name, e);
             }
           }
-          break;
-        default:
-          break;
+        }
       }
     }
   }
@@ -265,9 +257,9 @@ public class SplittingRules {
 
   private SplittingModalityRules getSplittingModalityRules(String extend) {
     if (StringUtil.hasText(extend)) {
-      SplittingModalityRules val = rules.get(getModdality(extend));
+      SplittingModalityRules val = rules.get(getModality(extend));
       if (val == null) {
-        LOGGER.error("Modality {} doesn't exist! Cannot ihnerit the rules.", extend);
+        LOGGER.error("Modality {} doesn't exist! Cannot inherit the rules.", extend);
       }
     }
     return null;
@@ -290,7 +282,7 @@ public class SplittingRules {
     return null;
   }
 
-  private static Modality getModdality(String name) {
+  private static Modality getModality(String name) {
     try {
       return Modality.valueOf(name);
     } catch (Exception e) {

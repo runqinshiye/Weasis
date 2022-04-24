@@ -11,6 +11,7 @@ package org.weasis.dicom.viewer2d.mpr;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.Reference;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -23,6 +24,7 @@ import org.dcm4che3.data.SpecificCharacterSet;
 import org.dcm4che3.data.Tag;
 import org.dcm4che3.data.UID;
 import org.dcm4che3.data.VR;
+import org.dcm4che3.img.DicomMetaData;
 import org.dcm4che3.io.DicomOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,12 +33,10 @@ import org.weasis.core.api.media.data.Codec;
 import org.weasis.core.api.media.data.FileCache;
 import org.weasis.core.api.media.data.MediaElement;
 import org.weasis.core.api.media.data.MediaSeries;
-import org.weasis.core.api.media.data.MediaSeriesGroup;
+import org.weasis.core.api.media.data.SoftHashMap;
 import org.weasis.core.api.media.data.TagW;
-import org.weasis.core.util.FileUtil;
 import org.weasis.dicom.codec.DcmMediaReader;
 import org.weasis.dicom.codec.DicomMediaIO;
-import org.weasis.dicom.codec.TagD;
 import org.weasis.dicom.codec.utils.DicomMediaUtils;
 import org.weasis.opencv.data.FileRawImage;
 import org.weasis.opencv.data.PlanarImage;
@@ -45,6 +45,18 @@ public class RawImageIO implements DcmMediaReader {
   private static final Logger LOGGER = LoggerFactory.getLogger(RawImageIO.class);
 
   private static final String MIME_TYPE = "image/raw"; // NON-NLS
+
+  private static final SoftHashMap<RawImageIO, DicomMetaData> HEADER_CACHE =
+      new SoftHashMap<>() {
+
+        @Override
+        public void removeElement(Reference<? extends DicomMetaData> soft) {
+          RawImageIO key = reverseLookup.remove(soft);
+          if (key != null) {
+            hash.remove(key);
+          }
+        }
+      };
 
   protected FileRawImage imageCV;
   private final FileCache fileCache;
@@ -67,43 +79,22 @@ public class RawImageIO implements DcmMediaReader {
   public File getDicomFile() {
     Attributes dcm = getDicomObject();
 
-    DicomOutputStream out = null;
-    try {
-      File file = imageCV.getFile();
-      BulkData bdl =
-          new BulkData(
-              file.toURI().toString(),
-              FileRawImage.HEADER_LENGTH,
-              (int) file.length() - FileRawImage.HEADER_LENGTH,
-              false);
-      dcm.setValue(Tag.PixelData, VR.OW, bdl);
-      File tmpFile = new File(DicomMediaIO.DICOM_EXPORT_DIR, dcm.getString(Tag.SOPInstanceUID));
-      out = new DicomOutputStream(tmpFile);
+    File file = imageCV.getFile();
+    BulkData bdl =
+        new BulkData(
+            file.toURI().toString(),
+            FileRawImage.HEADER_LENGTH,
+            (int) file.length() - FileRawImage.HEADER_LENGTH,
+            false);
+    dcm.setValue(Tag.PixelData, VR.OW, bdl);
+    File tmpFile = new File(DicomMediaIO.DICOM_EXPORT_DIR, dcm.getString(Tag.SOPInstanceUID));
+    try (DicomOutputStream out = new DicomOutputStream(tmpFile)) {
       out.writeDataset(dcm.createFileMetaInformation(UID.ImplicitVRLittleEndian), dcm);
-      return tmpFile;
     } catch (IOException e) {
       LOGGER.error("Cannot write dicom file", e);
-    } finally {
-      FileUtil.safeClose(out);
+      return null;
     }
-    return null;
-  }
-
-  @Override
-  public void writeMetaData(MediaSeriesGroup group) {
-    if (group == null) {
-      return;
-    }
-    // Get the dicom header
-    Attributes header = getDicomObject();
-    DicomMediaUtils.writeMetaData(group, header);
-
-    // Series Group
-    if (TagW.SubseriesInstanceUID.equals(group.getTagID())) {
-      // Information for series ToolTips
-      group.setTagNoNull(TagD.get(Tag.PatientName), getTagValue(TagD.get(Tag.PatientName)));
-      group.setTagNoNull(TagD.get(Tag.StudyDescription), header.getString(Tag.StudyDescription));
-    }
+    return tmpFile;
   }
 
   @Override
@@ -117,11 +108,6 @@ public class RawImageIO implements DcmMediaReader {
   @Override
   public URI getUri() {
     return imageCV.getFile().toURI();
-  }
-
-  @Override
-  public void reset() {
-    // unlock file to be deleted on exit
   }
 
   @Override
@@ -161,7 +147,7 @@ public class RawImageIO implements DcmMediaReader {
 
   @Override
   public void close() {
-    reset();
+    HEADER_CACHE.remove(this);
   }
 
   @Override
@@ -219,12 +205,8 @@ public class RawImageIO implements DcmMediaReader {
 
   @Override
   public Attributes getDicomObject() {
-    Attributes dcm = new Attributes(tags.size() + attributes.size());
-    SpecificCharacterSet cs = attributes.getSpecificCharacterSet();
-    dcm.setSpecificCharacterSet(cs.toCodes());
-    DicomMediaUtils.fillAttributes(tags, dcm);
-    dcm.addAll(attributes);
-    return dcm;
+    DicomMetaData md = readMetaData();
+    return md.getDicomObject();
   }
 
   @Override
@@ -233,7 +215,40 @@ public class RawImageIO implements DcmMediaReader {
   }
 
   @Override
-  public boolean buildFile(File ouptut) {
+  public boolean buildFile(File output) {
     return false;
+  }
+
+  @Override
+  public DicomMetaData getDicomMetaData() {
+    return readMetaData();
+  }
+
+  @Override
+  public boolean isEditableDicom() {
+    return false;
+  }
+
+  private synchronized DicomMetaData readMetaData() {
+    DicomMetaData header = HEADER_CACHE.get(this);
+    if (header != null) {
+      return header;
+    }
+    Attributes dcm = new Attributes(tags.size() + attributes.size());
+    SpecificCharacterSet cs = attributes.getSpecificCharacterSet();
+    dcm.setSpecificCharacterSet(cs.toCodes());
+    DicomMediaUtils.fillAttributes(tags, dcm);
+    dcm.addAll(attributes);
+    File file = imageCV.getFile();
+    BulkData bdl =
+        new BulkData(
+            file.toURI().toString(),
+            FileRawImage.HEADER_LENGTH,
+            (int) file.length() - FileRawImage.HEADER_LENGTH,
+            false);
+    dcm.setValue(Tag.PixelData, VR.OW, bdl);
+    header = new DicomMetaData(dcm, UID.ImplicitVRLittleEndian);
+    HEADER_CACHE.put(this, header);
+    return header;
   }
 }

@@ -24,7 +24,7 @@ import org.weasis.core.ui.util.MouseEventDouble;
 /** @author Nicolas Roduit */
 @XmlRootElement(name = "nonEditable")
 public class NonEditableGraphic extends AbstractGraphic {
-  private static final long serialVersionUID = -6063521725986473663L;
+
   private Stroke stroke;
 
   public NonEditableGraphic(Shape path) {
@@ -45,8 +45,8 @@ public class NonEditableGraphic extends AbstractGraphic {
   @Override
   protected void initCopy(Graphic graphic) {
     super.initCopy(graphic);
-    if (graphic instanceof NonEditableGraphic) {
-      this.stroke = ((NonEditableGraphic) graphic).stroke;
+    if (graphic instanceof NonEditableGraphic nonEditableGraphic) {
+      this.stroke = nonEditableGraphic.stroke;
     }
   }
 

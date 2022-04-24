@@ -11,7 +11,6 @@ package org.weasis.dicom.rt;
 
 import bibliothek.gui.dock.common.CLocation;
 import it.cnr.imaa.essi.lablib.gui.checkboxtree.CheckboxTree;
-import it.cnr.imaa.essi.lablib.gui.checkboxtree.DefaultCheckboxTreeCellRenderer;
 import it.cnr.imaa.essi.lablib.gui.checkboxtree.TreeCheckingEvent;
 import it.cnr.imaa.essi.lablib.gui.checkboxtree.TreeCheckingModel;
 import java.awt.BorderLayout;
@@ -28,9 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultBoundedRangeModel;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -53,10 +52,9 @@ import org.knowm.xchart.XChartPanel;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
 import org.knowm.xchart.XYSeries;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.weasis.core.api.gui.Insertable;
 import org.weasis.core.api.gui.task.CircularProgressBar;
-import org.weasis.core.api.gui.util.JMVUtils;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.gui.util.JSliderW;
 import org.weasis.core.api.gui.util.SliderChangeListener;
 import org.weasis.core.api.gui.util.WinUtil;
@@ -66,6 +64,9 @@ import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.api.media.data.MediaSeriesGroup;
 import org.weasis.core.api.media.data.SoftHashMap;
 import org.weasis.core.api.media.data.TagW;
+import org.weasis.core.api.util.FontItem;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.OtherIcon;
 import org.weasis.core.ui.docking.PluginTool;
 import org.weasis.core.ui.editor.SeriesViewerEvent;
 import org.weasis.core.ui.editor.SeriesViewerListener;
@@ -75,6 +76,7 @@ import org.weasis.core.ui.model.GraphicModel;
 import org.weasis.core.ui.model.graphic.Graphic;
 import org.weasis.core.ui.model.imp.XmlGraphicModel;
 import org.weasis.core.ui.model.layer.LayerType;
+import org.weasis.core.ui.util.CheckBoxTreeBuilder;
 import org.weasis.core.util.StringUtil;
 import org.weasis.dicom.codec.DicomImageElement;
 import org.weasis.dicom.codec.DicomSeries;
@@ -88,14 +90,10 @@ import org.weasis.dicom.viewer2d.EventManager;
  * @author Nicolas Roduit
  */
 public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
-  private static final Logger LOGGER = LoggerFactory.getLogger(RtDisplayTool.class);
 
   public static final String BUTTON_NAME = Messages.getString("rt.tool");
 
   private static final SoftHashMap<String, RtSet> RtSet_Cache = new SoftHashMap<>();
-  public static final String BR = "<br>";
-  public static final String HTML2 = "</html>";
-  public static final String HTML1 = "<html>";
 
   private final JTabbedPane tabbedPane = new JTabbedPane();
   private final JScrollPane rootPane;
@@ -136,19 +134,16 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
       };
   private final JPanel panelFoot = new JPanel();
   private final JSliderW slider;
-  private JPanel panelHead;
-  private JPanel panelDvh;
-  private JButton btnShowDvh;
 
   public RtDisplayTool() {
-    super(BUTTON_NAME, BUTTON_NAME, PluginTool.Type.TOOL, 30);
+    super(BUTTON_NAME, BUTTON_NAME, Insertable.Type.TOOL, 30);
     this.setLayout(new BorderLayout(0, 0));
     this.rootPane = new JScrollPane();
-    this.dockable.setTitleIcon(
-        new ImageIcon(RtDisplayTool.class.getResource("/icon/16x16/rtDose.png")));
+    this.dockable.setTitleIcon(ResourceUtil.getIcon(OtherIcon.RADIOACTIVE));
     this.setDockableWidth(350);
+    rootPane.setBorder(BorderFactory.createEmptyBorder()); // remove default line
     this.btnLoad.setToolTipText(Messages.getString("populate.rt.objects"));
-    // By default recalculate DVH only when it is missing for structure
+    // By default, recalculate DVH only when it is missing for structure
     this.cbDvhRecalculate.setSelected(false);
     this.cbDvhRecalculate.setToolTipText(Messages.getString("when.enabled.recalculate"));
     this.lblRtStructureSet.setVisible(false);
@@ -164,7 +159,6 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
 
     this.treeStructures =
         new CheckboxTree() {
-          private static final long serialVersionUID = 778188275507301929L;
 
           @Override
           public String getToolTipText(MouseEvent evt) {
@@ -174,18 +168,18 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
             TreePath curPath = getPathForLocation(evt.getX(), evt.getY());
             if (curPath != null) {
               Object object = curPath.getLastPathComponent();
-              if (object instanceof StructToolTipTreeNode) {
-                return ((StructToolTipTreeNode) object).getToolTipText();
+              if (object instanceof StructToolTipTreeNode treeNode) {
+                return treeNode.getToolTipText();
               }
             }
             return null;
           }
         };
     treeStructures.setToolTipText(StringUtil.EMPTY_STRING);
+    treeStructures.setCellRenderer(CheckBoxTreeBuilder.buildNoIconCheckboxTreeCellRenderer());
 
     this.treeIsodoses =
         new CheckboxTree() {
-          private static final long serialVersionUID = 9185787644491574319L;
 
           @Override
           public String getToolTipText(MouseEvent evt) {
@@ -195,14 +189,15 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
             TreePath curPath = getPathForLocation(evt.getX(), evt.getY());
             if (curPath != null) {
               Object object = curPath.getLastPathComponent();
-              if (object instanceof IsoToolTipTreeNode) {
-                return ((IsoToolTipTreeNode) object).getToolTipText();
+              if (object instanceof IsoToolTipTreeNode treeNode) {
+                return treeNode.getToolTipText();
               }
             }
             return null;
           }
         };
     treeIsodoses.setToolTipText(StringUtil.EMPTY_STRING);
+    treeIsodoses.setCellRenderer(CheckBoxTreeBuilder.buildNoIconCheckboxTreeCellRenderer());
     this.nodeStructures = new DefaultMutableTreeNode(Messages.getString("structures"), true);
     this.nodeIsodoses = new DefaultMutableTreeNode(Messages.getString("isodoses"), true);
     this.initData();
@@ -211,10 +206,10 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
   private void loadData() {
     final RtSet rt = this.rtSet;
     SwingWorker<Boolean, Boolean> loadTask =
-        new SwingWorker<Boolean, Boolean>() {
+        new SwingWorker<>() {
 
           @Override
-          protected Boolean doInBackground() throws Exception {
+          protected Boolean doInBackground() {
             // Reload RT case data objects for GUI
             rt.reloadRtCase(cbDvhRecalculate.isSelected());
             return true;
@@ -279,9 +274,9 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
 
     add(panelFoot, BorderLayout.SOUTH);
 
-    panelFoot.add(slider.getParent());
+    panelFoot.add(slider);
 
-    panelHead = new JPanel();
+    JPanel panelHead = new JPanel();
     add(panelHead, BorderLayout.NORTH);
     panelHead.setLayout(new BoxLayout(panelHead, BoxLayout.Y_AXIS));
     this.btnLoad.setToolTipText(Messages.getString("populate.rt.objects"));
@@ -291,8 +286,8 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
     // RT data load panel
     JPanel panelLoad = new JPanel();
     panelHead.add(panelLoad);
-    FlowLayout fl_panelLoad = (FlowLayout) panelLoad.getLayout();
-    fl_panelLoad.setAlignment(FlowLayout.LEFT);
+    FlowLayout flPanelLoad = (FlowLayout) panelLoad.getLayout();
+    flPanelLoad.setAlignment(FlowLayout.LEFT);
     panelLoad.add(this.btnLoad);
     panelLoad.add(progressBar);
     progressBar.setVisible(false);
@@ -325,16 +320,16 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
     panelDose.add(this.lblRtPlanDoseUnit);
 
     // DVH panel
-    panelDvh = new JPanel();
+    JPanel panelDvh = new JPanel();
     FlowLayout flDvh = (FlowLayout) panelDvh.getLayout();
     flDvh.setAlignment(FlowLayout.LEFT);
     panelHead.add(panelDvh);
-    // By default recalculate DVH only when it is missing for structure
+    // By default, recalculate DVH only when it is missing for structure
     panelDvh.add(cbDvhRecalculate);
     this.cbDvhRecalculate.setSelected(false);
     this.cbDvhRecalculate.setToolTipText(Messages.getString("when.enabled.recalculate"));
 
-    btnShowDvh = new JButton(Messages.getString("display.dvh.chart"));
+    JButton btnShowDvh = new JButton(Messages.getString("display.dvh.chart"));
     btnShowDvh.addActionListener(e -> showDvhChart());
     panelDvh.add(btnShowDvh);
 
@@ -370,7 +365,7 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
         XChartPanel<XYChart> chartPanel = new XChartPanel<>(dvhChart);
         d.getContentPane().add(chartPanel, BorderLayout.CENTER);
         d.pack();
-        JMVUtils.showCenterScreen(d);
+        GuiUtils.showCenterScreen(d);
       }
     }
   }
@@ -398,11 +393,7 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
     treeStructures.setShowsRootHandles(true);
     treeStructures.setRootVisible(false);
     treeStructures.setExpandsSelectedPaths(true);
-    DefaultCheckboxTreeCellRenderer renderer = new DefaultCheckboxTreeCellRenderer();
-    renderer.setOpenIcon(null);
-    renderer.setClosedIcon(null);
-    renderer.setLeafIcon(null);
-    treeStructures.setCellRenderer(renderer);
+    treeStructures.setCellRenderer(CheckBoxTreeBuilder.buildNoIconCheckboxTreeCellRenderer());
     treeStructures.addTreeCheckingListener(this::treeValueChanged);
 
     expandTree(treeStructures, rootNodeStructures);
@@ -421,11 +412,7 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
     treeIsodoses.setShowsRootHandles(true);
     treeIsodoses.setRootVisible(false);
     treeIsodoses.setExpandsSelectedPaths(true);
-    DefaultCheckboxTreeCellRenderer renderer = new DefaultCheckboxTreeCellRenderer();
-    renderer.setOpenIcon(null);
-    renderer.setClosedIcon(null);
-    renderer.setLeafIcon(null);
-    treeIsodoses.setCellRenderer(renderer);
+    treeIsodoses.setCellRenderer(CheckBoxTreeBuilder.buildNoIconCheckboxTreeCellRenderer());
     treeIsodoses.addTreeCheckingListener(this::treeValueChanged);
 
     expandTree(treeIsodoses, rootNodeIsodoses);
@@ -433,16 +420,22 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
   }
 
   public JSliderW createTransparencySlider(int labelDivision, boolean displayValueInTitle) {
-    final JPanel panelSlider1 = new JPanel();
-    panelSlider1.setLayout(new BoxLayout(panelSlider1, BoxLayout.Y_AXIS));
-    panelSlider1.setBorder(new TitledBorder(Messages.getString("graphic.opacity")));
+    String title = Messages.getString("graphic.opacity");
     DefaultBoundedRangeModel model = new DefaultBoundedRangeModel(50, 0, 0, 100);
+    TitledBorder titledBorder =
+        new TitledBorder(
+            BorderFactory.createEmptyBorder(),
+            title + StringUtil.COLON_AND_SPACE + model.getValue(),
+            TitledBorder.LEADING,
+            TitledBorder.DEFAULT_POSITION,
+            FontItem.MEDIUM.getFont(),
+            null);
     JSliderW s = new JSliderW(model);
     s.setLabelDivision(labelDivision);
-    s.setdisplayValueInTitle(displayValueInTitle);
+    s.setDisplayValueInTitle(displayValueInTitle);
     s.setPaintTicks(true);
     s.setShowLabels(labelDivision > 0);
-    panelSlider1.add(s);
+    s.setBorder(titledBorder);
     if (s.isShowLabels()) {
       s.setPaintLabels(true);
       SliderChangeListener.setSliderLabelValues(
@@ -450,25 +443,25 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
     }
     s.addChangeListener(
         l -> {
-          if (!model.getValueIsAdjusting()) {
-            RtSet rt = rtSet;
-            if (rt != null) {
-              if (tabbedPane.getSelectedIndex() == 0) {
-                rt.setStructureFillTransparency(model.getValue() * 255 / 100);
-              } else if (tabbedPane.getSelectedIndex() == 1) {
-                rt.setIsoFillTransparency(model.getValue() * 255 / 100);
-              }
+          String result = title + StringUtil.COLON_AND_SPACE + model.getValue();
+          SliderChangeListener.updateSliderProperties(slider, result);
+          RtSet rt = rtSet;
+          if (rt != null) {
+            if (tabbedPane.getSelectedIndex() == 0) {
+              rt.setStructureFillTransparency(model.getValue() * 255 / 100);
+            } else if (tabbedPane.getSelectedIndex() == 1) {
+              rt.setIsoFillTransparency(model.getValue() * 255 / 100);
+            }
 
-              ImageViewerPlugin<DicomImageElement> container =
-                  EventManager.getInstance().getSelectedView2dContainer();
-              List<ViewCanvas<DicomImageElement>> views = null;
-              if (container != null) {
-                views = container.getImagePanels();
-              }
-              if (views != null) {
-                for (ViewCanvas<DicomImageElement> v : views) {
-                  showGraphic(rt, getStructureSelection(), getIsoDoseSelection(), v);
-                }
+            ImageViewerPlugin<DicomImageElement> container =
+                EventManager.getInstance().getSelectedView2dContainer();
+            List<ViewCanvas<DicomImageElement>> views = null;
+            if (container != null) {
+              views = container.getImagePanels();
+            }
+            if (views != null) {
+              for (ViewCanvas<DicomImageElement> v : views) {
+                showGraphic(rt, getStructureSelection(), getIsoDoseSelection(), v);
               }
             }
           }
@@ -510,8 +503,8 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
       TreePath[] paths = treeStructures.getCheckingModel().getCheckingPaths();
       for (TreePath treePath : paths) {
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
-        if (node.getUserObject() instanceof StructureLayer) {
-          list.add((StructureLayer) node.getUserObject());
+        if (node.getUserObject() instanceof StructureLayer layer) {
+          list.add(layer);
         }
       }
     }
@@ -524,8 +517,8 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
       TreePath[] paths = treeIsodoses.getCheckingModel().getCheckingPaths();
       for (TreePath treePath : paths) {
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) treePath.getLastPathComponent();
-        if (node.getUserObject() instanceof IsoDoseLayer) {
-          list.add((IsoDoseLayer) node.getUserObject());
+        if (node.getUserObject() instanceof IsoDoseLayer layer) {
+          list.add(layer);
         }
       }
     }
@@ -559,8 +552,8 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
       ViewCanvas<?> v) {
     if (rt != null) {
       ImageElement dicom = v.getImage();
-      if (dicom instanceof DicomImageElement) {
-        GeometryOfSlice geometry = ((DicomImageElement) dicom).getDispSliceGeometry();
+      if (dicom instanceof DicomImageElement dicomImageElement) {
+        GeometryOfSlice geometry = dicomImageElement.getDispSliceGeometry();
 
         // Key for contour lookup
         String imageUID = TagD.getTagValue(dicom, Tag.SOPInstanceUID, String.class);
@@ -873,18 +866,18 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
             if (!list.isEmpty()) {
               specialElementList.addAll(list);
             }
-            if ("RTDOSE".equals(modality) && s instanceof DicomSeries) {
+            if ("RTDOSE".equals(modality) && s instanceof DicomSeries dicomSeries) {
               synchronized (s) {
-                for (DicomImageElement media : ((DicomSeries) s).getMedias(null, null)) {
+                for (DicomImageElement media : dicomSeries.getMedias(null, null)) {
                   if ("RTDOSE".equals(TagD.getTagValue(media, Tag.Modality))) {
                     specialElementList.add(media);
                   }
                 }
               }
             }
-            if ("CT".equals(modality) && s instanceof DicomSeries) {
+            if ("CT".equals(modality) && s instanceof DicomSeries dicomSeries) {
               synchronized (s) {
-                for (DicomImageElement media : ((DicomSeries) s).getMedias(null, null)) {
+                for (DicomImageElement media : dicomSeries.getMedias(null, null)) {
                   if ("CT".equals(TagD.getTagValue(media, Tag.Modality))) {
                     specialElementList.add(media);
                   }
@@ -905,10 +898,10 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
     buf.append(c.getGreen());
     buf.append(",");
     buf.append(c.getBlue());
-    // Other square: u2B1B
-    buf.append(")'> \u2588 </font>"); // NON-NLS
+    // Other square: u2B1B (unicode)
+    buf.append(")'> █ </font>"); // NON-NLS
     buf.append(label);
-    buf.append(HTML2);
+    buf.append(GuiUtils.HTML_END);
     return buf.toString();
   }
 
@@ -924,28 +917,28 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
       StructureLayer layer = (StructureLayer) getUserObject();
 
       double volume = layer.getStructure().getVolume();
-      String source = layer.getStructure().getVolumeSource().toString();
+      // String source = layer.getStructure().getVolumeSource().toString();
       Dvh structureDvh = layer.getStructure().getDvh();
 
       StringBuilder buf = new StringBuilder();
-      buf.append(HTML1);
+      buf.append(GuiUtils.HTML_START);
       buf.append(Messages.getString("structure.information"));
       buf.append(StringUtil.COLON);
-      buf.append(BR);
+      buf.append(GuiUtils.HTML_BR);
       if (StringUtil.hasText(layer.getStructure().getRoiObservationLabel())) {
         buf.append(Messages.getString("observation.label"));
         buf.append(StringUtil.COLON_AND_SPACE);
         buf.append(layer.getStructure().getRoiObservationLabel());
-        buf.append(BR);
+        buf.append(GuiUtils.HTML_BR);
       }
       buf.append(Messages.getString("thickness"));
       buf.append(StringUtil.COLON_AND_SPACE);
       buf.append(String.format("%.2f", layer.getStructure().getThickness())); // NON-NLS
-      buf.append(BR);
+      buf.append(GuiUtils.HTML_BR);
       buf.append(Messages.getString("volume"));
       buf.append(StringUtil.COLON_AND_SPACE);
       buf.append(String.format("%.4f cm^3", volume)); // NON-NLS
-      buf.append(BR);
+      buf.append(GuiUtils.HTML_BR);
 
       if (structureDvh != null) {
         buf.append(structureDvh.getDvhSource().toString());
@@ -957,7 +950,7 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
                 FORMAT,
                 RtSet.calculateRelativeDose(
                     structureDvh.getDvhMinimumDoseCGy(), structureDvh.getPlan().getRxDose())));
-        buf.append(BR);
+        buf.append(GuiUtils.HTML_BR);
         buf.append(structureDvh.getDvhSource().toString());
         buf.append(" ");
         buf.append(Messages.getString("max.dose"));
@@ -967,7 +960,7 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
                 FORMAT,
                 RtSet.calculateRelativeDose(
                     structureDvh.getDvhMaximumDoseCGy(), structureDvh.getPlan().getRxDose())));
-        buf.append(BR);
+        buf.append(GuiUtils.HTML_BR);
         buf.append(structureDvh.getDvhSource().toString());
         buf.append(" ");
         buf.append(Messages.getString("mean.dose"));
@@ -977,9 +970,9 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
                 FORMAT,
                 RtSet.calculateRelativeDose(
                     structureDvh.getDvhMeanDoseCGy(), structureDvh.getPlan().getRxDose())));
-        buf.append(BR);
+        buf.append(GuiUtils.HTML_BR);
       }
-      buf.append(HTML2);
+      buf.append(GuiUtils.HTML_END);
 
       return buf.toString();
     }
@@ -1001,21 +994,21 @@ public class RtDisplayTool extends PluginTool implements SeriesViewerListener {
       IsoDoseLayer layer = (IsoDoseLayer) getUserObject();
 
       StringBuilder buf = new StringBuilder();
-      buf.append(HTML1);
+      buf.append(GuiUtils.HTML_START);
       buf.append(Messages.getString("isodose.information"));
       buf.append(StringUtil.COLON);
-      buf.append(BR);
+      buf.append(GuiUtils.HTML_BR);
       if (layer.getIsoDose() != null) {
         buf.append(Messages.getString("level"));
         buf.append(StringUtil.COLON_AND_SPACE);
         buf.append(String.format("%d %%", layer.getIsoDose().getLevel())); // NON-NLS
-        buf.append(BR);
+        buf.append(GuiUtils.HTML_BR);
         buf.append(Messages.getString("thickness"));
         buf.append(StringUtil.COLON_AND_SPACE);
         buf.append(String.format("%.2f", layer.getIsoDose().getThickness())); // NON-NLS
-        buf.append(BR);
+        buf.append(GuiUtils.HTML_BR);
       }
-      buf.append(HTML2);
+      buf.append(GuiUtils.HTML_END);
 
       return buf.toString();
     }

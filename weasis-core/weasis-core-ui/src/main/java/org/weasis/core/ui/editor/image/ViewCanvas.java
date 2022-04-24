@@ -9,7 +9,6 @@
  */
 package org.weasis.core.ui.editor.image;
 
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -21,9 +20,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import javax.swing.Action;
-import javax.swing.ImageIcon;
 import org.weasis.core.api.gui.Image2DViewer;
 import org.weasis.core.api.image.OpManager;
+import org.weasis.core.api.image.ZoomOp.Interpolation;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.ui.model.layer.LayerAnnotation;
@@ -38,14 +37,9 @@ public interface ViewCanvas<E extends ImageElement>
         ImageLayerChangeListener<E>,
         KeyListener {
 
-  public static final String ZOOM_TYPE_CMD = "zoom.type";
-  public static final ImageIcon SYNCH_ICON =
-      new ImageIcon(DefaultView2d.class.getResource("/icon/22x22/synch.png"));
-  public static final int CENTER_POINTER = 1 << 1;
-  public static final int HIGHLIGHTED_POINTER = 1 << 2;
-
-  public static final Color focusColor = Color.orange;
-  public static final Color lostFocusColor = new Color(255, 224, 178);
+  String ZOOM_TYPE_CMD = "zoom.type";
+  int CENTER_POINTER = 1 << 1;
+  int HIGHLIGHTED_POINTER = 1 << 2;
 
   void registerDefaultListeners();
 
@@ -102,7 +96,7 @@ public interface ViewCanvas<E extends ImageElement>
 
   Object getLensActionValue(String action);
 
-  void changeZoomInterpolation(Integer interpolation);
+  void changeZoomInterpolation(Interpolation interpolation);
 
   OpManager getDisplayOpManager();
 
@@ -124,7 +118,7 @@ public interface ViewCanvas<E extends ImageElement>
 
   void drawPointer(Graphics2D g, Double x, Double y);
 
-  List<Action> getExportToClipboardAction();
+  List<Action> getExportActions();
 
   void enableMouseAndKeyListener(MouseActions mouseActions);
 
@@ -141,4 +135,6 @@ public interface ViewCanvas<E extends ImageElement>
   void updateCanvas(boolean triggerViewModelChangeListeners);
 
   void updateGraphicSelectionListener(ImageViewerPlugin<E> viewerPlugin);
+
+  boolean requiredTextAntialiasing();
 }

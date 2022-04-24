@@ -37,7 +37,7 @@ import org.weasis.core.ui.editor.image.dockable.MeasureTool;
 import org.weasis.core.ui.model.layer.AbstractInfoLayer;
 import org.weasis.core.util.FileUtil;
 
-@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}")
+@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}") // NON-NLS
 public class Activator implements BundleActivator, ServiceListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(Activator.class);
 
@@ -45,16 +45,14 @@ public class Activator implements BundleActivator, ServiceListener {
   public void start(final BundleContext bundleContext) throws Exception {
     registerCommands(bundleContext);
     File dataFolder = AppProperties.getBundleDataFolder(bundleContext);
-    if (dataFolder != null) {
-      FileUtil.readProperties(
-          new File(dataFolder, "persitence.properties"), BundleTools.LOCAL_UI_PERSISTENCE);
-    }
+    FileUtil.readProperties(
+        new File(dataFolder, "persistence.properties"), BundleTools.LOCAL_UI_PERSISTENCE);
     Preferences prefs = BundlePreferences.getDefaultPreferences(bundleContext);
     AbstractInfoLayer.applyPreferences(prefs);
     MeasureTool.viewSetting.initMonitors();
     MeasureTool.viewSetting.applyPreferences(prefs);
 
-    // Must be instantiate in EDT
+    // Must be instantiated in EDT
     GuiExecutor.instance()
         .execute(
             () -> {
@@ -82,7 +80,7 @@ public class Activator implements BundleActivator, ServiceListener {
     MeasureTool.viewSetting.savePreferences(prefs);
     File dataFolder = AppProperties.getBundleDataFolder(bundleContext);
     if (dataFolder != null) {
-      File file = new File(dataFolder, "persitence.properties");
+      File file = new File(dataFolder, "persistence.properties");
       FileUtil.prepareToWriteFile(file);
       FileUtil.storeProperties(file, BundleTools.LOCAL_UI_PERSISTENCE, null);
     }
@@ -91,7 +89,7 @@ public class Activator implements BundleActivator, ServiceListener {
   @Override
   public synchronized void serviceChanged(final ServiceEvent event) {
 
-    // Must be instantiate in EDT
+    // Must be instantiated in EDT
     GuiExecutor.instance()
         .execute(
             () -> {
@@ -128,9 +126,7 @@ public class Activator implements BundleActivator, ServiceListener {
   private static void registerCommands(BundleContext context) {
     Dictionary<String, Object> dict = new Hashtable<>();
     dict.put(CommandProcessor.COMMAND_SCOPE, "image");
-    dict.put(
-        CommandProcessor.COMMAND_FUNCTION,
-        AbstractFileModel.functions.toArray(new String[AbstractFileModel.functions.size()]));
+    dict.put(CommandProcessor.COMMAND_FUNCTION, AbstractFileModel.functions.toArray(new String[0]));
     context.registerService(FileModel.class.getName(), ViewerPluginBuilder.DefaultDataModel, dict);
   }
 }

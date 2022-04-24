@@ -9,65 +9,59 @@
  */
 package org.weasis.dicom.explorer;
 
-import java.awt.FlowLayout;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
-import javax.swing.border.TitledBorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.AbstractItemDialogPage;
 import org.weasis.core.api.gui.util.AppProperties;
 import org.weasis.core.api.gui.util.FileFormatFilter;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.service.BundleTools;
 import org.weasis.core.api.util.ClosableURLConnection;
 import org.weasis.core.api.util.NetworkUtil;
 import org.weasis.core.api.util.URLParameters;
 import org.weasis.core.util.FileUtil;
 import org.weasis.core.util.StringUtil;
+import org.weasis.dicom.explorer.HangingProtocols.OpeningViewer;
 import org.weasis.dicom.explorer.internal.Activator;
 import org.weasis.dicom.explorer.wado.LoadSeries;
 
-@SuppressWarnings("serial")
 public class DicomZipImport extends AbstractItemDialogPage implements ImportDicom {
   private static final Logger LOGGER = LoggerFactory.getLogger(DicomZipImport.class);
 
-  private static final String lastDICOMDIR = "lastDicomZip";
+  private static final String LAST_DICOM_ZIP = "lastDicomZip";
+  private static final String LAST_DICOM_ZIP_OPEN_MODE = "last.dicom.zip.open.mode";
 
+  private final JComboBox<OpeningViewer> openingViewerJComboBox =
+      new JComboBox<>(OpeningViewer.values());
   private File selectedFile;
-  private JButton btnOpen;
-  private JLabel fileLabel = new JLabel();
+  private final JLabel fileLabel = new JLabel();
 
   public DicomZipImport() {
-    super(Messages.getString("DicomZipImport.title"));
-    setComponentPosition(3);
+    super(Messages.getString("DicomZipImport.title"), 3);
     initGUI();
-    initialize(true);
   }
 
   public void initGUI() {
-    setBorder(
-        new TitledBorder(
-            null,
-            Messages.getString("DicomZipImport.title"),
-            TitledBorder.LEADING,
-            TitledBorder.TOP,
-            null,
-            null));
-    setLayout(new FlowLayout(FlowLayout.LEFT, 3, 3));
-    btnOpen = new JButton(Messages.getString("DicomZipImport.select_file"));
+    JButton btnOpen = new JButton(Messages.getString("DicomZipImport.select_file"));
     btnOpen.addActionListener(e -> browseImgFile());
-    add(btnOpen);
-    add(fileLabel);
+    add(GuiUtils.getFlowLayoutPanel(ITEM_SEPARATOR_SMALL, ITEM_SEPARATOR, btnOpen, fileLabel));
+
+    add(LocalImport.buildOpenViewerPanel(openingViewerJComboBox, LAST_DICOM_ZIP_OPEN_MODE));
+    add(GuiUtils.boxYLastElement(LAST_FILLER_HEIGHT));
   }
 
   public void browseImgFile() {
-    String directory = Activator.IMPORT_EXPORT_PERSISTENCE.getProperty(lastDICOMDIR, "");
+    String directory = Activator.IMPORT_EXPORT_PERSISTENCE.getProperty(LAST_DICOM_ZIP, "");
 
     JFileChooser fileChooser = new JFileChooser(directory);
     fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -77,34 +71,21 @@ public class DicomZipImport extends AbstractItemDialogPage implements ImportDico
         || (selectedFile = fileChooser.getSelectedFile()) == null) {
       fileLabel.setText("");
     } else {
-      Activator.IMPORT_EXPORT_PERSISTENCE.setProperty(lastDICOMDIR, selectedFile.getParent());
+      Activator.IMPORT_EXPORT_PERSISTENCE.setProperty(LAST_DICOM_ZIP, selectedFile.getParent());
       fileLabel.setText(selectedFile.getPath());
     }
   }
 
-  protected void initialize(boolean afirst) {
-    // Do nothing
-  }
-
-  public void resetSettingsToDefault() {
-    initialize(false);
-  }
-
-  public void applyChange() {
-    // Do nothing
-  }
-
-  protected void updateChanges() {
-    // Do nothing
-  }
-
   @Override
   public void closeAdditionalWindow() {
-    applyChange();
+    OpeningViewer openingViewer =
+        Objects.requireNonNullElse(
+            (OpeningViewer) openingViewerJComboBox.getSelectedItem(), OpeningViewer.ONE_PATIENT);
+    Activator.IMPORT_EXPORT_PERSISTENCE.setProperty(LAST_DICOM_ZIP_OPEN_MODE, openingViewer.name());
   }
 
   @Override
-  public void resetoDefaultValues() {
+  public void resetToDefaultValues() {
     // Do nothing
   }
 
@@ -133,7 +114,8 @@ public class DicomZipImport extends AbstractItemDialogPage implements ImportDico
           LOGGER.error("Cannot import DICOM from {}", file);
         }
       } else {
-        LoadLocalDicom dicom = new LoadLocalDicom(new File[] {dir}, true, dicomModel);
+        LoadLocalDicom dicom =
+            new LoadLocalDicom(new File[] {dir}, true, dicomModel, OpeningViewer.ONE_PATIENT);
         DicomModel.LOADING_EXECUTOR.execute(dicom);
       }
     }

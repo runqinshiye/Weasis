@@ -10,14 +10,12 @@
 package org.weasis.core.api.media.data;
 
 import java.awt.Color;
-import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAccessor;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -38,14 +36,12 @@ import org.weasis.core.util.StringUtil;
  * Common DICOM tags used by the application. The role of these tags is to provide a high level
  * accessibility of common tags (DICOM and non DICOM).
  */
-public class TagW implements Serializable {
+public class TagW {
   private static final Logger LOGGER = LoggerFactory.getLogger(TagW.class);
 
-  private static final long serialVersionUID = -7914330824854199622L;
   private static final AtomicInteger idCounter = new AtomicInteger(Integer.MAX_VALUE);
 
-  protected static final Map<String, TagW> tags =
-      Collections.synchronizedMap(new HashMap<String, TagW>());
+  protected static final Map<String, TagW> tags = Collections.synchronizedMap(new HashMap<>());
 
   public static final String NO_VALUE = "UNKNOWN";
 
@@ -78,7 +74,7 @@ public class TagW implements Serializable {
 
     private final Class<?> clazz;
 
-    private TagType(Class<?> clazz) {
+    TagType(Class<?> clazz) {
       this.clazz = clazz;
     }
 
@@ -137,10 +133,7 @@ public class TagW implements Serializable {
   public static final TagW ShutterFinalShape = new TagW("ShutterFinalShape", TagType.OBJECT);
   public static final TagW ShutterRGBColor = new TagW("ShutterRGBColor", TagType.COLOR);
   public static final TagW ShutterPSValue = new TagW("ShutterPSValue", TagType.INTEGER);
-  public static final TagW OverlayBitMask = new TagW("OverlayBitMask", TagType.INTEGER);
-  public static final TagW OverlayBurninDataPath =
-      new TagW("OverlayBurninDataPath", TagType.STRING);
-  public static final TagW HasOverlay = new TagW("HasOverlay", TagType.BOOLEAN);
+  public static final TagW ImageDescriptor = new TagW("ImageDescriptor", TagType.OBJECT);
   public static final TagW ObjectToSave = new TagW("ObjectToSave", TagType.BOOLEAN);
 
   public static final TagW WadoCompressionRate = new TagW("WadoCompressionRate", TagType.INTEGER);
@@ -181,7 +174,7 @@ public class TagW implements Serializable {
 
   // Only a single Item shall be included in this sequence
   public static final TagW PRLUTsExplanation = new TagW("PRLUTsExplanation", TagType.STRING);
-  public static final TagW PRLUTsData = new TagW("PRLUTsData", TagType.OBJECT);
+  public static final TagW PrDicomObject = new TagW("PrDicomObject", TagType.OBJECT);
 
   public static final TagW MonoChrome = new TagW("MonoChrome", TagType.BOOLEAN);
 
@@ -226,7 +219,7 @@ public class TagW implements Serializable {
     addTag(ModalityLUTType);
     addTag(ModalityLUTData);
     addTag(PRLUTsExplanation);
-    addTag(PRLUTsData);
+    addTag(PrDicomObject);
     addTag(MonoChrome);
   }
 
@@ -253,8 +246,8 @@ public class TagW implements Serializable {
     this.type = type == null ? TagType.STRING : type;
     this.anonymizationType = 0;
     this.defaultValue = defaultValue;
-    this.vmMax = vmMax < 1 ? 1 : vmMax;
-    this.vmMin = vmMin < 1 ? 1 : vmMin;
+    this.vmMax = Math.max(vmMax, 1);
+    this.vmMin = Math.max(vmMin, 1);
 
     if (!isTypeCompliant(defaultValue)) {
       throw new IllegalArgumentException("defaultValue is not compliant to the tag type");
@@ -377,13 +370,8 @@ public class TagW implements Serializable {
       return false;
     }
     if (keyword == null) {
-      if (other.keyword != null) {
-        return false;
-      }
-    } else if (!keyword.equals(other.keyword)) {
-      return false;
-    }
-    return true;
+      return other.keyword == null;
+    } else return keyword.equals(other.keyword);
   }
 
   @Override
@@ -395,15 +383,13 @@ public class TagW implements Serializable {
     return result;
   }
 
-  public void readValue(Object data, Tagable tagable) {
-    tagable.setTagNoNull(this, getValue(data));
+  public void readValue(Object data, Taggable taggable) {
+    taggable.setTagNoNull(this, getValue(data));
   }
 
   public Object getValue(Object data) {
     Object value = null;
-    if (data instanceof XMLStreamReader) {
-      XMLStreamReader xmler = (XMLStreamReader) data;
-
+    if (data instanceof XMLStreamReader xmler) {
       if (isStringFamilyType()) {
         value =
             vmMax > 1
@@ -465,30 +451,23 @@ public class TagW implements Serializable {
 
     String str;
 
-    if (value instanceof String) {
-      str = (String) value;
-    } else if (value instanceof String[]) {
-      str = Arrays.asList((String[]) value).stream().collect(Collectors.joining("\\"));
-    } else if (value instanceof TemporalAccessor) {
-      str = TagUtil.formatDateTime((TemporalAccessor) value);
-    } else if (value instanceof TemporalAccessor[]) {
+    if (value instanceof String val) {
+      str = val;
+    } else if (value instanceof String[] stringArray) {
+      str = String.join("\\", stringArray);
+    } else if (value instanceof TemporalAccessor temporalAccessor) {
+      str = TagUtil.formatDateTime(temporalAccessor);
+    } else if (value instanceof TemporalAccessor[] temporalArray) {
+      str = Stream.of(temporalArray).map(TagUtil::formatDateTime).collect(Collectors.joining(", "));
+    } else if (value instanceof float[] floats) {
       str =
-          Stream.of((TemporalAccessor[]) value)
-              .map(TagUtil::formatDateTime)
+          IntStream.range(0, floats.length)
+              .mapToObj(i -> String.valueOf(floats[i]))
               .collect(Collectors.joining(", "));
-    } else if (value instanceof float[]) {
-      float[] array = (float[]) value;
-      str =
-          IntStream.range(0, array.length)
-              .mapToObj(i -> String.valueOf(array[i]))
-              .collect(Collectors.joining(", "));
-    } else if (value instanceof double[]) {
-      str =
-          DoubleStream.of((double[]) value)
-              .mapToObj(String::valueOf)
-              .collect(Collectors.joining(", "));
-    } else if (value instanceof int[]) {
-      str = IntStream.of((int[]) value).mapToObj(String::valueOf).collect(Collectors.joining(", "));
+    } else if (value instanceof double[] doubles) {
+      str = DoubleStream.of(doubles).mapToObj(String::valueOf).collect(Collectors.joining(", "));
+    } else if (value instanceof int[] ints) {
+      str = IntStream.of(ints).mapToObj(String::valueOf).collect(Collectors.joining(", "));
     } else {
       str = value.toString();
     }
@@ -566,10 +545,10 @@ public class TagW implements Serializable {
     return tags.get(keyword);
   }
 
-  public static <T> T getTagValue(TagReadable tagable, TagW tag, Class<T> type) {
-    if (tagable != null && tag != null) {
+  public static <T> T getTagValue(TagReadable taggable, TagW tag, Class<T> type) {
+    if (taggable != null && tag != null) {
       try {
-        return type.cast(tagable.getTagValue(tag));
+        return type.cast(taggable.getTagValue(tag));
       } catch (ClassCastException e) {
         LOGGER.error("Cannot cast the value of \"{}\" into {}", tag.getKeyword(), type, e);
       }

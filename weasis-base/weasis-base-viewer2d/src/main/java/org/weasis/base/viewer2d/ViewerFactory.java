@@ -12,14 +12,12 @@ package org.weasis.base.viewer2d;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import javax.swing.Action;
 import javax.swing.Icon;
-import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import org.slf4j.Logger;
@@ -37,6 +35,9 @@ import org.weasis.core.api.media.data.MediaElement;
 import org.weasis.core.api.media.data.MediaReader;
 import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.api.service.BundleTools;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
+import org.weasis.core.api.util.ResourceUtil.OtherIcon;
 import org.weasis.core.ui.docking.UIManager;
 import org.weasis.core.ui.editor.SeriesViewer;
 import org.weasis.core.ui.editor.SeriesViewerFactory;
@@ -45,9 +46,7 @@ import org.weasis.core.ui.editor.image.ImageViewerPlugin;
 import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.util.DefaultAction;
 
-@org.osgi.service.component.annotations.Component(
-    service = SeriesViewerFactory.class,
-    immediate = false)
+@org.osgi.service.component.annotations.Component(service = SeriesViewerFactory.class)
 public class ViewerFactory implements SeriesViewerFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ViewerFactory.class);
@@ -57,7 +56,7 @@ public class ViewerFactory implements SeriesViewerFactory {
   private static final DefaultAction preferencesAction =
       new DefaultAction(
           Messages.getString("OpenImageAction.img"),
-          new ImageIcon(SeriesViewerFactory.class.getResource("/icon/16x16/img-import.png")),
+          ResourceUtil.getIcon(ActionIcon.IMPORT_IMAGE),
           ViewerFactory::getOpenImageAction);
 
   public ViewerFactory() {
@@ -66,7 +65,7 @@ public class ViewerFactory implements SeriesViewerFactory {
 
   @Override
   public Icon getIcon() {
-    return MimeInspector.imageIcon;
+    return ResourceUtil.getIcon(OtherIcon.RASTER_IMAGE);
   }
 
   @Override
@@ -85,37 +84,28 @@ public class ViewerFactory implements SeriesViewerFactory {
     String uid = null;
     if (properties != null) {
       Object obj = properties.get(org.weasis.core.api.image.GridBagLayoutModel.class.getName());
-      if (obj instanceof GridBagLayoutModel) {
-        model = (GridBagLayoutModel) obj;
+      if (obj instanceof GridBagLayoutModel gridBagLayoutModel) {
+        model = gridBagLayoutModel;
       } else {
         obj = properties.get(ViewCanvas.class.getName());
-        if (obj instanceof Integer) {
+        if (obj instanceof Integer intVal) {
           ActionState layout = EventManager.getInstance().getAction(ActionW.LAYOUT);
           if (layout instanceof ComboItemListener) {
-            Object[] list = ((ComboItemListener) layout).getAllItem();
-            for (Object m : list) {
-              if (m instanceof GridBagLayoutModel) {
-                if (getViewTypeNumber((GridBagLayoutModel) m, ViewCanvas.class) >= (Integer) obj) {
-                  model = (GridBagLayoutModel) m;
-                  break;
-                }
-              }
-            }
+            model = ImageViewerPlugin.getBestDefaultViewLayout(layout, intVal);
           }
         }
       }
       // Set UID
       Object val = properties.get(ViewerPluginBuilder.UID);
-      if (val instanceof String) {
-        uid = (String) val;
+      if (val instanceof String s) {
+        uid = s;
       }
     }
     View2dContainer instance = new View2dContainer(model, uid);
     if (properties != null) {
       Object obj = properties.get(DataExplorerModel.class.getName());
-      if (obj instanceof DataExplorerModel) {
+      if (obj instanceof DataExplorerModel m) {
         // Register the PropertyChangeListener
-        DataExplorerModel m = (DataExplorerModel) obj;
         m.addPropertyChangeListener(instance);
       }
     }
@@ -148,18 +138,12 @@ public class ViewerFactory implements SeriesViewerFactory {
 
   @Override
   public boolean canReadMimeType(String mimeType) {
-    if (mimeType != null && mimeType.startsWith("image/")) { // NON-NLS
-      return true;
-    }
-    return false;
+    return mimeType != null && mimeType.startsWith("image/"); // NON-NLS
   }
 
   @Override
   public boolean isViewerCreatedByThisFactory(SeriesViewer<? extends MediaElement> viewer) {
-    if (viewer instanceof View2dContainer) {
-      return true;
-    }
-    return false;
+    return viewer instanceof View2dContainer;
   }
 
   @Override
@@ -172,7 +156,7 @@ public class ViewerFactory implements SeriesViewerFactory {
     if (!BundleTools.SYSTEM_PREFERENCES.getBooleanProperty("weasis.import.images", true)) {
       return Collections.emptyList();
     }
-    return Arrays.asList(preferencesAction);
+    return Collections.singletonList(preferencesAction);
   }
 
   @Override
@@ -227,9 +211,8 @@ public class ViewerFactory implements SeriesViewerFactory {
         ViewerPluginBuilder.openSequenceInDefaultPlugin(
             series, ViewerPluginBuilder.DefaultDataModel, true, false);
       } else {
-        Component c = e.getSource() instanceof Component ? (Component) e.getSource() : null;
         JOptionPane.showMessageDialog(
-            c,
+            e.getSource() instanceof Component c ? c : null,
             Messages.getString("OpenImageAction.error_open_msg"),
             Messages.getString("OpenImageAction.open_img"),
             JOptionPane.WARNING_MESSAGE);

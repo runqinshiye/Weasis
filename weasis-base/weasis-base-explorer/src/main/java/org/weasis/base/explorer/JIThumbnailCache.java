@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.base.explorer.list.ThumbnailList;
 import org.weasis.core.api.gui.util.GuiExecutor;
-import org.weasis.core.api.image.util.ImageFiler;
+import org.weasis.core.api.image.cv.ImageCVIO;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.MediaElement;
 import org.weasis.core.api.util.ThreadUtil;
@@ -36,7 +36,7 @@ public final class JIThumbnailCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(JIThumbnailCache.class);
 
   private final LinkedBlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
-  // Set only one concurrent thread. The time consuming part is in loading image thread (see
+  // Set only one concurrent thread. The time-consuming part is in loading image thread (see
   // ImageElement)
   private final ExecutorService qExecutor =
       new ThreadPoolExecutor(
@@ -52,13 +52,11 @@ public final class JIThumbnailCache {
   public JIThumbnailCache() {
     this.cachedThumbnails =
         Collections.synchronizedMap(
-            new LinkedHashMap<URI, ThumbnailIcon>(80) {
+            new LinkedHashMap<>(80) {
 
-              private static final long serialVersionUID = 5981678679620794224L;
               private static final int MAX_ENTRIES = 100;
 
               @Override
-              @SuppressWarnings("rawtypes")
               protected boolean removeEldestEntry(final Map.Entry eldest) {
                 return size() > MAX_ENTRIES;
               }
@@ -160,7 +158,7 @@ public final class JIThumbnailCache {
       // Get the final that contain the thumbnail when the uncompress mode is activated
       File file = diskObject.getFile();
       if (file != null && file.getName().endsWith(".wcv")) {
-        File thumbFile = new File(ImageFiler.changeExtension(file.getPath(), ".jpg"));
+        File thumbFile = new File(ImageCVIO.changeExtension(file.getPath(), ".jpg"));
         if (thumbFile.canRead()) {
           img = ImageProcessor.readImage(thumbFile, null);
         }

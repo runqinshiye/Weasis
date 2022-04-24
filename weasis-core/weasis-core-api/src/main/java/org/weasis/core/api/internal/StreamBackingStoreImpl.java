@@ -19,7 +19,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -49,7 +48,7 @@ import org.weasis.core.util.StringUtil;
 
 /**
  * This is an abstract implementation of a backing store which uses streams to read/write the
- * preferences and stores a complete preferences tree in a single stream.
+ * preferences and stores a complete preferences' tree in a single stream.
  */
 public class StreamBackingStoreImpl implements BackingStore {
   private static final String PREFS_TAG = "preferences"; // NON-NLS
@@ -71,7 +70,7 @@ public class StreamBackingStoreImpl implements BackingStore {
   /**
    * This method is invoked to check if the backing store is accessible right now.
    *
-   * @throws BackingStoreException
+   * @throws BackingStoreException exception during storing data
    */
   protected void checkAccess() throws BackingStoreException {
     if (prefRootDirectory == null || !prefRootDirectory.exists()) {
@@ -128,7 +127,7 @@ public class StreamBackingStoreImpl implements BackingStore {
   /**
    * Get the file for the preferences tree.
    *
-   * @param desc
+   * @param desc the PreferencesDescription value
    * @return the preference file
    */
   protected File getFile(PreferencesDescription desc) {
@@ -206,7 +205,7 @@ public class StreamBackingStoreImpl implements BackingStore {
       // Force the changeset to store remote prefs
       prefs
           .getChangeSet()
-          .propertyChanged(prefs.getProperties().keySet().stream().findFirst().orElseGet(() -> ""));
+          .propertyChanged(prefs.getProperties().keySet().stream().findFirst().orElse(""));
     }
 
     for (PreferencesImpl uchild : uchildren) {
@@ -231,7 +230,7 @@ public class StreamBackingStoreImpl implements BackingStore {
     if (file != null && file.exists()) {
       XMLStreamReader xmler = null;
 
-      try (FileInputStream fileReader = new FileInputStream(file); ) {
+      try (FileInputStream fileReader = new FileInputStream(file)) {
         final PreferencesImpl rootPref = new PreferencesImpl(desc, manager);
 
         XMLInputFactory factory = XMLInputFactory.newInstance();
@@ -266,7 +265,7 @@ public class StreamBackingStoreImpl implements BackingStore {
     if (StringUtil.hasText(prefUrl)
         && (!BundleTools.isLocalSession() || BundleTools.isStoreLocalSession())) {
 
-      String serviceURL = null;
+      String serviceURL;
       try {
         serviceURL = getURL(desc, prefUrl);
       } catch (UnsupportedEncodingException e) {
@@ -274,7 +273,7 @@ public class StreamBackingStoreImpl implements BackingStore {
       }
 
       try (ClosableURLConnection conn =
-          NetworkUtil.getUrlConnection(serviceURL, getURLParameters(false)); ) {
+          NetworkUtil.getUrlConnection(serviceURL, getURLParameters(false))) {
 
         return readRemotePref(new PreferencesImpl(desc, manager), conn);
 
@@ -291,7 +290,7 @@ public class StreamBackingStoreImpl implements BackingStore {
 
     XMLStreamReader xmler = null;
 
-    try (InputStream fileReader = conn.getInputStream(); ) {
+    try (InputStream fileReader = conn.getInputStream()) {
       XMLInputFactory factory = XMLInputFactory.newInstance();
       // disable external entities for security
       factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
@@ -302,10 +301,8 @@ public class StreamBackingStoreImpl implements BackingStore {
 
     } catch (XMLStreamException e) {
       boolean isHttpNoContent = false;
-      if (conn.getUrlConnection() instanceof HttpURLConnection) {
-        isHttpNoContent =
-            HttpURLConnection.HTTP_NO_CONTENT
-                == ((HttpURLConnection) conn.getUrlConnection()).getResponseCode();
+      if (conn.getUrlConnection() instanceof HttpURLConnection httpURLConnection) {
+        isHttpNoContent = HttpURLConnection.HTTP_NO_CONTENT == httpURLConnection.getResponseCode();
       }
       if (!isHttpNoContent)
         throw new BackingStoreException(
@@ -374,9 +371,8 @@ public class StreamBackingStoreImpl implements BackingStore {
         try (OutputStream out = http.getOutputStream()) {
           writeStream(new FileInputStream(file), out);
         }
-        if (http.getUrlConnection() instanceof HttpURLConnection) {
-          NetworkUtil.readResponse(
-              (HttpURLConnection) http.getUrlConnection(), urlParams.getUnmodifiableHeaders());
+        if (http.getUrlConnection() instanceof HttpURLConnection httpURLConnection) {
+          NetworkUtil.readResponse(httpURLConnection, urlParams.getUnmodifiableHeaders());
         }
       }
     }
@@ -424,9 +420,7 @@ public class StreamBackingStoreImpl implements BackingStore {
     if (prefs.getChangeSet().hasChanges()) {
       return true;
     }
-    final Iterator<?> i = prefs.getChildren().iterator();
-    while (i.hasNext()) {
-      final PreferencesImpl current = (PreferencesImpl) i.next();
+    for (PreferencesImpl current : prefs.getChildren()) {
       if (this.hasChanges(current)) {
         return true;
       }
@@ -440,23 +434,15 @@ public class StreamBackingStoreImpl implements BackingStore {
     // Do nothing, only update when writing
   }
 
-  /**
-   * Write the preferences recursively to the output stream.
-   *
-   * @param prefs
-   * @param os
-   * @throws IOException
-   * @throws XMLStreamException
-   */
+  /** Write the preferences recursively to the output stream. */
   protected void write(PreferencesImpl prefs, XMLStreamWriter writer) throws XMLStreamException {
     final int size = prefs.getProperties().size();
     if (size > 0) {
       this.writePreferences(prefs, writer);
     }
     final Collection<?> children = prefs.getChildren();
-    final Iterator<?> i = children.iterator();
-    while (i.hasNext()) {
-      final PreferencesImpl child = (PreferencesImpl) i.next();
+    for (Object o : children) {
+      final PreferencesImpl child = (PreferencesImpl) o;
       writer.writeStartElement(child.name());
       this.write(child, writer);
       writer.writeEndElement();
@@ -471,16 +457,14 @@ public class StreamBackingStoreImpl implements BackingStore {
       eventType = xmler.next();
       switch (eventType) {
           // It is a properties of the node
-        case XMLStreamConstants.CHARACTERS:
-          prefs.getProperties().put(startKey, xmler.getText());
-          break;
+        case XMLStreamConstants.CHARACTERS -> prefs.getProperties().put(startKey, xmler.getText());
           // It is a child of the node
-        case XMLStreamConstants.START_ELEMENT:
+        case XMLStreamConstants.START_ELEMENT -> {
           PreferencesImpl impl = prefs.getOrCreateNode(startKey);
           this.read(impl, xmler, xmler.getName().getLocalPart());
           impl.getChangeSet().clear();
-          break;
-        case XMLStreamConstants.END_ELEMENT:
+        }
+        case XMLStreamConstants.END_ELEMENT -> {
           // In case the tag does not contain values or inner tag
           if (prefs.getProperties().isEmpty() && prefs.getChildren().isEmpty()) {
             prefs.getOrCreateNode(startKey);
@@ -488,20 +472,16 @@ public class StreamBackingStoreImpl implements BackingStore {
           if (startKey.equals(xmler.getName().getLocalPart())) {
             return; // Return to the parent tag
           }
-          break;
-        default:
-          break;
+        }
       }
     }
   }
 
   protected void writePreferences(PreferencesImpl prefs, XMLStreamWriter writer)
       throws XMLStreamException {
-    final Iterator<?> i = prefs.getProperties().entrySet().iterator();
-    while (i.hasNext()) {
-      final Map.Entry<?, ?> entry = (Map.Entry<?, ?>) i.next();
-      writer.writeStartElement(entry.getKey().toString());
-      writer.writeCharacters(EscapeChars.forXML(entry.getValue().toString()));
+    for (Entry<String, String> stringStringEntry : prefs.getProperties().entrySet()) {
+      writer.writeStartElement(stringStringEntry.getKey());
+      writer.writeCharacters(EscapeChars.forXML(stringStringEntry.getValue()));
       writer.writeEndElement();
     }
     writer.flush();

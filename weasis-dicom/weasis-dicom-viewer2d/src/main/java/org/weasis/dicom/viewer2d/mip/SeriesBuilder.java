@@ -45,10 +45,6 @@ import org.weasis.opencv.data.PlanarImage;
 public class SeriesBuilder {
   private static final Logger LOGGER = LoggerFactory.getLogger(SeriesBuilder.class);
 
-  public static final File MPR_CACHE_DIR =
-      AppProperties.buildAccessibleTempDirectory(
-          AppProperties.FILE_CACHE_DIR.getName(), "mip"); // NON-NLS
-
   private SeriesBuilder() {}
 
   public static void applyMipParameters(
@@ -62,16 +58,15 @@ public class SeriesBuilder {
     PlanarImage curImage;
     if (series != null) {
 
-      SeriesComparator sort = (SeriesComparator) view.getActionValue(ActionW.SORTSTACK.cmd());
-      Boolean reverse = (Boolean) view.getActionValue(ActionW.INVERSESTACK.cmd());
+      SeriesComparator sort = (SeriesComparator) view.getActionValue(ActionW.SORT_STACK.cmd());
+      Boolean reverse = (Boolean) view.getActionValue(ActionW.INVERSE_STACK.cmd());
       Comparator sortFilter = (reverse != null && reverse) ? sort.getReversOrderComparator() : sort;
       Filter filter = (Filter) view.getActionValue(ActionW.FILTERED_SERIES.cmd());
       Iterable<DicomImageElement> medias = series.copyOfMedias(filter, sortFilter);
 
       int curImg = extend - 1;
       ActionState sequence = view.getEventManager().getAction(ActionW.SCROLL_SERIES);
-      if (sequence instanceof SliderCineListener) {
-        SliderCineListener cineAction = (SliderCineListener) sequence;
+      if (sequence instanceof SliderCineListener cineAction) {
         curImg = cineAction.getSliderValue() - 1;
       }
 
@@ -117,7 +112,14 @@ public class SeriesBuilder {
         Tag.Laterality,
         Tag.BodyPartExamined,
         Tag.FrameOfReferenceUID,
+        Tag.RescaleSlope,
+        Tag.RescaleIntercept,
+        Tag.RescaleType,
         Tag.ModalityLUTSequence,
+        Tag.WindowCenter,
+        Tag.WindowWidth,
+        Tag.VOILUTFunction,
+        Tag.WindowCenterWidthExplanation,
         Tag.VOILUTSequence
       };
 
@@ -157,7 +159,6 @@ public class SeriesBuilder {
           curImage = null;
         }
 
-        final DicomImageElement dicom;
         if (curImage != null) {
 
           DicomImageElement imgRef = (DicomImageElement) sources.get(sources.size() / 2);
@@ -189,9 +190,10 @@ public class SeriesBuilder {
           rawIO.setTag(TagD.get(Tag.BitsAllocated), imgRef.getBitsAllocated());
           rawIO.setTag(TagD.get(Tag.BitsStored), imgRef.getBitsStored());
 
+          int lastIndex = sources.size() - 1;
           rawIO.setTag(
               TagD.get(Tag.SliceThickness),
-              getThickness(sources.get(0), sources.get(sources.size() - 1)));
+              getThickness(sources.get(0), sources.get(lastIndex), lastIndex));
           double[] loc = (double[]) imgRef.getTagValue(TagW.SlicePosition);
           if (loc != null) {
             rawIO.setTag(TagW.SlicePosition, loc);
@@ -201,52 +203,15 @@ public class SeriesBuilder {
           rawIO.setTag(TagD.get(Tag.SeriesInstanceUID), seriesUID);
 
           // Mandatory tags
-          TagW[] mtagList =
-              TagD.getTagFromIDs(
-                  Tag.PatientID,
-                  Tag.PatientName,
-                  Tag.PatientBirthDate,
-                  Tag.StudyInstanceUID,
-                  Tag.StudyID,
-                  Tag.SOPClassUID,
-                  Tag.StudyDate,
-                  Tag.StudyTime,
-                  Tag.AccessionNumber);
-          rawIO.copyTags(mtagList, img, true);
-          rawIO.setTag(TagW.PatientPseudoUID, img.getTagValue(TagW.PatientPseudoUID));
-
-          TagW[] tagList =
-              TagD.getTagFromIDs(
-                  Tag.PhotometricInterpretation,
-                  Tag.PixelRepresentation,
-                  Tag.Units,
-                  Tag.SamplesPerPixel,
-                  Tag.Modality);
-          rawIO.copyTags(tagList, img, true);
-          rawIO.setTag(TagW.MonoChrome, img.getTagValue(TagW.MonoChrome));
-
-          TagW[] tagList2 = {
-            TagW.ModalityLUTData,
-            TagW.ModalityLUTType,
-            TagW.ModalityLUTExplanation,
-            TagW.VOILUTsData,
-            TagW.VOILUTsExplanation
-          };
-          rawIO.copyTags(tagList2, img, false);
+          org.weasis.dicom.viewer2d.mpr.SeriesBuilder.copyMandatoryTags(img, rawIO);
+          TagW[] tagList2;
 
           tagList2 =
               TagD.getTagFromIDs(
                   Tag.ImageOrientationPatient,
                   Tag.ImagePositionPatient,
-                  Tag.RescaleSlope,
-                  Tag.RescaleIntercept,
-                  Tag.RescaleType,
                   Tag.PixelPaddingValue,
                   Tag.PixelPaddingRangeLimit,
-                  Tag.WindowWidth,
-                  Tag.WindowCenter,
-                  Tag.WindowCenterWidthExplanation,
-                  Tag.VOILUTFunction,
                   Tag.PixelSpacing,
                   Tag.ImagerPixelSpacing,
                   Tag.NominalScannedPixelSpacing,
@@ -257,23 +222,13 @@ public class SeriesBuilder {
           // Image specific tags
           rawIO.setTag(TagD.get(Tag.SOPInstanceUID), UIDUtils.createUID());
           rawIO.setTag(TagD.get(Tag.InstanceNumber), index + 1);
-
-          dicom =
-              new DicomImageElement(rawIO, 0) {
-                @Override
-                public boolean saveToFile(File output) {
-                  RawImageIO reader = (RawImageIO) getMediaReader();
-                  return FileUtil.nioCopyFile(reader.getDicomFile(), output);
-                }
-              };
-
-          dicoms.add(dicom);
+          dicoms.add(org.weasis.dicom.viewer2d.mpr.SeriesBuilder.buildDicomImageElement(rawIO));
         }
       }
     }
   }
 
-  static double getThickness(ImageElement firstDcm, ImageElement lastDcm) {
+  static double getThickness(ImageElement firstDcm, ImageElement lastDcm, int range) {
     double[] p1 = (double[]) firstDcm.getTagValue(TagW.SlicePosition);
     double[] p2 = (double[]) lastDcm.getTagValue(TagW.SlicePosition);
     if (p1 != null && p2 != null) {
@@ -291,7 +246,7 @@ public class SeriesBuilder {
 
       return diff;
     }
-    return 1.0;
+    return range;
   }
 
   public static PlanarImage addCollectionOperation(Type mipType, List<ImageElement> sources) {

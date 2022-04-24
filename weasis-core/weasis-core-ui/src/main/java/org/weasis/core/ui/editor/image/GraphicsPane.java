@@ -21,7 +21,6 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,7 +53,6 @@ import org.weasis.core.util.LangUtil;
  * @author Nicolas Roduit
  */
 public class GraphicsPane extends JComponent implements Canvas {
-  private static final long serialVersionUID = -7830146632397526267L;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GraphicsPane.class);
 
@@ -94,8 +92,8 @@ public class GraphicsPane extends JComponent implements Canvas {
       graphicManagerOld.deleteNonSerializableGraphics();
       this.graphicManager = graphicManager;
       this.graphicManager.addGraphicChangeHandler(graphicsChangeHandler);
-      if (this instanceof ViewCanvas) {
-        this.graphicManager.updateLabels(Boolean.TRUE, (ViewCanvas) this);
+      if (this instanceof ViewCanvas<?> viewCanvas) {
+        this.graphicManager.updateLabels(Boolean.TRUE, viewCanvas);
       }
       this.graphicManager.addChangeListener(layerModelHandler);
       firePropertyChange("graphicManager", graphicManagerOld, this.graphicManager);
@@ -451,8 +449,7 @@ public class GraphicsPane extends JComponent implements Canvas {
    *
    * @author Nicolas Roduit
    */
-  class PropertyChangeHandler implements PropertyChangeListener, Serializable {
-    private static final long serialVersionUID = -9094820911680205527L;
+  class PropertyChangeHandler implements PropertyChangeListener {
 
     private PropertyChangeHandler() {}
 
@@ -461,8 +458,7 @@ public class GraphicsPane extends JComponent implements Canvas {
     public void propertyChange(PropertyChangeEvent propertychangeevent) {
       Object obj = propertychangeevent.getSource();
       String s = propertychangeevent.getPropertyName();
-      if (obj instanceof Graphic) {
-        Graphic graph = (Graphic) obj;
+      if (obj instanceof Graphic graph) {
         if ("bounds".equals(s)) {
           graphicBoundsChanged(
               graph,

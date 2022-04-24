@@ -30,11 +30,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import javax.swing.Icon;
-import javax.swing.ImageIcon;
-import org.weasis.core.api.gui.util.MathUtil;
 import org.weasis.core.api.image.measure.MeasurementsAdapter;
 import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.image.util.Unit;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.Messages;
 import org.weasis.core.ui.model.graphic.AbstractDragGraphicArea;
 import org.weasis.core.ui.model.utils.algo.MinimumEnclosingRectangle;
@@ -42,16 +42,15 @@ import org.weasis.core.ui.model.utils.bean.MeasureItem;
 import org.weasis.core.ui.model.utils.bean.Measurement;
 import org.weasis.core.ui.model.utils.exceptions.InvalidShapeException;
 import org.weasis.core.ui.util.MouseEventDouble;
+import org.weasis.core.util.MathUtil;
 
 @XmlType(name = "polygon")
 @XmlRootElement(name = "polygon")
 public class PolygonGraphic extends AbstractDragGraphicArea {
-  private static final long serialVersionUID = 3835917798842596122L;
 
   public static final Integer POINTS_NUMBER = UNDEFINED;
 
-  public static final Icon ICON =
-      new ImageIcon(PolygonGraphic.class.getResource("/icon/22x22/draw-polygon.png"));
+  public static final Icon ICON = ResourceUtil.getIcon(ActionIcon.DRAW_POLYGON);
 
   public static final Measurement AREA =
       new Measurement(Messages.getString("measure.area"), 1, true, true, true);
@@ -127,7 +126,7 @@ public class PolygonGraphic extends AbstractDragGraphicArea {
 
   @Override
   protected void prepareShape() throws InvalidShapeException {
-    // Do not draw points any more
+    // Do not draw points anymore
     setPointNumber(pts.size());
     buildShape(null);
 
@@ -137,7 +136,7 @@ public class PolygonGraphic extends AbstractDragGraphicArea {
         Point2D checkPoint = pts.get(lastPointIndex);
         /*
          * Must not have two or several points with the same position at the end of the list (two points is the
-         * convention to have a uncompleted shape when drawing)
+         * convention to have an uncompleted shape when drawing)
          */
         for (int i = lastPointIndex - 1; i >= 0; i--) {
           if (Objects.equals(checkPoint, pts.get(i))) {
@@ -195,9 +194,7 @@ public class PolygonGraphic extends AbstractDragGraphicArea {
 
     if (lastPointIndex > 0) {
       Point2D checkPoint = pts.get(lastPointIndex);
-      if (Objects.equals(checkPoint, pts.get(--lastPointIndex))) {
-        return false;
-      }
+      return !Objects.equals(checkPoint, pts.get(--lastPointIndex));
     }
     return true;
   }
@@ -351,7 +348,7 @@ public class PolygonGraphic extends AbstractDragGraphicArea {
 
   /**
    * Construct a list of line segments which defines the outside path of a given polygon Area with
-   * each vertices ordered in the same direction<br>
+   * each vertex ordered in the same direction<br>
    *
    * @return list of line segments around the closed polygon, or null if shape is invalid
    */

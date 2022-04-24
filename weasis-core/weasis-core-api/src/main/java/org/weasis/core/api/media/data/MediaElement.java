@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.weasis.core.util.FileUtil;
 
-public class MediaElement implements Tagable {
+public class MediaElement implements Taggable {
 
   // Metadata of the media
   protected final Map<TagW, Object> tags;
@@ -115,15 +115,16 @@ public class MediaElement implements Tagable {
   }
 
   public boolean saveToFile(File output) {
+    return saveToFile(mediaIO, output);
+  }
+
+  public static boolean saveToFile(MediaReader mediaIO, File output) {
     if (mediaIO.getFileCache().isElementInMemory()) {
       return mediaIO.buildFile(output);
     }
 
     Optional<File> file = mediaIO.getFileCache().getOriginalFile();
-    if (file.isPresent()) {
-      return FileUtil.nioCopyFile(file.get(), output);
-    }
-    return false;
+    return file.filter(value -> FileUtil.nioCopyFile(value, output)).isPresent();
   }
 
   public long getLength() {

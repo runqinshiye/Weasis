@@ -12,22 +12,21 @@ package org.weasis.dicom.wave;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import org.weasis.core.api.gui.util.DecFormater;
+import org.weasis.core.api.gui.util.DecFormatter;
 import org.weasis.core.util.StringUtil;
 
 class ToolPanel extends JPanel {
-  private static final long serialVersionUID = 2827148456926205919L;
 
   public enum Speed {
     AUTO(WaveLayoutManager.AUTO_SPEED),
-    TWELWE(12.5),
+    TWELVE(12.5),
     TWENTY_FIVE(25.0),
     FIFTY(50.0),
     CENT(100.0);
 
     private final double value;
 
-    private Speed(double value) {
+    Speed(double value) {
       this.value = value;
     }
 
@@ -40,7 +39,7 @@ class ToolPanel extends JPanel {
       if (this == AUTO) {
         return "auto mm/s"; // NON-NLS
       }
-      return DecFormater.allNumber(value) + " mm/s"; // NON-NLS
+      return DecFormatter.allNumber(value) + " mm/s"; // NON-NLS
     }
 
     public static Speed fromValue(double value) {
@@ -64,7 +63,7 @@ class ToolPanel extends JPanel {
 
     private final int value;
 
-    private Amplitude(int value) {
+    Amplitude(int value) {
       this.value = value;
     }
 
@@ -90,8 +89,7 @@ class ToolPanel extends JPanel {
     }
   }
 
-  private WaveView view;
-  private JLabel formatLabel;
+  private final WaveView view;
   private JComboBox<Format> formatCombo;
 
   public ToolPanel(WaveView view) {
@@ -122,7 +120,7 @@ class ToolPanel extends JPanel {
   }
 
   private void addDisplayFormatComponent() {
-    formatLabel = new JLabel(Messages.getString("ToolPanel.disp_format") + StringUtil.COLON);
+    JLabel formatLabel = new JLabel(Messages.getString("ToolPanel.disp_format") + StringUtil.COLON);
     this.add(formatLabel);
 
     formatCombo = new JComboBox<>(Format.values());

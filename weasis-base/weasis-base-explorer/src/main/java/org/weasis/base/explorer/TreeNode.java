@@ -19,7 +19,6 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("serial")
 public class TreeNode extends DefaultMutableTreeNode {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeNode.class);
@@ -41,10 +40,7 @@ public class TreeNode extends DefaultMutableTreeNode {
     if (!this.explored) {
       return false;
     }
-    if ((this.children != null) && !this.children.isEmpty()) {
-      return false;
-    }
-    return true;
+    return (this.children == null) || this.children.isEmpty();
   }
 
   public Path getNodePath() {

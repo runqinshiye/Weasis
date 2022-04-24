@@ -16,8 +16,6 @@ import javax.swing.JPanel;
 
 public class LoadingPanel extends JPanel {
 
-  private static final long serialVersionUID = 1L;
-
   private final ArrayList<ExplorerTask<?, ?>> tasks = new ArrayList<>();
   private final LoadingTaskPanel globalDownloadTask = new LoadingTaskPanel(true);
 
@@ -57,7 +55,8 @@ public class LoadingPanel extends JPanel {
         }
       } else {
         for (Component c : getComponents()) {
-          if (c instanceof LoadingTaskPanel && task.equals(((LoadingTaskPanel) c).getTask())) {
+          if (c instanceof LoadingTaskPanel loadingTaskPanel
+              && task.equals(loadingTaskPanel.getTask())) {
             remove(c);
             task.stopProgress();
             update = true;

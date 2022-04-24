@@ -17,6 +17,7 @@ import bibliothek.gui.dock.common.intern.CDockable;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.weasis.core.api.explorer.DataExplorerView;
@@ -31,13 +32,13 @@ public class UIManager {
   public static final AtomicInteger dockableUIGenerator = new AtomicInteger(1);
 
   public static final List<ViewerPlugin<?>> VIEWER_PLUGINS =
-      Collections.synchronizedList(new ArrayList<ViewerPlugin<?>>());
+      Collections.synchronizedList(new ArrayList<>());
   public static final List<DataExplorerView> EXPLORER_PLUGINS =
-      Collections.synchronizedList(new ArrayList<DataExplorerView>());
+      Collections.synchronizedList(new ArrayList<>());
   public static final List<Toolbar> EXPLORER_PLUGIN_TOOLBARS =
-      Collections.synchronizedList(new ArrayList<Toolbar>());
+      Collections.synchronizedList(new ArrayList<>());
   public static final List<SeriesViewerFactory> SERIES_VIEWER_FACTORIES =
-      Collections.synchronizedList(new ArrayList<SeriesViewerFactory>());
+      Collections.synchronizedList(new ArrayList<>());
 
   public static final CVetoFocusListener DOCKING_VETO_FOCUS =
       new CVetoFocusListener() {
@@ -114,10 +115,9 @@ public class UIManager {
   public static SeriesViewerFactory getViewerFactory(String[] mimeTypeList) {
     if (mimeTypeList != null && mimeTypeList.length > 0) {
       synchronized (UIManager.SERIES_VIEWER_FACTORIES) {
-        List<SeriesViewerFactory> plugins = UIManager.SERIES_VIEWER_FACTORIES;
         int level = Integer.MAX_VALUE;
         SeriesViewerFactory best = null;
-        for (final SeriesViewerFactory f : plugins) {
+        for (final SeriesViewerFactory f : UIManager.SERIES_VIEWER_FACTORIES) {
           if (f != null) {
             for (String mime : mimeTypeList) {
               if (f.canReadMimeType(mime) && f.getLevel() < level) {
@@ -147,10 +147,7 @@ public class UIManager {
         }
       }
 
-      Collections.sort(
-          plugins,
-          (s1, s2) ->
-              s1.getLevel() < s2.getLevel() ? -1 : (s1.getLevel() == s2.getLevel() ? 0 : 1));
+      plugins.sort(Comparator.comparingInt(SeriesViewerFactory::getLevel));
       return plugins;
     }
     return null;

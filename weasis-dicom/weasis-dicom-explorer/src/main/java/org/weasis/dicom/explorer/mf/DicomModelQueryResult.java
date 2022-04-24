@@ -97,10 +97,9 @@ public class DicomModelQueryResult extends AbstractQueryResult {
                   TagD.getTagValue(series, Tag.SeriesInstanceUID, String.class);
               for (DicomSpecialElement spel : dcmSpecElements) {
                 String seriesUID = TagD.getTagValue(spel, Tag.SeriesInstanceUID, String.class);
-                if (seriesInstanceUID.equals(seriesUID)) {
-                  if (!spel.getMediaReader().isEditableDicom()) {
-                    buildInstance(spel, s);
-                  }
+                if (seriesInstanceUID.equals(seriesUID)
+                    && !spel.getMediaReader().isEditableDicom()) {
+                  buildInstance(spel, s);
                 }
               }
             } else {
@@ -126,7 +125,7 @@ public class DicomModelQueryResult extends AbstractQueryResult {
     if (p == null) {
       p = new Patient(id, ispid);
       p.setPatientName(TagD.getTagValue(patient, Tag.PatientName, String.class));
-      // Only set birth date, birth time is often not consistent (00:00)
+      // Only set birthdate, birth time is often not consistent (00:00)
       LocalDate date = TagD.getTagValue(patient, Tag.PatientBirthDate, LocalDate.class);
       p.setPatientBirthDate(date == null ? null : TagD.formatDicomDate(date));
       p.setPatientSex(TagD.getTagValue(patient, Tag.PatientSex, String.class));
@@ -192,10 +191,10 @@ public class DicomModelQueryResult extends AbstractQueryResult {
         s.addSopInstance(sop);
       }
 
-      if (media instanceof DicomImageElement) {
+      if (media instanceof DicomImageElement imageElement) {
         GraphicModel model = (GraphicModel) media.getTagValue(TagW.PresentationModel);
         if (model != null && model.hasSerializableGraphics()) {
-          images.add((DicomImageElement) media);
+          images.add(imageElement);
         }
       }
     }

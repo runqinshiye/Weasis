@@ -23,7 +23,7 @@ import org.weasis.dicom.explorer.DicomExplorer;
 import org.weasis.dicom.explorer.DicomModel;
 import org.weasis.dicom.explorer.wado.DicomManager;
 
-@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}")
+@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}") // NON-NLS
 public class Activator implements BundleActivator {
 
   public static final Properties IMPORT_EXPORT_PERSISTENCE = new Properties();
@@ -48,10 +48,9 @@ public class Activator implements BundleActivator {
 
     DicomModel.LOADING_EXECUTOR.shutdownNow();
     DataExplorerView explorer = UIManager.getExplorerplugin(DicomExplorer.NAME);
-    if (explorer instanceof DicomExplorer) {
-      DicomExplorer dexp = (DicomExplorer) explorer;
+    if (explorer != null && explorer.getDataExplorerModel() instanceof DicomModel dicomModel) {
       // Remove image in viewers, in image cache and close the image stream
-      ((DicomModel) dexp.getDataExplorerModel()).dispose();
+      dicomModel.dispose();
     }
   }
 }

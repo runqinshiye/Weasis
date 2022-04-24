@@ -19,10 +19,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import javax.swing.Icon;
-import javax.swing.ImageIcon;
 import org.weasis.core.api.image.measure.MeasurementsAdapter;
 import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.image.util.Unit;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.Messages;
 import org.weasis.core.ui.model.graphic.AbstractDragGraphicArea;
 import org.weasis.core.ui.model.utils.bean.MeasureItem;
@@ -31,12 +32,10 @@ import org.weasis.core.ui.model.utils.exceptions.InvalidShapeException;
 import org.weasis.core.ui.util.MouseEventDouble;
 
 public class RectangleGraphic extends AbstractDragGraphicArea {
-  private static final long serialVersionUID = -2862114022989550927L;
 
   public static final Integer POINTS_NUMBER = 8;
 
-  public static final Icon ICON =
-      new ImageIcon(RectangleGraphic.class.getResource("/icon/22x22/draw-rectangle.png"));
+  public static final Icon ICON = ResourceUtil.getIcon(ActionIcon.DRAW_RECTANGLE);
 
   public static final Measurement AREA =
       new Measurement(Messages.getString("measure.area"), 1, true, true, true);
@@ -315,41 +314,27 @@ public class RectangleGraphic extends AbstractDragGraphicArea {
     }
 
     eHandlePoint getVerticalMirror() {
-      switch (this) {
-        case NW:
-          return eHandlePoint.NE;
-        case NE:
-          return eHandlePoint.NW;
-        case W:
-          return eHandlePoint.E;
-        case E:
-          return eHandlePoint.W;
-        case SW:
-          return eHandlePoint.SE;
-        case SE:
-          return eHandlePoint.SW;
-        default:
-          return this;
-      }
+      return switch (this) {
+        case NW -> eHandlePoint.NE;
+        case NE -> eHandlePoint.NW;
+        case W -> eHandlePoint.E;
+        case E -> eHandlePoint.W;
+        case SW -> eHandlePoint.SE;
+        case SE -> eHandlePoint.SW;
+        default -> this;
+      };
     }
 
     eHandlePoint getHorizontalMirror() {
-      switch (this) {
-        case NW:
-          return eHandlePoint.SW;
-        case SW:
-          return eHandlePoint.NW;
-        case N:
-          return eHandlePoint.S;
-        case S:
-          return eHandlePoint.N;
-        case NE:
-          return eHandlePoint.SE;
-        case SE:
-          return eHandlePoint.NE;
-        default:
-          return this;
-      }
+      return switch (this) {
+        case NW -> eHandlePoint.SW;
+        case SW -> eHandlePoint.NW;
+        case N -> eHandlePoint.S;
+        case S -> eHandlePoint.N;
+        case NE -> eHandlePoint.SE;
+        case SE -> eHandlePoint.NE;
+        default -> this;
+      };
     }
   }
 }

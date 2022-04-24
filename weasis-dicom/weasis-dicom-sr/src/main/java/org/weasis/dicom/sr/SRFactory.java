@@ -16,8 +16,9 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.weasis.core.api.explorer.DataExplorerView;
 import org.weasis.core.api.explorer.model.DataExplorerModel;
 import org.weasis.core.api.image.GridBagLayoutModel;
-import org.weasis.core.api.media.MimeInspector;
 import org.weasis.core.api.media.data.MediaElement;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.FileIcon;
 import org.weasis.core.ui.docking.UIManager;
 import org.weasis.core.ui.editor.SeriesViewer;
 import org.weasis.core.ui.editor.SeriesViewerFactory;
@@ -25,9 +26,7 @@ import org.weasis.core.ui.editor.ViewerPluginBuilder;
 import org.weasis.dicom.explorer.DicomExplorer;
 import org.weasis.dicom.explorer.DicomModel;
 
-@org.osgi.service.component.annotations.Component(
-    service = SeriesViewerFactory.class,
-    immediate = false)
+@org.osgi.service.component.annotations.Component(service = SeriesViewerFactory.class)
 public class SRFactory implements SeriesViewerFactory {
 
   public static final String NAME = Messages.getString("SRFactory.viewer");
@@ -38,7 +37,7 @@ public class SRFactory implements SeriesViewerFactory {
 
   @Override
   public Icon getIcon() {
-    return MimeInspector.textIcon;
+    return ResourceUtil.getIcon(FileIcon.TEXT);
   }
 
   @Override
@@ -57,22 +56,21 @@ public class SRFactory implements SeriesViewerFactory {
     String uid = null;
     if (properties != null) {
       Object obj = properties.get(org.weasis.core.api.image.GridBagLayoutModel.class.getName());
-      if (obj instanceof GridBagLayoutModel) {
-        model = (GridBagLayoutModel) obj;
+      if (obj instanceof GridBagLayoutModel gridBagLayoutModel) {
+        model = gridBagLayoutModel;
       }
       // Set UID
       Object val = properties.get(ViewerPluginBuilder.UID);
-      if (val instanceof String) {
-        uid = (String) val;
+      if (val instanceof String s) {
+        uid = s;
       }
     }
 
     SRContainer instance = new SRContainer(model, uid);
     if (properties != null) {
       Object obj = properties.get(DataExplorerModel.class.getName());
-      if (obj instanceof DicomModel) {
+      if (obj instanceof DicomModel m) {
         // Register the PropertyChangeListener
-        DicomModel m = (DicomModel) obj;
         m.addPropertyChangeListener(instance);
       }
     }
@@ -94,10 +92,7 @@ public class SRFactory implements SeriesViewerFactory {
 
   @Override
   public boolean isViewerCreatedByThisFactory(SeriesViewer<? extends MediaElement> viewer) {
-    if (viewer instanceof SRContainer) {
-      return true;
-    }
-    return false;
+    return viewer instanceof SRContainer;
   }
 
   @Override

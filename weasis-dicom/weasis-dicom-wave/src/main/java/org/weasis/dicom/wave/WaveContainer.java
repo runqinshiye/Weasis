@@ -25,25 +25,26 @@ import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.explorer.DataExplorerView;
 import org.weasis.core.api.explorer.ObservableEvent;
 import org.weasis.core.api.gui.InsertableUtil;
-import org.weasis.core.api.gui.util.AppProperties;
 import org.weasis.core.api.gui.util.GuiExecutor;
 import org.weasis.core.api.image.GridBagLayoutModel;
-import org.weasis.core.api.media.MimeInspector;
 import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.api.media.data.MediaSeriesGroup;
 import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.service.BundleTools;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
+import org.weasis.core.api.util.ResourceUtil.FileIcon;
 import org.weasis.core.ui.docking.DockableTool;
 import org.weasis.core.ui.docking.PluginTool;
 import org.weasis.core.ui.docking.UIManager;
@@ -72,16 +73,6 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
     implements PropertyChangeListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(WaveContainer.class);
 
-  public static final List<SynchView> SYNCH_LIST =
-      Collections.synchronizedList(new ArrayList<SynchView>());
-
-  static {
-    SYNCH_LIST.add(SynchView.NONE);
-  }
-
-  public static final List<GridBagLayoutModel> LAYOUT_LIST =
-      Collections.synchronizedList(new ArrayList<GridBagLayoutModel>());
-
   public static final GridBagLayoutModel VIEWS_1x1 =
       new GridBagLayoutModel(
           "1x1", // NON-NLS
@@ -90,22 +81,20 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
           1,
           WaveView.class.getName()); // NON-NLS
 
-  static {
-    LAYOUT_LIST.add(VIEWS_1x1);
-  }
+  public static final List<GridBagLayoutModel> LAYOUT_LIST = List.of(VIEWS_1x1);
+
+  public static final List<SynchView> SYNCH_LIST = List.of(SynchView.NONE);
 
   // Static tools shared by all the View2dContainer instances, tools are registered when a container
   // is selected
   // Do not initialize tools in a static block (order initialization issue with eventManager), use
   // instead a lazy
   // initialization with a method.
-  public static final List<Toolbar> TOOLBARS =
-      Collections.synchronizedList(new ArrayList<Toolbar>(1));
-  public static final List<DockableTool> TOOLS =
-      Collections.synchronizedList(new ArrayList<DockableTool>(1));
-  private static volatile boolean INI_COMPONENTS = false;
+  public static final List<Toolbar> TOOLBARS = Collections.synchronizedList(new ArrayList<>(1));
+  public static final List<DockableTool> TOOLS = Collections.synchronizedList(new ArrayList<>(1));
+  private static volatile boolean initComponents = false;
   static final ImageViewerEventManager<DicomImageElement> ECG_EVENT_MANAGER =
-      new ImageViewerEventManager<DicomImageElement>() {
+      new ImageViewerEventManager<>() {
 
         @Override
         public boolean updateComponentsListener(ViewCanvas<DicomImageElement> defaultView2d) {
@@ -139,19 +128,25 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
           // Do nothing
         }
       };
-  protected WaveView ecgview;
+  protected WaveView ecgView;
 
   public WaveContainer() {
     this(VIEWS_1x1, null);
   }
 
   public WaveContainer(GridBagLayoutModel layoutModel, String uid) {
-    super(ECG_EVENT_MANAGER, layoutModel, uid, WaveFactory.NAME, MimeInspector.ecgIcon, null);
+    super(
+        ECG_EVENT_MANAGER,
+        layoutModel,
+        uid,
+        WaveFactory.NAME,
+        ResourceUtil.getIcon(FileIcon.ECG),
+        null);
     setSynchView(SynchView.NONE);
-    if (!INI_COMPONENTS) {
-      INI_COMPONENTS = true;
+    if (!initComponents) {
+      initComponents = true;
       // Add standard toolbars
-      final BundleContext context = AppProperties.getBundleContext();
+      final BundleContext context = FrameworkUtil.getBundle(this.getClass()).getBundleContext();
       String bundleName = context.getBundle().getSymbolicName();
       String componentName = InsertableUtil.getCName(this.getClass());
       String key = "enable"; // NON-NLS
@@ -165,7 +160,7 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
           true)) {
         Optional<Toolbar> b =
             UIManager.EXPLORER_PLUGIN_TOOLBARS.stream()
-                .filter(t -> t instanceof ImportToolBar)
+                .filter(ImportToolBar.class::isInstance)
                 .findFirst();
         b.ifPresent(TOOLBARS::add);
       }
@@ -178,7 +173,7 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
           true)) {
         Optional<Toolbar> b =
             UIManager.EXPLORER_PLUGIN_TOOLBARS.stream()
-                .filter(t -> t instanceof ExportToolBar)
+                .filter(ExportToolBar.class::isInstance)
                 .findFirst();
         b.ifPresent(TOOLBARS::add);
       }
@@ -193,7 +188,7 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
         TOOLBARS.add(new WaveformToolBar(20));
       }
 
-      PluginTool tool = null;
+      PluginTool tool;
       if (InsertableUtil.getBooleanProperty(
           BundleTools.SYSTEM_PREFERENCES,
           bundleName,
@@ -251,11 +246,12 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
                 new ObservableEvent(ObservableEvent.BasicAction.SELECT, this, null, getGroupID()));
       }
 
-      if (ecgview != null && !TOOLS.isEmpty() && TOOLS.get(0) instanceof MeasureAnnotationTool) {
-        MeasureAnnotationTool tool = (MeasureAnnotationTool) TOOLS.get(0);
-        ecgview.setAnnotationTool(tool);
-        tool.setSeries(ecgview.getSeries());
-        ecgview.updateMarkersTable();
+      if (ecgView != null
+          && !TOOLS.isEmpty()
+          && TOOLS.get(0) instanceof MeasureAnnotationTool tool) {
+        ecgView.setAnnotationTool(tool);
+        tool.setSeries(ecgView.getSeries());
+        ecgView.updateMarkersTable();
       }
 
     } else {
@@ -271,26 +267,24 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
     GuiExecutor.instance()
         .execute(
             () -> {
-              if (ecgview != null) {
-                ecgview.dispose();
+              if (ecgView != null) {
+                ecgView.dispose();
               }
             });
   }
 
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
-    if (evt instanceof ObservableEvent) {
-      ObservableEvent event = (ObservableEvent) evt;
+    if (evt instanceof ObservableEvent event) {
       ObservableEvent.BasicAction action = event.getActionCommand();
       Object newVal = event.getNewValue();
 
       if (ObservableEvent.BasicAction.REMOVE.equals(action)) {
         if (newVal instanceof DicomSeries) {
-          if (ecgview != null && ecgview.getSeries() == newVal) {
+          if (ecgView != null && ecgView.getSeries() == newVal) {
             close();
           }
-        } else if (newVal instanceof MediaSeriesGroup) {
-          MediaSeriesGroup group = (MediaSeriesGroup) newVal;
+        } else if (newVal instanceof MediaSeriesGroup group) {
           // Patient Group
           if (TagD.getUID(Level.PATIENT).equals(group.getTagID())) {
             if (group.equals(getGroupID())) {
@@ -299,14 +293,12 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
             }
           }
           // Study Group
-          else if (TagD.getUID(Level.STUDY).equals(group.getTagID())) {
-            if (event.getSource() instanceof DicomModel) {
-              DicomModel model = (DicomModel) event.getSource();
-              for (MediaSeriesGroup s : model.getChildren(group)) {
-                if (ecgview != null && ecgview.getSeries() == s) {
-                  close();
-                  break;
-                }
+          else if (TagD.getUID(Level.STUDY).equals(group.getTagID())
+              && event.getSource() instanceof DicomModel model) {
+            for (MediaSeriesGroup s : model.getChildren(group)) {
+              if (ecgView != null && ecgView.getSeries() == s) {
+                close();
+                break;
               }
             }
           }
@@ -316,7 +308,7 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
   }
 
   @Override
-  public int getViewTypeNumber(GridBagLayoutModel layout, Class defaultClass) {
+  public int getViewTypeNumber(GridBagLayoutModel layout, Class<?> defaultClass) {
     return 0;
   }
 
@@ -339,15 +331,15 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
   }
 
   @Override
-  public JComponent createUIcomponent(String clazz) {
+  public JComponent createComponent(String clazz) {
     try {
       Class<?> cl = Class.forName(clazz);
       JComponent component = (JComponent) cl.newInstance();
-      if (component instanceof SeriesViewerListener) {
-        eventManager.addSeriesViewerListener((SeriesViewerListener) component);
+      if (component instanceof SeriesViewerListener viewerListener) {
+        eventManager.addSeriesViewerListener(viewerListener);
       }
-      if (component instanceof WaveView) {
-        ecgview = (WaveView) component;
+      if (component instanceof WaveView waveView) {
+        ecgView = waveView;
       }
       return component;
     } catch (Exception e) {
@@ -366,10 +358,8 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
     ArrayList<Action> actions = new ArrayList<>(1);
     final String title = Messages.getString("ECGontainer.print_layout");
 
-    @SuppressWarnings("serial")
     AbstractAction printStd =
-        new AbstractAction(
-            title, new ImageIcon(ImageViewerPlugin.class.getResource("/icon/16x16/printer.png"))) {
+        new AbstractAction(title, ResourceUtil.getIcon(ActionIcon.PRINT)) {
 
           @Override
           public void actionPerformed(ActionEvent e) {
@@ -383,8 +373,10 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
 
   @Override
   public void addSeries(MediaSeries<DicomImageElement> sequence) {
-    if (ecgview != null && sequence instanceof Series && ecgview.getSeries() != sequence) {
-      ecgview.setSeries((Series) sequence);
+    if (ecgView != null
+        && sequence instanceof Series<?> series
+        && ecgView.getSeries() != sequence) {
+      ecgView.setSeries(series);
     }
   }
 
@@ -412,50 +404,50 @@ public class WaveContainer extends ImageViewerPlugin<DicomImageElement>
   }
 
   public void setZoomRatio(double ratio) {
-    if (ecgview != null) {
-      ecgview.setZoomRatio(ratio);
-      ecgview.setFormat(ecgview.getCurrentFormat());
-      ecgview.repaint();
+    if (ecgView != null) {
+      ecgView.setZoomRatio(ratio);
+      ecgView.setFormat(ecgView.getCurrentFormat());
+      ecgView.repaint();
     }
   }
 
   public void clearMeasurements() {
-    if (ecgview != null) {
-      ecgview.clearMeasurements();
+    if (ecgView != null) {
+      ecgView.clearMeasurements();
     }
   }
 
   public void displayHeader() {
-    if (ecgview != null) {
+    if (ecgView != null) {
       DicomSpecialElement dcm =
-          DicomModel.getFirstSpecialElement(ecgview.getSeries(), DicomSpecialElement.class);
-      DicomFieldsView.showHeaderDialog(this, ecgview.getSeries(), dcm);
+          DicomModel.getFirstSpecialElement(ecgView.getSeries(), DicomSpecialElement.class);
+      DicomFieldsView.showHeaderDialog(this, ecgView.getSeries(), dcm);
     }
   }
 
   void printCurrentView() {
-    if (ecgview != null) {
+    if (ecgView != null) {
       PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
       PrinterJob pj = PrinterJob.getPrinterJob();
-      pj.setJobName(ecgview.getSeries().toString());
+      pj.setJobName(ecgView.getSeries().toString());
 
       // Get page format from the printer
       if (pj.printDialog(aset)) {
-        // Force to print in black and white
+        // Force printing in black and white
         PageFormat pageFormat = pj.getPageFormat(aset);
         Paper paper = pageFormat.getPaper();
         double margin = 12;
         paper.setImageableArea(
             margin, margin, paper.getWidth() - margin * 2, paper.getHeight() - margin * 2);
         pageFormat.setPaper(paper);
-        DefaultPrinter pnlPreview = new DefaultPrinter(ecgview, pageFormat);
+        DefaultPrinter pnlPreview = new DefaultPrinter(ecgView, pageFormat);
         pj.setPrintable(pnlPreview, pageFormat);
         try {
           pj.print();
         } catch (PrinterException e) {
           // check for the annoying 'Printer is not accepting job' error.
-          if (e.getMessage().indexOf("accepting job") != -1) { // NON-NLS
-            // recommend prompting the user at this point if they want to force it
+          if (e.getMessage().contains("accepting job")) { // NON-NLS
+            // recommend prompting the user at this point if they want to force it,
             // so they'll know there may be a problem.
             int response =
                 JOptionPane.showConfirmDialog(

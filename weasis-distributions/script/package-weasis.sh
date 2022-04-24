@@ -5,19 +5,17 @@
 
 # Specify the required Java version.
 # Only major version is checked. Minor version or any other version string info is left out.
-REQUIRED_TEXT_VERSION=14
+REQUIRED_TEXT_VERSION=18
 
 # Build Parameters
 REVISON_INC="1"
 PACKAGE=YES
-# Package for Java 11 (remove in weasis 4)
-SUBSTANCE_PKG="4.0.1"
 
 # Options
 # jdk.unsupported => sun.misc.Signal
 # jdk.localedata => other locale (en_us) data are included in the jdk.localedata
 # jdk.jdwp.agent => package for debugging agent
-JDK_MODULES="java.base,java.compiler,java.datatransfer,java.desktop,java.logging,java.management,java.prefs,java.xml,jdk.localedata,jdk.charsets,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.unsupported,jdk.jdwp.agent"
+JDK_MODULES="java.base,java.compiler,java.datatransfer,java.net.http,java.desktop,java.logging,java.management,java.prefs,java.xml,jdk.localedata,jdk.charsets,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.unsupported,jdk.jdwp.agent"
 NAME="Weasis"
 IDENTIFIER="org.weasis.launcher"
 
@@ -38,14 +36,14 @@ do
 echo "Usage: package-weasis.sh <options>"
 echo "Sample usages:"
 echo "    Build an installer for the current platform with the minimal required parameters"
-echo "        package-weasis.sh --input /home/user/weasis-portable --jdk /home/user/jdk-16"
+echo "        package-weasis.sh --input /home/user/weasis-native --jdk /home/user/jdk-16"
 echo ""
 echo "Options:"
 echo " --help -h
 Print the usage text with a list and description of each valid
 option the output stream, and exit"
 echo " --input -i
-Path of the weasis-portable directory"
+Path of the weasis-native directory"
 echo " --output -o
 Path of the base output directory.
 Default value is the current directory"
@@ -96,7 +94,7 @@ rootdir="$(dirname "$curPath")"
 rootdir="$(dirname "$rootdir")"
 
 if [ -z "$INPUT_PATH" ] ; then
-  INPUT_PATH="${rootdir}/weasis-distributions/target/portable-dist/weasis-portable"
+  INPUT_PATH="${rootdir}/weasis-distributions/target/native-dist/weasis-native"
 fi
 
 cp "$INPUT_PATH/weasis/bundle/weasis-core-img-"* weasis-core-img.jar.xz
@@ -185,9 +183,6 @@ if [ "$arc" = "x86" ] ; then
   find "$INPUT_DIR"/bundle/*-x86* -type f -name "*-${machine}-x86-64-*"  -exec rm -f {} \;
 fi
 
-# Replace substance available for Java 11
-curl -L -o "${INPUT_DIR}/substance.jar" "https://raw.github.com/nroduit/mvn-repo/master/org/pushing-pixels/radiance-substance-all/$SUBSTANCE_PKG/radiance-substance-all-$SUBSTANCE_PKG.jar"
-
 # Remove previous package
 if [ -d "${OUTPUT_PATH}" ] ; then
   rm -rf "${OUTPUT_PATH}"
@@ -205,7 +200,7 @@ fi
 
 if [ "$machine" = "macosx" ] ; then
   DICOMIZER_CONFIG="Dicomizer=$RES/dicomizer-launcher.properties"
-  declare -a customOptions=("--java-options" "-splash:\$APPDIR/resources/images/about-round.png" "--java-options" "-Dapple.laf.useScreenMenuBar=true")
+  declare -a customOptions=("--java-options" "-splash:\$APPDIR/resources/images/about-round.png" "--java-options" "-Dapple.laf.useScreenMenuBar=true" "--java-options" "-Dapple.awt.application.appearance=NSAppearanceNameDarkAqua")
   if [[ ! -x "$CERTIFICATE" ]] ; then
     declare -a signArgs=("--mac-package-identifier" "$IDENTIFIER" "--mac-signing-key-user-name" "$CERTIFICATE"  "--mac-sign")
   else
@@ -236,7 +231,7 @@ $JPKGCMD --type app-image --input "$INPUT_DIR" --dest "$OUTPUT_PATH" --name "$NA
 
 if [ "$PACKAGE" = "YES" ] ; then
   VENDOR="Weasis Team"
-  COPYRIGHT="© 2009-2020 Weasis Team"
+  COPYRIGHT="© 2009-2022 Weasis Team"
   if [ "$machine" = "windows" ] ; then
     [ "$ARC_NAME" = "x86" ]  && UPGRADE_UID="3aedc24e-48a8-4623-ab39-0c3c01c7383b" || UPGRADE_UID="3aedc24e-48a8-4623-ab39-0c3c01c7383a"
     $JPKGCMD --type "msi" --app-image "$IMAGE_PATH" --dest "$OUTPUT_PATH" --name "$NAME" --resource-dir "$RES/msi/$ARC_NAME" \

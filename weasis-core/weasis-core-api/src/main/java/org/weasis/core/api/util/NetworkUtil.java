@@ -24,9 +24,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.auth.AuthMethod;
@@ -80,11 +80,10 @@ public class NetworkUtil {
       return prepareConnection(new URL(url).openConnection(), urlParameters);
     }
     OAuthRequest request;
-    if (authRequest == null) {
-      request = new OAuthRequest(urlParameters.isHttpPost() ? Verb.POST : Verb.GET, url);
-    } else {
-      request = authRequest;
-    }
+    request =
+        Objects.requireNonNullElseGet(
+            authRequest,
+            () -> new OAuthRequest(urlParameters.isHttpPost() ? Verb.POST : Verb.GET, url));
     return prepareAuthConnection(request, urlParameters, authMethod);
   }
 
@@ -107,13 +106,12 @@ public class NetworkUtil {
       OAuthRequest request, URLParameters urlParameters, AuthMethod authMethod) throws IOException {
     Map<String, String> headers = urlParameters.getUnmodifiableHeaders();
     if (!headers.isEmpty()) {
-      for (Iterator<Entry<String, String>> iter = headers.entrySet().iterator(); iter.hasNext(); ) {
-        Entry<String, String> element = iter.next();
+      for (Entry<String, String> element : headers.entrySet()) {
         request.addHeader(element.getKey(), element.getValue());
       }
     }
-    request.addHeader("User-Agent", AppProperties.WEASIS_USER_AGENT);
-    request.addHeader("Weasis-User", AppProperties.WEASIS_USER.trim().toUpperCase());
+    request.addHeader("User-Agent", AppProperties.WEASIS_USER_AGENT); // NON-NLS
+    request.addHeader("Weasis-User", AppProperties.WEASIS_USER.trim().toUpperCase()); // NON-NLS
 
     try {
       OAuth20Service service = OAuth2ServiceFactory.getService(authMethod);
@@ -135,8 +133,7 @@ public class NetworkUtil {
     Map<String, String> headers = urlParameters.getUnmodifiableHeaders();
 
     if (!headers.isEmpty()) {
-      for (Iterator<Entry<String, String>> iter = headers.entrySet().iterator(); iter.hasNext(); ) {
-        Entry<String, String> element = iter.next();
+      for (Entry<String, String> element : headers.entrySet()) {
         urlConnection.setRequestProperty(element.getKey(), element.getValue());
       }
     }
@@ -152,8 +149,7 @@ public class NetworkUtil {
     if (urlParameters.isHttpPost()) {
       urlConnection.setDoOutput(true);
     }
-    if (urlConnection instanceof HttpURLConnection) {
-      HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
+    if (urlConnection instanceof HttpURLConnection httpURLConnection) {
       try {
         if (urlParameters.isHttpPost()) {
           httpURLConnection.setRequestMethod("POST");
@@ -211,15 +207,13 @@ public class NetworkUtil {
     for (int i = 0; i < MAX_REDIRECTS; i++) {
       if (redirect != null) {
         String cookies = c.getHeaderField("Set-Cookie");
-        if (c instanceof HttpURLConnection) {
-          ((HttpURLConnection) c).disconnect();
+        if (c instanceof HttpURLConnection httpURLConnection) {
+          httpURLConnection.disconnect();
         }
         c = new URL(redirect).openConnection();
         c.setRequestProperty("Cookie", cookies);
         if (headers != null && headers.size() > 0) {
-          for (Iterator<Entry<String, String>> iter = headers.entrySet().iterator();
-              iter.hasNext(); ) {
-            Entry<String, String> element = iter.next();
+          for (Entry<String, String> element : headers.entrySet()) {
             c.addRequestProperty(element.getKey(), element.getValue());
           }
         }

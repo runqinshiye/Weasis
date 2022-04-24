@@ -13,7 +13,6 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,19 +54,19 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
   protected SeriesImporter seriesLoader;
   private long fileSize;
 
-  public Series(TagW tagID, Object identifier, TagView displayTag) {
+  protected Series(TagW tagID, Object identifier, TagView displayTag) {
     this(tagID, identifier, displayTag, null);
   }
 
-  public Series(TagW tagID, Object identifier, TagView displayTag, int initialCapacity) {
-    this(tagID, identifier, displayTag, new ArrayList<E>(initialCapacity));
+  protected Series(TagW tagID, Object identifier, TagView displayTag, int initialCapacity) {
+    this(tagID, identifier, displayTag, new ArrayList<>(initialCapacity));
   }
 
-  public Series(TagW tagID, Object identifier, TagView displayTag, List<E> list) {
+  protected Series(TagW tagID, Object identifier, TagView displayTag, List<E> list) {
     this(tagID, identifier, displayTag, list, null);
   }
 
-  public Series(
+  protected Series(
       TagW tagID, Object identifier, TagView displayTag, List<E> list, Comparator<E> mediaOrder) {
     super(tagID, identifier, displayTag);
     this.mediaOrder = mediaOrder;
@@ -76,7 +75,7 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
       ls = new ArrayList<>();
       fileSize = 0L;
     } else if (mediaOrder != null) {
-      Collections.sort(ls, mediaOrder);
+      ls.sort(mediaOrder);
     }
     medias = Collections.synchronizedList(ls);
   }
@@ -104,7 +103,7 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
           comparator,
           k -> {
             List<E> sorted = new ArrayList<>(medias);
-            Collections.sort(sorted, comparator);
+            sorted.sort(comparator);
             return sorted;
           });
     }
@@ -246,9 +245,9 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
     // forEach implement synchronized
     medias.forEach(
         m -> {
-          if (m instanceof ImageElement) {
+          if (m instanceof ImageElement imageElement) {
             // Removing from cache will close the image stream
-            ((ImageElement) m).removeImageFromCache();
+            imageElement.removeImageFromCache();
           }
           m.dispose();
         });
@@ -256,7 +255,7 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
     medias.clear();
     resetSortedMediasMap();
 
-    Optional.ofNullable((Thumbnail) getTagValue(TagW.Thumbnail)).ifPresent(t -> t.dispose());
+    Optional.ofNullable((Thumbnail) getTagValue(TagW.Thumbnail)).ifPresent(Thumbnail::dispose);
     if (propertyChange != null) {
       Arrays.asList(propertyChange.getPropertyChangeListeners())
           .forEach(propertyChange::removePropertyChangeListener);
@@ -285,7 +284,7 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
   }
 
   @Override
-  public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+  public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
     if (sequenceDataFlavor.equals(flavor)) {
       return this;
     }
@@ -333,25 +332,20 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
 
   @Override
   public String getToolTips() {
-    StringBuilder toolTips = new StringBuilder();
-    toolTips.append("<html>");
     E media = this.getMedia(MEDIA_POSITION.MIDDLE, null, null);
-    if (media instanceof ImageElement) {
-      ImageElement image = (ImageElement) media;
+    if (media instanceof ImageElement image) {
       PlanarImage img = image.getImage();
       if (img != null) {
-        toolTips.append(Messages.getString("Series.img_size"));
-        toolTips.append(StringUtil.COLON_AND_SPACE);
-        toolTips.append(img.width());
-        toolTips.append('x');
-        toolTips.append(img.height());
+        return """
+          <html>%s: %sx%s</html>
+          """
+            .formatted(Messages.getString("Series.img_size"), img.width(), img.height());
       }
     }
-    toolTips.append("</html>");
-    return toolTips.toString();
+    return StringUtil.EMPTY_STRING;
   }
 
-  protected void addToolTipsElement(StringBuilder toolTips, String title, TagW tag) {
+  public void addToolTipsElement(StringBuilder toolTips, String title, TagW tag) {
     toolTips.append(title);
     toolTips.append(StringUtil.COLON_AND_SPACE);
     if (tag != null) {
@@ -360,7 +354,7 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
     toolTips.append("<br>");
   }
 
-  protected void addToolTipsElement(StringBuilder toolTips, String title, TagW tag1, TagW tag2) {
+  public void addToolTipsElement(StringBuilder toolTips, String title, TagW tag1, TagW tag2) {
     toolTips.append(title);
     toolTips.append(StringUtil.COLON_AND_SPACE);
     if (tag1 != null) {
@@ -422,8 +416,8 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
   public boolean hasMediaContains(TagW tag, Object val) {
     if (val != null) {
       synchronized (this) {
-        for (int i = 0; i < medias.size(); i++) {
-          Object val2 = medias.get(i).getTagValue(tag);
+        for (E media : medias) {
+          Object val2 = media.getTagValue(tag);
           if (val.equals(val2)) {
             return true;
           }
@@ -456,6 +450,6 @@ public abstract class Series<E extends MediaElement> extends MediaSeriesGroupNod
   @Override
   public String getSeriesNumber() {
     Integer val = (Integer) getTagValue(TagW.get("SeriesNumber"));
-    return Optional.ofNullable(val).map(String::valueOf).orElseGet(() -> "");
+    return Optional.ofNullable(val).map(String::valueOf).orElse("");
   }
 }

@@ -22,6 +22,7 @@ import javax.swing.Icon;
 import javax.swing.JMenu;
 import javax.swing.JPopupMenu;
 import javax.swing.event.ListDataEvent;
+import org.weasis.core.api.image.op.ByteLut;
 
 public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T>, GroupPopup {
 
@@ -43,11 +44,15 @@ public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T
 
     for (int i = 0; i < dataModel.getSize(); i++) {
       Object object = dataModel.getElementAt(i);
+      RadioMenuItem radioMenuItem = new RadioMenuItem(object.toString(), object);
       Icon icon = null;
-      if (object instanceof GUIEntry) {
-        icon = ((GUIEntry) object).getIcon();
+      if (object instanceof GUIEntry entry) {
+        icon = entry.getIcon();
+      } else if (object instanceof ByteLut lut) {
+        icon = lut.getIcon(GuiUtils.getBigIconButtonSize(radioMenuItem).height);
       }
-      RadioMenuItem radioMenuItem = new RadioMenuItem(object.toString(), icon, object);
+      radioMenuItem.setIcon(icon);
+      GuiUtils.applySelectedIconEffect(radioMenuItem);
       radioMenuItem.setSelected(object == selectedItem);
       group.add(radioMenuItem);
       itemList.add(radioMenuItem);
@@ -62,8 +67,8 @@ public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T
   @Override
   public JPopupMenu createJPopupMenu() {
     JPopupMenu popupMouseButtons = new JPopupMenu();
-    for (int i = 0; i < itemList.size(); i++) {
-      popupMouseButtons.add(itemList.get(i));
+    for (RadioMenuItem radioMenuItem : itemList) {
+      popupMouseButtons.add(radioMenuItem);
     }
     return popupMouseButtons;
   }
@@ -71,8 +76,20 @@ public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T
   @Override
   public JMenu createMenu(String title) {
     JMenu menu = new JMenu(title);
-    for (int i = 0; i < itemList.size(); i++) {
-      menu.add(itemList.get(i));
+    for (RadioMenuItem radioMenuItem : itemList) {
+      menu.add(radioMenuItem);
+    }
+    return menu;
+  }
+
+  public JMenu createMenu(String title, Icon icon) {
+    JMenu menu = new JMenu(title);
+    if (icon != null) {
+      menu.setIcon(icon);
+      GuiUtils.applySelectedIconEffect(menu);
+    }
+    for (RadioMenuItem radioMenuItem : itemList) {
+      menu.add(radioMenuItem);
     }
     return menu;
   }
@@ -96,20 +113,17 @@ public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T
 
   @Override
   public void actionPerformed(ActionEvent e) {
-    if (e.getSource() instanceof RadioMenuItem) {
-      RadioMenuItem item = (RadioMenuItem) e.getSource();
-      if (item.isSelected()) {
-        dataModel.setSelectedItem(item.getUserObject());
-      }
+    if (e.getSource() instanceof RadioMenuItem item && item.isSelected()) {
+      dataModel.setSelectedItem(item.getUserObject());
     }
   }
 
   public void setSelected(Object selected) {
     if (selected == null) {
       group.clearSelection();
+      dataModel.setSelectedItem(null);
     } else {
-      for (int i = 0; i < itemList.size(); i++) {
-        RadioMenuItem item = itemList.get(i);
+      for (RadioMenuItem item : itemList) {
         if (item.getUserObject() == selected) {
           item.setSelected(true); // Do not trigger actionPerformed
           dataModel.setSelectedItem(item.getUserObject());
@@ -130,6 +144,7 @@ public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T
     return -1;
   }
 
+  @SuppressWarnings("unchecked")
   public T getSelectedItem() {
     return (T) dataModel.getSelectedItem();
   }
@@ -153,8 +168,8 @@ public class GroupRadioMenu<T> implements ActionListener, ComboBoxModelAdapter<T
 
   @Override
   public void setEnabled(boolean enabled) {
-    for (int i = 0; i < itemList.size(); i++) {
-      itemList.get(i).setEnabled(enabled);
+    for (RadioMenuItem radioMenuItem : itemList) {
+      radioMenuItem.setEnabled(enabled);
     }
   }
 }

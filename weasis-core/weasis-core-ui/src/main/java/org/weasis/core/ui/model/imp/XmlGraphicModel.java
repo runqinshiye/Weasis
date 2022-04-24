@@ -11,7 +11,7 @@ package org.weasis.core.ui.model.imp;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.TagW;
@@ -21,7 +21,6 @@ import org.weasis.core.ui.model.ReferencedSeries;
 
 @XmlRootElement(name = "presentation")
 public class XmlGraphicModel extends AbstractGraphicModel {
-  private static final long serialVersionUID = 2427740058858913568L;
 
   public XmlGraphicModel() {
     super();
@@ -46,11 +45,12 @@ public class XmlGraphicModel extends AbstractGraphicModel {
 
     List<Integer> frameList = new ArrayList<>(1);
     int frames = img.getMediaReader().getMediaElementNumber();
-    if (frames > 1 && img.getKey() instanceof Integer) {
-      frameList.add((Integer) img.getKey());
+    if (frames > 1 && img.getKey() instanceof Integer intVal) {
+      frameList.add(intVal);
     }
 
-    return Arrays.asList(
-        new ReferencedSeries(seriesUUID, Arrays.asList(new ReferencedImage(uid, frameList))));
+    return Collections.singletonList(
+        new ReferencedSeries(
+            seriesUUID, Collections.singletonList(new ReferencedImage(uid, frameList))));
   }
 }

@@ -14,6 +14,7 @@ import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import javax.swing.JComponent;
@@ -27,8 +28,13 @@ import org.weasis.opencv.op.ImageConversion;
 
 public class ViewTransferHandler extends TransferHandler implements Transferable {
 
-  private static final DataFlavor flavors[] = {DataFlavor.imageFlavor};
+  private static final DataFlavor[] flavors = {DataFlavor.imageFlavor};
   private Image image;
+  private final boolean anonymize;
+
+  public ViewTransferHandler(boolean anonymize) {
+    this.anonymize = anonymize;
+  }
 
   @Override
   public int getSourceActions(JComponent c) {
@@ -36,7 +42,7 @@ public class ViewTransferHandler extends TransferHandler implements Transferable
   }
 
   @Override
-  public boolean canImport(JComponent comp, DataFlavor flavor[]) {
+  public boolean canImport(JComponent comp, DataFlavor[] flavor) {
     return false;
   }
 
@@ -45,9 +51,8 @@ public class ViewTransferHandler extends TransferHandler implements Transferable
     // Clear
     image = null;
 
-    if (comp instanceof DefaultView2d) {
-      DefaultView2d view2DPane = (DefaultView2d) comp;
-      RenderedImage imgP = createComponentImage(view2DPane);
+    if (comp instanceof DefaultView2d<?> view2DPane) {
+      RenderedImage imgP = createComponentImage(view2DPane, anonymize);
       image = ImageConversion.convertRenderedImage(imgP);
       return this;
     }
@@ -59,13 +64,12 @@ public class ViewTransferHandler extends TransferHandler implements Transferable
     return false;
   }
 
-  // Transferable
   @Override
-  public Object getTransferData(DataFlavor flavor) {
+  public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
     if (isDataFlavorSupported(flavor)) {
       return image;
     }
-    return null;
+    throw new UnsupportedFlavorException(flavor);
   }
 
   @Override
@@ -78,14 +82,15 @@ public class ViewTransferHandler extends TransferHandler implements Transferable
     return flavor.equals(DataFlavor.imageFlavor);
   }
 
-  private static RenderedImage createComponentImage(DefaultView2d canvas) {
+  public static <E extends ImageElement> RenderedImage createComponentImage(
+      DefaultView2d<E> canvas, boolean anonymize) {
     BufferedImage img =
-        new BufferedImage(canvas.getWidth(), canvas.getHeight(), BufferedImage.TYPE_INT_BGR);
-    ExportImage<ImageElement> exportImage = new ExportImage<>(canvas);
+        new BufferedImage(canvas.getWidth(), canvas.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+    ExportImage<E> exportImage = new ExportImage<>(canvas);
     try {
       exportImage
           .getInfoLayer()
-          .setDisplayPreferencesValue(LayerAnnotation.ANONYM_ANNOTATIONS, true);
+          .setDisplayPreferencesValue(LayerAnnotation.ANONYM_ANNOTATIONS, anonymize);
       exportImage.getInfoLayer().setBorder(3);
       Graphics2D g = img.createGraphics();
       if (g != null) {

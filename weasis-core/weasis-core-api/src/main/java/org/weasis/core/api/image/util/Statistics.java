@@ -40,7 +40,7 @@ public class Statistics {
     my = mean(y);
 
     if (x.length < 2) {
-      return; // variance est égale à 0
+      return; // variance is 0
     }
     for (int i = 0; i < x.length; i++) {
       // central bivariate moments
@@ -80,8 +80,8 @@ public class Statistics {
     } else {
       double mu = mean(data);
       sHat = 0.0D;
-      for (int i = 0; i < data.length; i++) {
-        sHat += (data[i] - mu) * (data[i] - mu);
+      for (int datum : data) {
+        sHat += (datum - mu) * (datum - mu);
       }
       sHat = Math.sqrt(sHat / (data.length - 1.0));
     }
@@ -95,8 +95,8 @@ public class Statistics {
     } else {
       double mu = mean(data);
       sHat = 0.0D;
-      for (int i = 0; i < data.length; i++) {
-        sHat += (data[i] - mu) * (data[i] - mu);
+      for (double datum : data) {
+        sHat += (datum - mu) * (datum - mu);
       }
       sHat = Math.sqrt(sHat / (data.length - 1.0));
     }
@@ -109,8 +109,8 @@ public class Statistics {
       sHat = Double.NaN;
     } else {
       sHat = 0.0D;
-      for (int i = 0; i < data.length; i++) {
-        sHat += (data[i] - mu) * (data[i] - mu);
+      for (double datum : data) {
+        sHat += (datum - mu) * (datum - mu);
       }
       sHat = Math.sqrt(sHat / (data.length - 1.0));
     }
@@ -120,9 +120,6 @@ public class Statistics {
   /**
    * Compute standard deviation in one pass (less accurate for small or large values) Ref.
    * http://www.strchr.com/standard_deviation_in_one_pass
-   *
-   * @param data
-   * @return
    */
   public static double stDevOnePass(double[] data) {
     double sHat;
@@ -149,8 +146,8 @@ public class Statistics {
       sHat = Double.NaN;
     } else {
       sHat = 0.0D;
-      for (int i = 0; i < data.length; i++) {
-        sHat += (data[i] - mu) * (data[i] - mu);
+      for (int datum : data) {
+        sHat += (datum - mu) * (datum - mu);
       }
       sHat = Math.sqrt(sHat / (data.length - 1.0));
     }
@@ -163,8 +160,8 @@ public class Statistics {
       mu = Double.NaN;
     } else {
       mu = 0.0D;
-      for (int i = 0; i < data.length; i++) {
-        mu += data[i];
+      for (double datum : data) {
+        mu += datum;
       }
       mu /= data.length;
     }
@@ -176,8 +173,8 @@ public class Statistics {
       return 0;
     } else {
       double sum = 0;
-      for (int i = 0; i < data.length; i++) {
-        sum += data[i];
+      for (int datum : data) {
+        sum += datum;
       }
       return sum / data.length;
     }
@@ -187,12 +184,12 @@ public class Statistics {
     double min = Double.MAX_VALUE;
     double max = -Double.MAX_VALUE;
     double[] out = new double[data.length];
-    for (int i = 0; i < data.length; i++) {
-      if (data[i] < min) {
-        min = data[i];
+    for (double datum : data) {
+      if (datum < min) {
+        min = datum;
       }
-      if (data[i] > max) {
-        max = data[i];
+      if (datum > max) {
+        max = datum;
       }
     }
     double range = max - min;
@@ -216,9 +213,7 @@ public class Statistics {
     } else {
       // Get local copy of data
       double[] out = new double[data.length];
-      for (int i = 0; i < data.length; i++) {
-        out[i] = data[i];
-      }
+      System.arraycopy(data, 0, out, 0, data.length);
       // Sort data
       java.util.Arrays.sort(out);
 
@@ -239,9 +234,7 @@ public class Statistics {
     } else {
       // Get local copy of data
       int[] out = new int[data.length];
-      for (int i = 0; i < data.length; i++) {
-        out[i] = data[i];
-      }
+      System.arraycopy(data, 0, out, 0, data.length);
       java.util.Arrays.sort(out);
 
       // Get median
@@ -296,8 +289,8 @@ public class Statistics {
     } else {
       double mu = mean(x);
       double sum = 0;
-      for (int i = 0; i < x.length; i++) {
-        sum += Math.pow(x[i] - mu, order);
+      for (double v : x) {
+        sum += Math.pow(v - mu, order);
       }
       return sum / (x.length - 1);
     }
@@ -332,7 +325,7 @@ public class Statistics {
     y = null;
   }
 
-  public static final double[] averageSmooth(double[] img, int rad) {
+  public static double[] averageSmooth(double[] img, int rad) {
     int h = img.length;
     double[] result = new double[h];
 
@@ -359,12 +352,12 @@ public class Statistics {
   }
 
   /**
-   * Apply least squares to raw data to determine the coefficients an n-order equation: y =
+   * Apply the least squares to raw data to determine the coefficients an n-order equation: y =
    * an*X^n+... + a1*X^1 + a0*X^0.
    *
    * @param y the x coordinates of data points
    * @param x the y coordinates of data points
-   * @param norder
+   * @param norder the n order value
    * @return the coefficients for the solved equation in the form {a0, a1,...,an}
    */
   public static double[] regression(double[] x, double[] y, int norder) {
@@ -406,9 +399,7 @@ public class Statistics {
     // solve the simultaneous equations via gauss
     int size = coef.length + 1;
     double[] out = new double[size];
-    for (int i = 0; i < coef.length; i++) {
-      out[i] = coef[i];
-    }
+    System.arraycopy(coef, 0, out, 0, coef.length);
     // set rsquared
     out[coef.length] = rsquared;
     return out;
@@ -417,10 +408,6 @@ public class Statistics {
   /**
    * IIRC, standard gaussian technique for solving simultaneous eq. of the form: |A| = |B| * |C|
    * where we know the values of |A| and |B|, and we are solving for the coefficients in |C|
-   *
-   * @param ax
-   * @param bx
-   * @return
    */
   private static double[] gauss(double[][] ax, double[] bx) {
     double[][] a = new double[ax.length][ax[0].length];
@@ -432,9 +419,7 @@ public class Statistics {
     double[] coef = new double[n];
     // copy over the array values - inplace solution changes values
     for (int i = 0; i < ax.length; i++) {
-      for (int j = 0; j < ax[i].length; j++) {
-        a[i][j] = ax[i][j];
-      }
+      System.arraycopy(ax[i], 0, a[i], 0, ax[i].length);
       b[i] = bx[i];
     }
     for (int j = 0; j < (n - 1); j++) {

@@ -15,20 +15,18 @@ import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.Action;
 import javax.swing.Icon;
-import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JSeparator;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
-import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Tag;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
@@ -43,18 +41,20 @@ import org.weasis.core.api.gui.util.ActionState;
 import org.weasis.core.api.gui.util.ActionW;
 import org.weasis.core.api.gui.util.ComboItemListener;
 import org.weasis.core.api.gui.util.Filter;
-import org.weasis.core.api.gui.util.JMVUtils;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.gui.util.SliderChangeListener;
 import org.weasis.core.api.gui.util.SliderCineListener;
 import org.weasis.core.api.gui.util.ToggleButtonListener;
 import org.weasis.core.api.image.GridBagLayoutModel;
-import org.weasis.core.api.media.MimeInspector;
 import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.api.media.data.MediaSeriesGroup;
 import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.media.data.SeriesEvent;
 import org.weasis.core.api.service.BundlePreferences;
 import org.weasis.core.api.service.BundleTools;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
+import org.weasis.core.api.util.ResourceUtil.OtherIcon;
 import org.weasis.core.ui.docking.DockableTool;
 import org.weasis.core.ui.docking.PluginTool;
 import org.weasis.core.ui.docking.UIManager;
@@ -63,6 +63,7 @@ import org.weasis.core.ui.editor.image.DefaultView2d;
 import org.weasis.core.ui.editor.image.ImageViewerPlugin;
 import org.weasis.core.ui.editor.image.MeasureToolBar;
 import org.weasis.core.ui.editor.image.RotationToolBar;
+import org.weasis.core.ui.editor.image.ScreenshotToolBar;
 import org.weasis.core.ui.editor.image.SynchData;
 import org.weasis.core.ui.editor.image.SynchView;
 import org.weasis.core.ui.editor.image.ViewCanvas;
@@ -91,50 +92,51 @@ import org.weasis.dicom.explorer.print.DicomPrintDialog;
 import org.weasis.dicom.viewer2d.dockable.DisplayTool;
 import org.weasis.dicom.viewer2d.dockable.ImageTool;
 
-@SuppressWarnings("serial")
 public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
     implements PropertyChangeListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(View2dContainer.class);
 
   // Unmodifiable list of the default synchronization elements
   public static final List<SynchView> DEFAULT_SYNCH_LIST =
-      Arrays.asList(SynchView.NONE, SynchView.DEFAULT_STACK, SynchView.DEFAULT_TILE);
+      List.of(SynchView.NONE, SynchView.DEFAULT_STACK, SynchView.DEFAULT_TILE);
 
   public static final GridBagLayoutModel VIEWS_2x1_r1xc2_dump =
       new GridBagLayoutModel(
-          View2dContainer.class.getResourceAsStream("/config/layoutModel.xml"),
+          View2dContainer.class.getResourceAsStream("/config/layoutModel.xml"), // NON-NLS
           "layout_dump", // NON-NLS
           Messages.getString("View2dContainer.layout_dump"));
   public static final GridBagLayoutModel VIEWS_2x1_r1xc2_histo =
       new GridBagLayoutModel(
-          View2dContainer.class.getResourceAsStream("/config/layoutModelHisto.xml"),
+          View2dContainer.class.getResourceAsStream("/config/layoutModelHisto.xml"), // NON-NLS
           "layout_histo", // NON-NLS
           Messages.getString("View2dContainer.histogram"));
   // Unmodifiable list of the default layout elements
   public static final List<GridBagLayoutModel> DEFAULT_LAYOUT_LIST =
-      Arrays.asList(
+      List.of(
           VIEWS_1x1,
           VIEWS_1x2,
+          VIEWS_1x3,
+          VIEWS_1x4,
           VIEWS_2x1,
           VIEWS_2x2_f2,
           VIEWS_2_f1x2,
           VIEWS_2x1_r1xc2_dump,
           VIEWS_2x1_r1xc2_histo,
-          VIEWS_2x2);
+          VIEWS_2x2,
+          VIEWS_2x3,
+          VIEWS_2x4);
 
   // Static tools shared by all the View2dContainer instances, tools are registered when a container
   // is selected
   // Do not initialize tools in a static block (order initialization issue with eventManager), use
   // instead a lazy
   // initialization with a method.
-  public static final List<Toolbar> TOOLBARS =
-      Collections.synchronizedList(new ArrayList<Toolbar>());
-  public static final List<DockableTool> TOOLS =
-      Collections.synchronizedList(new ArrayList<DockableTool>());
+  public static final List<Toolbar> TOOLBARS = Collections.synchronizedList(new ArrayList<>());
+  public static final List<DockableTool> TOOLS = Collections.synchronizedList(new ArrayList<>());
   private static volatile boolean initComponents = false;
 
   public View2dContainer() {
-    this(VIEWS_1x1, null, View2dFactory.NAME, MimeInspector.dicomIcon, null);
+    this(VIEWS_1x1, null, View2dFactory.NAME, ResourceUtil.getIcon(OtherIcon.XRAY), null);
   }
 
   public View2dContainer(
@@ -177,7 +179,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
           true)) {
         Optional<Toolbar> b =
             UIManager.EXPLORER_PLUGIN_TOOLBARS.stream()
-                .filter(t -> t instanceof ImportToolBar)
+                .filter(ImportToolBar.class::isInstance)
                 .findFirst();
         b.ifPresent(TOOLBARS::add);
       }
@@ -190,9 +192,18 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
           true)) {
         Optional<Toolbar> b =
             UIManager.EXPLORER_PLUGIN_TOOLBARS.stream()
-                .filter(t -> t instanceof ExportToolBar)
+                .filter(ExportToolBar.class::isInstance)
                 .findFirst();
         b.ifPresent(TOOLBARS::add);
+      }
+      if (InsertableUtil.getBooleanProperty(
+          BundleTools.SYSTEM_PREFERENCES,
+          bundleName,
+          componentName,
+          InsertableUtil.getCName(ScreenshotToolBar.class),
+          key,
+          true)) {
+        TOOLBARS.add(new ScreenshotToolBar<>(evtMg, 9));
       }
       if (InsertableUtil.getBooleanProperty(
           BundleTools.SYSTEM_PREFERENCES,
@@ -269,7 +280,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
           InsertableUtil.getCName(CineToolBar.class),
           key,
           true)) {
-        TOOLBARS.add(new CineToolBar<DicomImageElement>(80));
+        TOOLBARS.add(new CineToolBar(80));
       }
       if (InsertableUtil.getBooleanProperty(
           BundleTools.SYSTEM_PREFERENCES,
@@ -281,7 +292,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
         TOOLBARS.add(new KeyObjectToolBar(90));
       }
 
-      PluginTool tool = null;
+      PluginTool tool;
 
       if (InsertableUtil.getBooleanProperty(
           BundleTools.SYSTEM_PREFERENCES,
@@ -297,18 +308,18 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
               public SliderChangeListener[] getActions() {
                 ArrayList<SliderChangeListener> listeners = new ArrayList<>(3);
                 ActionState seqAction = eventManager.getAction(ActionW.SCROLL_SERIES);
-                if (seqAction instanceof SliderChangeListener) {
-                  listeners.add((SliderChangeListener) seqAction);
+                if (seqAction instanceof SliderChangeListener changeListener) {
+                  listeners.add(changeListener);
                 }
                 ActionState zoomAction = eventManager.getAction(ActionW.ZOOM);
-                if (zoomAction instanceof SliderChangeListener) {
-                  listeners.add((SliderChangeListener) zoomAction);
+                if (zoomAction instanceof SliderChangeListener changeListener) {
+                  listeners.add(changeListener);
                 }
                 ActionState rotateAction = eventManager.getAction(ActionW.ROTATION);
-                if (rotateAction instanceof SliderChangeListener) {
-                  listeners.add((SliderChangeListener) rotateAction);
+                if (rotateAction instanceof SliderChangeListener changeListener) {
+                  listeners.add(changeListener);
                 }
-                return listeners.toArray(new SliderChangeListener[listeners.size()]);
+                return listeners.toArray(new SliderChangeListener[0]);
               }
             };
         TOOLS.add(tool);
@@ -367,8 +378,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
   @Override
   public void setSelectedImagePaneFromFocus(ViewCanvas<DicomImageElement> viewCanvas) {
     setSelectedImagePane(viewCanvas);
-    if (viewCanvas != null && viewCanvas.getSeries() instanceof DicomSeries) {
-      DicomSeries series = (DicomSeries) viewCanvas.getSeries();
+    if (viewCanvas != null && viewCanvas.getSeries() instanceof DicomSeries series) {
       DicomSeries.startPreloading(
           series,
           series.copyOfMedias(
@@ -382,8 +392,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
   public JMenu fillSelectedPluginMenu(JMenu menuRoot) {
     if (menuRoot != null) {
       menuRoot.removeAll();
-      if (eventManager instanceof EventManager) {
-        EventManager manager = (EventManager) eventManager;
+      if (eventManager instanceof EventManager manager) {
         JMenu menu = new JMenu(Messages.getString("View2dContainer.3d"));
         ActionState scrollAction = EventManager.getInstance().getAction(ActionW.SCROLL_SERIES);
         menu.setEnabled(
@@ -391,25 +400,33 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
                 && (scrollAction != null && scrollAction.isActionEnabled()));
 
         if (menu.isEnabled()) {
-          JMenuItem mpr = new JMenuItem(Messages.getString("View2dContainer.mpr"));
+          JMenuItem mpr =
+              new JMenuItem(
+                  Messages.getString("View2dContainer.mpr"),
+                  ResourceUtil.getIcon(OtherIcon.VIEW_3D));
+          GuiUtils.applySelectedIconEffect(mpr);
           mpr.addActionListener(Basic3DToolBar.getMprAction());
           menu.add(mpr);
 
-          JMenuItem mip = new JMenuItem(Messages.getString("View2dContainer.mip"));
+          JMenuItem mip =
+              new JMenuItem(
+                  Messages.getString("View2dContainer.mip"),
+                  ResourceUtil.getIcon(OtherIcon.VIEW_MIP));
+          GuiUtils.applySelectedIconEffect(mip);
           mip.addActionListener(Basic3DToolBar.getMipAction());
           menu.add(mip);
         }
         menuRoot.add(menu);
         menuRoot.add(new JSeparator());
-        JMVUtils.addItemToMenu(menuRoot, manager.getPresetMenu(null));
-        JMVUtils.addItemToMenu(menuRoot, manager.getLutShapeMenu(null));
-        JMVUtils.addItemToMenu(menuRoot, manager.getLutMenu(null));
-        JMVUtils.addItemToMenu(menuRoot, manager.getLutInverseMenu(null));
-        JMVUtils.addItemToMenu(menuRoot, manager.getFilterMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getPresetMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getLutShapeMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getLutMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getLutInverseMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getFilterMenu(null));
         menuRoot.add(new JSeparator());
-        JMVUtils.addItemToMenu(menuRoot, manager.getZoomMenu(null));
-        JMVUtils.addItemToMenu(menuRoot, manager.getOrientationMenu(null));
-        JMVUtils.addItemToMenu(menuRoot, manager.getSortStackMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getZoomMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getOrientationMenu(null));
+        GuiUtils.addItemToMenu(menuRoot, manager.getSortStackMenu(null));
         menuRoot.add(new JSeparator());
         menuRoot.add(manager.getResetMenu(null));
       }
@@ -459,13 +476,11 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
 
-    if (evt instanceof ObservableEvent) {
-      ObservableEvent event = (ObservableEvent) evt;
+    if (evt instanceof ObservableEvent event) {
       ObservableEvent.BasicAction action = event.getActionCommand();
       Object newVal = event.getNewValue();
 
-      if (newVal instanceof SeriesEvent) {
-        SeriesEvent event2 = (SeriesEvent) newVal;
+      if (newVal instanceof SeriesEvent event2) {
 
         SeriesEvent.Action action2 = event2.getActionCommand();
         Object source = event2.getSource();
@@ -474,15 +489,13 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
         if (ObservableEvent.BasicAction.ADD.equals(action)) {
 
           if (SeriesEvent.Action.ADD_IMAGE.equals(action2)) {
-            if (source instanceof DicomSeries) {
-              DicomSeries series = (DicomSeries) source;
+            if (source instanceof DicomSeries series) {
               ViewCanvas<DicomImageElement> view2DPane = eventManager.getSelectedViewPane();
               if (view2DPane != null) {
                 DicomImageElement img = view2DPane.getImage();
                 if (img != null && view2DPane.getSeries() == series) {
                   ActionState seqAction = eventManager.getAction(ActionW.SCROLL_SERIES);
-                  if (seqAction instanceof SliderCineListener) {
-                    SliderCineListener sliceAction = (SliderCineListener) seqAction;
+                  if (seqAction instanceof SliderCineListener sliceAction) {
                     if (param instanceof DicomImageElement) {
                       Filter<DicomImageElement> filter =
                           (Filter<DicomImageElement>)
@@ -495,17 +508,14 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
                         // (require at least one image)
                         view2DPane.setSeries(series, null);
                       }
-                      if (imgIndex >= 0) {
-                        sliceAction.setSliderMinMaxValue(1, series.size(filter), imgIndex + 1);
-                      }
+                      sliceAction.setSliderMinMaxValue(1, series.size(filter), imgIndex + 1);
                     }
                   }
                 }
               }
             }
           } else if (SeriesEvent.Action.UPDATE_IMAGE.equals(action2)) {
-            if (source instanceof DicomImageElement) {
-              DicomImageElement dcm = (DicomImageElement) source;
+            if (source instanceof DicomImageElement dcm) {
               for (ViewCanvas<DicomImageElement> v : view2ds) {
                 if (dcm == v.getImage()) {
                   // Force to repaint the same image
@@ -521,27 +531,21 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
                 }
               }
             }
-          } else if (SeriesEvent.Action.PRELOADING.equals(action2)) {
-            if (source instanceof DicomSeries) {
-              DicomSeries dcm = (DicomSeries) source;
-              for (ViewCanvas<DicomImageElement> v : view2ds) {
-                if (dcm == v.getSeries()) {
-                  v.getJComponent().repaint(v.getInfoLayer().getPreloadingProgressBound());
-                }
+          } else if (SeriesEvent.Action.PRELOADING.equals(action2)
+              && source instanceof DicomSeries dcm) {
+            for (ViewCanvas<DicomImageElement> v : view2ds) {
+              if (dcm == v.getSeries()) {
+                v.getJComponent().repaint(v.getInfoLayer().getPreloadingProgressBound());
               }
             }
           }
-        } else if (ObservableEvent.BasicAction.UPDATE.equals(action)) {
-          if (SeriesEvent.Action.UPDATE.equals(action2)) {
-            if (source instanceof KOSpecialElement) {
-              setKOSpecialElement(
-                  (KOSpecialElement) source, null, false, param.equals("updateAll"));
-            }
-          }
+        } else if (ObservableEvent.BasicAction.UPDATE.equals(action)
+            && SeriesEvent.Action.UPDATE.equals(action2)
+            && source instanceof KOSpecialElement) {
+          setKOSpecialElement((KOSpecialElement) source, null, false, param.equals("updateAll"));
         }
       } else if (ObservableEvent.BasicAction.REMOVE.equals(action)) {
-        if (newVal instanceof MediaSeriesGroup) {
-          MediaSeriesGroup group = (MediaSeriesGroup) newVal;
+        if (newVal instanceof MediaSeriesGroup group) {
           // Patient Group
           if (TagD.getUID(Level.PATIENT).equals(group.getTagID())) {
             if (group.equals(getGroupID())) {
@@ -552,8 +556,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
           }
           // Study Group
           else if (TagD.getUID(Level.STUDY).equals(group.getTagID())) {
-            if (event.getSource() instanceof DicomModel) {
-              DicomModel model = (DicomModel) event.getSource();
+            if (event.getSource() instanceof DicomModel model) {
               for (ViewCanvas<DicomImageElement> v : view2ds) {
                 if (group.equals(model.getParent(v.getSeries(), DicomModel.study))) {
                   v.setSeries(null);
@@ -577,13 +580,12 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
           }
         }
       } else if (ObservableEvent.BasicAction.REPLACE.equals(action)) {
-        if (newVal instanceof Series) {
-          Series series = (Series) newVal;
+        if (newVal instanceof Series series) {
           for (ViewCanvas<DicomImageElement> v : view2ds) {
             MediaSeries<DicomImageElement> s = v.getSeries();
             if (series.equals(s)) {
               /*
-               * Set to null to be sure that all parameters from the view are apply again to the Series
+               * Set to null to be sure that all parameters from the view are applied again to the Series
                * (for instance it is the same series with more images)
                */
               v.setSeries(null);
@@ -604,25 +606,17 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
         // Series of
         // DicomSpecialElement do not necessarily concerned the series in the Viewer2dContainer
 
-        if (newVal instanceof Series) {
-          specialElement =
-              DicomModel.getFirstSpecialElement((Series) newVal, DicomSpecialElement.class);
-        } else if (newVal instanceof DicomSpecialElement) {
-          specialElement = (DicomSpecialElement) newVal;
+        if (newVal instanceof Series series) {
+          specialElement = DicomModel.getFirstSpecialElement(series, DicomSpecialElement.class);
+        } else if (newVal instanceof DicomSpecialElement dicomSpecialElement) {
+          specialElement = dicomSpecialElement;
         }
 
-        if (specialElement instanceof PRSpecialElement) {
+        if (specialElement instanceof PRSpecialElement prSpecialElement) {
           for (ViewCanvas<DicomImageElement> view : view2ds) {
-            if (view instanceof View2d) {
-              DicomImageElement img = view.getImage();
-              if (img != null) {
-                if (PresentationStateReader.isModuleAppicable(
-                    TagD.getTagValue(
-                        specialElement, Tag.ReferencedSeriesSequence, Attributes[].class),
-                    img)) {
-                  ((View2d) view).updatePR();
-                }
-              }
+            if (view instanceof View2d view2d
+                && PresentationStateReader.isImageApplicable(prSpecialElement, view.getImage())) {
+              view2d.updatePR();
             }
           }
         }
@@ -630,15 +624,14 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
         /*
          * Update if necessary all the views with the KOSpecialElement
          */
-        else if (specialElement instanceof KOSpecialElement) {
-          setKOSpecialElement((KOSpecialElement) specialElement, null, false, false);
+        else if (specialElement instanceof KOSpecialElement koSpecialElement) {
+          setKOSpecialElement(koSpecialElement, null, false, false);
         }
-      } else if (ObservableEvent.BasicAction.SELECT.equals(action)) {
-        if (newVal instanceof KOSpecialElement) {
-          // Match using UID of the plugin window and the source event
-          if (this.getDockableUID().equals(evt.getSource())) {
-            setKOSpecialElement((KOSpecialElement) newVal, true, true, false);
-          }
+      } else if (ObservableEvent.BasicAction.SELECT.equals(action)
+          && newVal instanceof KOSpecialElement koSpecialElement) {
+        // Match using UID of the plugin window and the source event
+        if (this.getDockableUID().equals(evt.getSource())) {
+          setKOSpecialElement(koSpecialElement, true, true, false);
         }
       }
     }
@@ -651,23 +644,23 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
       boolean updateAll) {
     ViewCanvas<DicomImageElement> selectedView = getSelectedImagePane();
 
-    if (updatedKOSelection != null && selectedView instanceof View2d) {
+    if (updatedKOSelection != null && selectedView instanceof View2d view2d) {
       if (SynchData.Mode.TILE.equals(this.getSynchView().getSynchData().getMode())) {
 
         ActionState koSelection = selectedView.getEventManager().getAction(ActionW.KO_SELECTION);
-        if (koSelection instanceof ComboItemListener) {
-          ((ComboItemListener) koSelection).setSelectedItem(updatedKOSelection);
+        if (koSelection instanceof ComboItemListener<?> itemListener) {
+          itemListener.setSelectedItem(updatedKOSelection);
         }
 
         if (forceUpdate || enableFilter != null) {
           ActionState koFilterAction = selectedView.getEventManager().getAction(ActionW.KO_FILTER);
-          if (koFilterAction instanceof ToggleButtonListener) {
+          if (koFilterAction instanceof ToggleButtonListener buttonListener) {
             if (enableFilter == null) {
               enableFilter =
                   LangUtil.getNULLtoFalse(
                       (Boolean) selectedView.getActionValue(ActionW.KO_FILTER.cmd()));
             }
-            ((ToggleButtonListener) koFilterAction).setSelected(enableFilter);
+            buttonListener.setSelected(enableFilter);
           }
         }
 
@@ -677,7 +670,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
             ((View2d) view).updateKOButtonVisibleState();
           }
         } else {
-          ((View2d) selectedView).updateKOButtonVisibleState();
+          view2d.updateKOButtonVisibleState();
         }
 
       } else {
@@ -689,7 +682,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
 
         for (ViewCanvas<DicomImageElement> view : viewList) {
 
-          if (!(view.getSeries() instanceof DicomSeries) || !(view instanceof View2d)) {
+          if (!(view.getSeries() instanceof DicomSeries dicomSeries) || !(view instanceof View2d)) {
             continue;
           }
 
@@ -699,7 +692,6 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
                 view, forceUpdate ? updatedKOSelection : null, enableFilter, -1);
           }
 
-          DicomSeries dicomSeries = (DicomSeries) view.getSeries();
           String seriesInstanceUID =
               TagD.getTagValue(dicomSeries, Tag.SeriesInstanceUID, String.class);
 
@@ -739,7 +731,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
   }
 
   @Override
-  public JComponent createUIcomponent(String clazz) {
+  public JComponent createComponent(String clazz) {
     if (isViewType(DefaultView2d.class, clazz)) {
       return createDefaultView(clazz);
     }
@@ -760,9 +752,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
 
   @Override
   public List<Action> getExportActions() {
-    List<Action> actions =
-        selectedImagePane == null ? null : selectedImagePane.getExportToClipboardAction();
-    return actions;
+    return selectedImagePane == null ? null : selectedImagePane.getExportActions();
   }
 
   @Override
@@ -772,7 +762,7 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
     DefaultAction printStd =
         new DefaultAction(
             title,
-            new ImageIcon(ImageViewerPlugin.class.getResource("/icon/16x16/printer.png")),
+            ResourceUtil.getIcon(ActionIcon.PRINT),
             event -> {
               ColorLayerUI layer = ColorLayerUI.createTransparentLayerUI(View2dContainer.this);
               PrintDialog<DicomImageElement> dialog =
@@ -837,14 +827,13 @@ public class View2dContainer extends ImageViewerPlugin<DicomImageElement>
 
       addLayout(list, factorLimit, rx, ry);
     }
-    Collections.sort(
-        list, (o1, o2) -> Integer.compare(o1.getConstraints().size(), o2.getConstraints().size()));
+    list.sort(Comparator.comparingInt(o -> o.getConstraints().size()));
     return list;
   }
 
   private void addLayout(List<GridBagLayoutModel> list, int factorLimit, int rx, int ry) {
     for (int i = 1; i <= factorLimit; i++) {
-      if (i > 2 || i * ry > 2 || i * rx > 2) {
+      if (i > 2 || i * ry > 2 || i * rx > 4) {
         if (i * ry < 50 && i * rx < 50) {
           list.add(
               ImageViewerPlugin.buildGridBagLayoutModel(i * ry, i * rx, view2dClass.getName()));

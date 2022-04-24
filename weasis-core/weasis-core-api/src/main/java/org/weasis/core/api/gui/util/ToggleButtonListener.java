@@ -13,8 +13,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.AbstractButton;
 import javax.swing.ButtonModel;
+import javax.swing.Icon;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JToggleButton;
 import javax.swing.JToggleButton.ToggleButtonModel;
 import org.weasis.core.api.service.AuditLog;
 
@@ -22,7 +24,7 @@ public abstract class ToggleButtonListener extends BasicActionState implements A
 
   protected ButtonModel model;
 
-  public ToggleButtonListener(ActionW action, boolean selected) {
+  protected ToggleButtonListener(ActionW action, boolean selected) {
     super(action);
     model = new ToggleButtonModel();
     model.setSelected(selected);
@@ -74,16 +76,21 @@ public abstract class ToggleButtonListener extends BasicActionState implements A
   @Override
   public boolean registerActionState(Object c) {
     if (super.registerActionState(c)) {
-      if (c instanceof AbstractButton) {
-        ((AbstractButton) c).setModel(model);
+      if (c instanceof AbstractButton button) {
+        button.setModel(model);
       }
       return true;
     }
     return false;
   }
 
-  public JCheckBoxMenuItem createUnregiteredJCheckBoxMenuItem(String text) {
-    final JCheckBoxMenuItem checkBoxItem = new JCheckBoxMenuItem(text, null, model.isSelected());
+  public JCheckBoxMenuItem createUnregisteredJCCheckBoxMenuItem(String text) {
+    return createUnregisteredJCCheckBoxMenuItem(text, null);
+  }
+
+  public JCheckBoxMenuItem createUnregisteredJCCheckBoxMenuItem(String text, Icon icon) {
+    final JCheckBoxMenuItem checkBoxItem = new JCheckBoxMenuItem(text, icon, model.isSelected());
+    GuiUtils.applySelectedIconEffect(checkBoxItem);
     checkBoxItem.setModel(model);
     return checkBoxItem;
   }
@@ -98,5 +105,11 @@ public abstract class ToggleButtonListener extends BasicActionState implements A
     final JCheckBoxMenuItem menu = new JCheckBoxMenuItem(title);
     registerActionState(menu);
     return menu;
+  }
+
+  public JToggleButton createJToggleButton(Icon icon) {
+    final JToggleButton check = new JToggleButton(icon);
+    registerActionState(check);
+    return check;
   }
 }

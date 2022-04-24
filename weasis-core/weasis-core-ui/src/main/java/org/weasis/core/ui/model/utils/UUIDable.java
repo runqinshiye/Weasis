@@ -9,9 +9,7 @@
  */
 package org.weasis.core.ui.model.utils;
 
-import java.io.Serializable;
-
-public interface UUIDable extends Serializable {
+public interface UUIDable {
 
   /**
    * Return a Universally Unique IDentifier (UUID)
@@ -23,7 +21,7 @@ public interface UUIDable extends Serializable {
   /**
    * Set a Universally Unique IDentifier (UUID)
    *
-   * @param uuid
+   * @param uuid the Universally Unique IDentifier (UUID)
    */
   void setUuid(String uuid);
 }

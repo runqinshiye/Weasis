@@ -60,8 +60,8 @@ public class FileFormatFilter extends FileFilter {
     fFullDescription = null;
     fDefaultExtension = null;
     fUseExtensionsInDescription = true;
-    for (int i = 0; i < filters.length; i++) {
-      addExtension(filters[i]);
+    for (String filter : filters) {
+      addExtension(filter);
     }
     if (description != null) {
       setDescription(description);
@@ -79,9 +79,7 @@ public class FileFormatFilter extends FileFilter {
         return true;
       }
       String extension = getExtension(f);
-      if (extension != null && fExtensions.get(extension) != null) {
-        return true;
-      }
+      return extension != null && fExtensions.get(extension) != null;
     }
     return false;
   }
@@ -109,16 +107,20 @@ public class FileFormatFilter extends FileFilter {
   public String getDescription() {
     if (fFullDescription == null) {
       if (fDescription == null || isExtensionListInDescription()) {
-        fFullDescription = fDescription != null ? fDescription + " (" : "(";
+        StringBuilder builder = new StringBuilder(fDescription != null ? fDescription + " (" : "(");
         Set<String> extensions = fExtensions.keySet();
         Iterator<String> it = extensions.iterator();
         if (it.hasNext()) {
-          fFullDescription += "*." + it.next();
+          builder.append("*.");
+          builder.append(it.next());
         }
+
         while (it.hasNext()) {
-          fFullDescription += ", *." + it.next();
+          builder.append(", *.");
+          builder.append(it.next());
         }
-        fFullDescription += ")";
+        builder.append(")");
+        fFullDescription = builder.toString();
       } else {
         fFullDescription = fDescription;
       }
@@ -144,7 +146,7 @@ public class FileFormatFilter extends FileFilter {
     // Get the current available codecs.
     List<String> namesList =
         BundleTools.CODEC_PLUGINS.stream()
-            .flatMap(c -> Arrays.asList(c.getReaderExtensions()).stream())
+            .flatMap(c -> Arrays.stream(c.getReaderExtensions()))
             .distinct()
             .sorted()
             .collect(Collectors.toList());
@@ -153,28 +155,21 @@ public class FileFormatFilter extends FileFilter {
     Iterator<String> it = namesList.iterator();
     String desc = Messages.getString("FileFormatFilter.all_supported");
     ArrayList<String> names = new ArrayList<>();
-    do {
-      if (!it.hasNext()) {
-        break;
-      }
+    while (it.hasNext()) {
       String name = it.next();
       names.add(name);
-    } while (true);
+    }
 
-    FileFormatFilter allfilter =
-        new FileFormatFilter(names.toArray(new String[names.size()]), desc);
+    FileFormatFilter allfilter = new FileFormatFilter(names.toArray(new String[0]), desc);
     allfilter.setFFullDescription(desc);
     chooser.addChoosableFileFilter(allfilter);
     it = namesList.iterator();
-    do {
-      if (!it.hasNext()) {
-        break;
-      }
+    while (it.hasNext()) {
       String name = it.next();
       desc = name.toUpperCase();
       FileFormatFilter filter = new FileFormatFilter(name, desc);
       chooser.addChoosableFileFilter(filter);
-    } while (true);
+    }
     // Add All filter
     chooser.setAcceptAllFileFilterUsed(true);
     // Set default selected filter

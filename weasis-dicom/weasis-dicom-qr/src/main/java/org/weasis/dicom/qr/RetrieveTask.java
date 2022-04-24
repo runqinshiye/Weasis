@@ -43,8 +43,10 @@ import org.weasis.core.util.FileUtil;
 import org.weasis.core.util.StringUtil;
 import org.weasis.dicom.codec.DicomSeries;
 import org.weasis.dicom.codec.TagD;
+import org.weasis.dicom.codec.utils.DicomResource;
 import org.weasis.dicom.explorer.DicomModel;
 import org.weasis.dicom.explorer.ExplorerTask;
+import org.weasis.dicom.explorer.HangingProtocols.OpeningViewer;
 import org.weasis.dicom.explorer.LoadLocalDicom;
 import org.weasis.dicom.explorer.pref.download.SeriesDownloadPrefView;
 import org.weasis.dicom.explorer.pref.node.AbstractDicomNode;
@@ -118,8 +120,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
     DicomParam[] dcmParams = {new DicomParam(Tag.StudyInstanceUID, studies.toArray(new String[0]))};
 
     Object selectedItem = dicomQrView.getComboDestinationNode().getSelectedItem();
-    if (selectedItem instanceof DefaultDicomNode) {
-      final DefaultDicomNode node = (DefaultDicomNode) selectedItem;
+    if (selectedItem instanceof final DefaultDicomNode node) {
       DefaultDicomNode callingNode =
           (DefaultDicomNode) dicomQrView.getComboCallingNode().getSelectedItem();
       if (callingNode == null) {
@@ -135,7 +136,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
         params.setConnectOptions(connectOptions);
 
         if (RetrieveType.CGET == type) {
-          File sopClass = ResourceUtil.getResource("store-tcs.properties"); // NON-NLS
+          File sopClass = ResourceUtil.getResource(DicomResource.CGET_SOP_UID);
           URL url = null;
           if (sopClass.canRead()) {
             try {
@@ -255,7 +256,10 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
 
         loadingTask =
             new LoadLocalDicom(
-                new File[] {new File(DicomQrView.tempDir.getPath())}, false, explorerDcmModel);
+                new File[] {new File(DicomQrView.tempDir.getPath())},
+                false,
+                explorerDcmModel,
+                OpeningViewer.ALL_PATIENTS);
       }
 
     } else if (selectedItem instanceof DicomWebNode) {
@@ -271,7 +275,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
           .execute(
               () ->
                   JOptionPane.showMessageDialog(
-                      dicomQrView.getBasePanel(), mes, errorTitle, JOptionPane.ERROR_MESSAGE));
+                      dicomQrView, mes, errorTitle, JOptionPane.ERROR_MESSAGE));
     }
 
     return loadingTask;
@@ -300,8 +304,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
       DicomQrView dicomQrView, String host, List<AbstractDicomNode> webNodes, String message1) {
     List<DicomWebNode> wadoURLs = new ArrayList<>();
     for (AbstractDicomNode n : webNodes) {
-      if (n instanceof DicomWebNode) {
-        DicomWebNode wn = (DicomWebNode) n;
+      if (n instanceof DicomWebNode wn) {
         URL url = wn.getUrl();
         if (WebType.WADO.equals(wn.getWebType())
             && url != null
@@ -315,7 +318,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
           .execute(
               () ->
                   JOptionPane.showMessageDialog(
-                      dicomQrView.getBasePanel(), message1, null, JOptionPane.ERROR_MESSAGE));
+                      dicomQrView, message1, null, JOptionPane.ERROR_MESSAGE));
       return null;
     } else if (wadoURLs.size() > 1) {
       GuiExecutor.instance()
@@ -324,7 +327,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
                 Object[] options = wadoURLs.toArray();
                 Object response =
                     JOptionPane.showInputDialog(
-                        dicomQrView.getBasePanel(),
+                        dicomQrView,
                         Messages.getString("RetrieveTask.several_wado_urls"),
                         wadoURLs.get(0).getWebType().toString(),
                         JOptionPane.QUESTION_MESSAGE,
@@ -417,8 +420,8 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
     }
 
     // Sort tasks from the download priority order (low number has a higher priority), TASKS
-    // is sorted from low to high priority).
-    Collections.sort(DownloadManager.TASKS, Collections.reverseOrder(new PriorityTaskComparator()));
+    // is sorted from low to high priority.
+    DownloadManager.TASKS.sort(Collections.reverseOrder(new PriorityTaskComparator()));
 
     DownloadManager.CONCURRENT_EXECUTOR.prestartAllCoreThreads();
   }
@@ -434,7 +437,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
           if (patient == null) {
             MediaSeriesGroupNode p =
                 new MediaSeriesGroupNode(
-                    pt.getTagID(), pt.getTagValue(pt.getTagID()), DicomModel.patient.getTagView());
+                    pt.getTagID(), pt.getTagValue(pt.getTagID()), DicomModel.patient.tagView());
             pt.getTagEntrySetIterator().forEachRemaining(e -> p.setTag(e.getKey(), e.getValue()));
             explorerDcmModel.addHierarchyNode(MediaSeriesGroupNode.rootNode, p);
             patient = p;
@@ -443,7 +446,7 @@ public class RetrieveTask extends ExplorerTask<ExplorerTask<Boolean, String>, St
           if (study == null) {
             MediaSeriesGroupNode s =
                 new MediaSeriesGroupNode(
-                    st.getTagID(), st.getTagValue(st.getTagID()), DicomModel.study.getTagView());
+                    st.getTagID(), st.getTagValue(st.getTagID()), DicomModel.study.tagView());
             st.getTagEntrySetIterator().forEachRemaining(e -> s.setTag(e.getKey(), e.getValue()));
             explorerDcmModel.addHierarchyNode(patient, s);
             study = s;

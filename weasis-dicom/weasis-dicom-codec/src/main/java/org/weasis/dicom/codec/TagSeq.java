@@ -14,11 +14,9 @@ import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Sequence;
 import org.dcm4che3.data.VR;
 import org.weasis.core.api.media.data.TagW;
-import org.weasis.core.api.media.data.Tagable;
+import org.weasis.core.api.media.data.Taggable;
 
 public class TagSeq extends TagD {
-
-  private static final long serialVersionUID = -7782852222112967568L;
 
   public TagSeq(
       int tagID,
@@ -34,24 +32,19 @@ public class TagSeq extends TagD {
   }
 
   @Override
-  public void readValue(Object data, Tagable tagabale) {
-    if (data instanceof MacroSeqData) {
-      MacroSeqData macro = (MacroSeqData) data;
+  public void readValue(Object data, Taggable taggable) {
+    if (data instanceof MacroSeqData macro) {
       Object val = getValue(macro.getAttributes());
-      if (val instanceof Sequence) {
-        Sequence seq = (Sequence) val;
-        if (!seq.isEmpty()) {
-          val = seq.get(0);
-        }
+      if (val instanceof Sequence seq && !seq.isEmpty()) {
+        val = seq.get(0);
       }
 
-      if (val instanceof Attributes) {
-        Attributes dataset = (Attributes) val;
+      if (val instanceof Attributes dataset) {
         Predicate<? super Attributes> predicate = macro.getApplicable();
         if (predicate == null || predicate.test(dataset)) {
           for (TagW tag : macro.getTags()) {
             if (tag != null) {
-              tag.readValue(dataset, tagabale);
+              tag.readValue(dataset, taggable);
             }
           }
         }

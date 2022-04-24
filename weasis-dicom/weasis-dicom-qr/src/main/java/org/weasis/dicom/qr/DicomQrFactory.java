@@ -23,18 +23,12 @@ import org.weasis.core.util.FileUtil;
 import org.weasis.dicom.explorer.DicomImportFactory;
 import org.weasis.dicom.explorer.ImportDicom;
 
-@org.osgi.service.component.annotations.Component(
-    service = DicomImportFactory.class,
-    immediate = false)
+@org.osgi.service.component.annotations.Component(service = DicomImportFactory.class)
 public class DicomQrFactory implements DicomImportFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DicomQrFactory.class);
 
   public static final Properties IMPORT_PERSISTENCE = new Properties();
-
-  // public static final ArrayList<SearchParameters> SEARCH_ITEMS = new ArrayList<>();
-
-  private static final String PREFERENCE_NODE = "qr.prefs";
 
   @Override
   public ImportDicom createDicomImportPage(Hashtable<String, Object> properties) {
@@ -54,8 +48,6 @@ public class DicomQrFactory implements DicomImportFactory {
     FileUtil.readProperties(
         new File(BundlePreferences.getDataFolder(context.getBundleContext()), "import.properties"),
         IMPORT_PERSISTENCE);
-
-    // SEARCH_ITEMS.clear();
   }
 
   @Deactivate
@@ -65,20 +57,5 @@ public class DicomQrFactory implements DicomImportFactory {
         new File(BundlePreferences.getDataFolder(context.getBundleContext()), "import.properties"),
         IMPORT_PERSISTENCE,
         null);
-
-    // Preferences prefs = BundlePreferences.getDefaultPreferences(context.getBundleContext());
-    // if (prefs != null) {
-    // Preferences p = prefs.node(DicomQrFactory.PREFERENCE_NODE);
-    // // Forget the Selection Graphic
-    // for (int i = 1; i < SEARCH_ITEMS.size(); i++) {
-    // SearchParameters item = SEARCH_ITEMS.get(i);
-    //
-    // List<DicomParam> list = item.getParameters();
-    // if (list != null && !list.isEmpty()) {
-    // Preferences gpref = p.node(item.toString());
-    //
-    // }
-    // }
-    // }
   }
 }

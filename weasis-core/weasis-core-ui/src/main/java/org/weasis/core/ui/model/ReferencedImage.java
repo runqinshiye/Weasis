@@ -17,7 +17,6 @@ import java.util.Optional;
 import org.weasis.core.ui.model.utils.imp.DefaultUUID;
 
 public class ReferencedImage extends DefaultUUID {
-  private static final long serialVersionUID = 634321872759432378L;
 
   private List<Integer> frames;
 
@@ -35,7 +34,7 @@ public class ReferencedImage extends DefaultUUID {
   }
 
   @XmlList
-  @XmlAttribute(name = "frames", required = false)
+  @XmlAttribute(name = "frames")
   public List<Integer> getFrames() {
     return frames;
   }
@@ -46,7 +45,7 @@ public class ReferencedImage extends DefaultUUID {
    * <p>Note: to match with DICOM Instance Frame the value must be increment of one (DicomFrame =
    * frame + 1).
    *
-   * @param frames
+   * @param frames the image frame list
    */
   public void setFrames(List<Integer> frames) {
     this.frames = Optional.ofNullable(frames).orElseGet(ArrayList::new);

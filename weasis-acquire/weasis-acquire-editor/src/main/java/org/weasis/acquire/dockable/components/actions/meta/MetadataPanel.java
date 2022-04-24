@@ -9,44 +9,41 @@
  */
 package org.weasis.acquire.dockable.components.actions.meta;
 
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import javax.swing.JPanel;
+import javax.swing.BoxLayout;
 import org.weasis.acquire.Messages;
 import org.weasis.acquire.dockable.components.actions.AbstractAcquireActionPanel;
 import org.weasis.acquire.explorer.AcquireImageInfo;
 import org.weasis.acquire.explorer.AcquireImageValues;
 import org.weasis.acquire.explorer.gui.central.meta.panel.AcquireMetadataPanel;
 import org.weasis.acquire.explorer.gui.central.meta.panel.imp.AcquireGlobalMetaPanel;
+import org.weasis.acquire.explorer.gui.central.meta.panel.imp.AcquireImageMetaPanel;
+import org.weasis.acquire.explorer.gui.central.meta.panel.imp.AcquireSeriesMetaPanel;
+import org.weasis.core.api.gui.util.GuiUtils;
 
 public class MetadataPanel extends AbstractAcquireActionPanel {
-  private static final long serialVersionUID = -1474114784513035056L;
 
   private final AcquireMetadataPanel globalInfoPanel =
       new AcquireGlobalMetaPanel(Messages.getString("MetadataPanel.global"));
-  private final org.weasis.acquire.explorer.gui.central.meta.panel.imp.AcquireSerieMetaPanel
-      serieInfoPanel =
-          new org.weasis.acquire.explorer.gui.central.meta.panel.imp.AcquireSerieMetaPanel(null);
+  private final AcquireSeriesMetaPanel seriesInfoPanel = new AcquireSeriesMetaPanel(null);
   private final AcquireMetadataPanel imageInfoPanel =
-      new org.weasis.acquire.explorer.gui.central.meta.panel.imp.AcquireImageMetaPanel(
-          Messages.getString("MetadataPanel.image"));
+      new AcquireImageMetaPanel(Messages.getString("MetadataPanel.image"));
 
   public MetadataPanel() {
-    super();
-    setLayout(new BorderLayout());
+    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+    setBorder(GuiUtils.getEmptyBorder(10, 5, 2, 5));
 
-    JPanel content = new JPanel(new GridLayout(3, 1));
-    add(content, BorderLayout.NORTH);
-
-    content.add(globalInfoPanel);
-    content.add(serieInfoPanel);
-    content.add(imageInfoPanel);
+    add(globalInfoPanel);
+    add(GuiUtils.boxVerticalStrut(10));
+    add(seriesInfoPanel);
+    add(GuiUtils.boxVerticalStrut(10));
+    add(imageInfoPanel);
+    add(GuiUtils.boxYLastElement(5));
   }
 
   @Override
   public void initValues(AcquireImageInfo info, AcquireImageValues values) {
     globalInfoPanel.update();
-    serieInfoPanel.setSerie(info.getSeries());
+    seriesInfoPanel.setSeries(info.getSeries());
     imageInfoPanel.setImageInfo(info);
     repaint();
   }
@@ -54,7 +51,7 @@ public class MetadataPanel extends AbstractAcquireActionPanel {
   @Override
   public void stopEditing() {
     globalInfoPanel.stopEditing();
-    serieInfoPanel.stopEditing();
+    seriesInfoPanel.stopEditing();
     imageInfoPanel.stopEditing();
   }
 }

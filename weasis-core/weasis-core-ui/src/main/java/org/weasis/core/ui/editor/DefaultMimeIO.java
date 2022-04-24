@@ -56,11 +56,6 @@ public class DefaultMimeIO implements MediaReader {
   }
 
   @Override
-  public void reset() {
-    // Do nothing
-  }
-
-  @Override
   public MediaElement getPreview() {
     return getSingleImage();
   }
@@ -72,18 +67,14 @@ public class DefaultMimeIO implements MediaReader {
 
   @Override
   public MediaElement[] getMediaElement() {
-    MediaElement element = getSingleImage();
-    if (element != null) {
-      return new MediaElement[] {element};
-    }
-    return null;
+    return new MediaElement[] {getSingleImage()};
   }
 
   @Override
   public MediaSeries<MediaElement> getMediaSeries() {
 
     MediaSeries<MediaElement> mediaSeries =
-        new Series<MediaElement>(TagW.FilePath, this.toString(), defaultTagView, 1) {
+        new Series<>(TagW.FilePath, this.toString(), defaultTagView, 1) {
 
           @Override
           public String getMimeType() {
@@ -112,6 +103,11 @@ public class DefaultMimeIO implements MediaReader {
                         new SeriesEvent(SeriesEvent.Action.ADD_IMAGE, this, media)));
               }
             }
+          }
+
+          @Override
+          public MediaElement getFirstSpecialElement() {
+            return null;
           }
         };
     mediaSeries.add(getSingleImage());
@@ -192,7 +188,7 @@ public class DefaultMimeIO implements MediaReader {
   }
 
   @Override
-  public boolean buildFile(File ouptut) {
+  public boolean buildFile(File output) {
     return false;
   }
 }

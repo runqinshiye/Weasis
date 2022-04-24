@@ -17,7 +17,6 @@ import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlType;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
@@ -38,7 +37,6 @@ import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.ui.Messages;
 import org.weasis.core.ui.editor.image.Canvas;
-import org.weasis.core.ui.editor.image.DefaultView2d;
 import org.weasis.core.ui.editor.image.MeasureToolBar;
 import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.model.graphic.DragGraphic;
@@ -72,7 +70,6 @@ import org.weasis.core.ui.util.MouseEventDouble;
 @XmlType(propOrder = {"referencedSeries", "layers", "models"})
 @XmlAccessorType(XmlAccessType.NONE)
 public abstract class AbstractGraphicModel extends DefaultUUID implements GraphicModel {
-  private static final long serialVersionUID = 1187916695295007387L;
 
   private List<ReferencedSeries> referencedSeries;
   private List<GraphicLayer> layers;
@@ -81,19 +78,19 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
   private final List<GraphicSelectionListener> selectedGraphicsListeners = new ArrayList<>();
   private final List<GraphicModelChangeListener> modelListeners = new ArrayList<>();
   private final List<PropertyChangeListener> graphicsListeners = new ArrayList<>();
-  private Boolean changeFireingSuspended = Boolean.FALSE;
+  private Boolean changeFiringSuspended = Boolean.FALSE;
 
-  private Function<Graphic, GraphicLayer> getLayer = g -> g.getLayer();
-  private Function<Graphic, DragGraphic> castToDragGraphic = DragGraphic.class::cast;
+  private final Function<Graphic, GraphicLayer> getLayer = Graphic::getLayer;
+  private final Function<Graphic, DragGraphic> castToDragGraphic = DragGraphic.class::cast;
 
-  private Predicate<Graphic> isLayerVisible = g -> g.getLayer().getVisible();
-  private Predicate<Graphic> isGraphicSelected = g -> g.getSelected();
+  private final Predicate<Graphic> isLayerVisible = g -> g.getLayer().getVisible();
+  private final Predicate<Graphic> isGraphicSelected = Graphic::getSelected;
 
-  public AbstractGraphicModel() {
+  protected AbstractGraphicModel() {
     this(null);
   }
 
-  public AbstractGraphicModel(List<ReferencedSeries> referencedSeries) {
+  protected AbstractGraphicModel(List<ReferencedSeries> referencedSeries) {
     setReferencedSeries(referencedSeries);
     this.layers = Collections.synchronizedList(new ArrayList<>());
     this.models = Collections.synchronizedList(new ArrayList<>());
@@ -152,7 +149,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
   public void setModels(List<Graphic> models) {
     if (models != null) {
       this.models = Collections.synchronizedList(models);
-      this.layers = Collections.synchronizedList(getLayerlist());
+      this.layers = Collections.synchronizedList(getLayerList());
     }
   }
 
@@ -197,7 +194,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
     }
   }
 
-  private List<GraphicLayer> getLayerlist() {
+  private List<GraphicLayer> getLayerList() {
     return models.parallelStream().map(getLayer).distinct().collect(Collectors.toList());
   }
 
@@ -323,7 +320,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
     synchronized (models) {
       for (Graphic g : models) {
         /*
-         * Exclude non serializable layer and graphics without points like NonEditableGraphic (not strictly the
+         * Exclude non-serializable layer and graphics without points like NonEditableGraphic (not strictly the
          * jaxb serialization process that use the annotations from getModels())
          */
         if (g.getLayer().getSerializable() && !g.getPts().isEmpty()) {
@@ -433,7 +430,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
 
   /**
    * @param mouseEvent
-   * @return first selected graphic intersecting if exist, otherwise simply first graphic
+   * @return first selected graphic intersecting if existed, otherwise simply first graphic
    *     intersecting, or null
    */
   @Override
@@ -518,7 +515,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
   // }
 
   @Override
-  public List<DragGraphic> getSelectedDragableGraphics() {
+  public List<DragGraphic> getSelectedDraggableGraphics() {
     return models.stream()
         .filter(isGraphicSelected)
         .filter(DragGraphic.class::isInstance)
@@ -534,7 +531,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
   @Override
   public Optional<SelectGraphic> getSelectGraphic() {
     return models.stream()
-        .filter(g -> g instanceof SelectGraphic)
+        .filter(SelectGraphic.class::isInstance)
         .map(SelectGraphic.class::cast)
         .findFirst();
   }
@@ -603,9 +600,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
     Rectangle2D bound = area == null ? null : area.getBounds2D();
 
     g2d.translate(0.5, 0.5);
-    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, DefaultView2d.antialiasingOn);
     models.forEach(g -> applyPaint(g, g2d, transform, bound));
-    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, DefaultView2d.antialiasingOff);
     g2d.translate(-0.5, -0.5);
   }
 
@@ -625,7 +620,7 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
             }
           }
         }
-      } else { // convention is when bounds equals null graphic is repaint
+      } else { // convention is when bounds equals null graphic is repainted
         graphic.paint(g2d, transform);
         graphic.paintLabel(g2d, transform);
       }
@@ -665,19 +660,19 @@ public abstract class AbstractGraphicModel extends DefaultUUID implements Graphi
 
   @Override
   public void fireChanged() {
-    if (!changeFireingSuspended) {
+    if (!changeFiringSuspended) {
       modelListeners.stream().forEach(l -> l.handleModelChanged(this));
     }
   }
 
   @Override
-  public Boolean isChangeFireingSuspended() {
-    return changeFireingSuspended;
+  public Boolean isChangeFiringSuspended() {
+    return changeFiringSuspended;
   }
 
   @Override
-  public void setChangeFireingSuspended(Boolean change) {
-    this.changeFireingSuspended = Optional.ofNullable(change).orElse(Boolean.FALSE);
+  public void setChangeFiringSuspended(Boolean change) {
+    this.changeFiringSuspended = Optional.ofNullable(change).orElse(Boolean.FALSE);
   }
 
   @Override

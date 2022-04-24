@@ -41,6 +41,7 @@ import org.weasis.core.api.image.ImageOpNode;
 import org.weasis.core.api.image.MaskOp;
 import org.weasis.core.api.image.RotationOp;
 import org.weasis.core.api.image.SimpleOpManager;
+import org.weasis.core.api.image.WindowOp;
 import org.weasis.core.api.image.ZoomOp;
 import org.weasis.core.api.image.util.ImageLayer;
 import org.weasis.core.api.media.data.ImageElement;
@@ -59,8 +60,7 @@ import org.weasis.opencv.op.ImageConversion;
 
 /**
  * @author Yannick LARVOR
- * @version 2.5.0
- * @since 2.5.0 - 2016-04-11 - ylar - Creation
+ * @since 2.5.0
  */
 public class AcquireImageInfo {
   private static final Logger LOGGER = LoggerFactory.getLogger(AcquireImageInfo.class);
@@ -169,7 +169,7 @@ public class AcquireImageInfo {
         || nextValues.getContrast() != currentValues.getContrast()) {
       postProcessOpManager.setParamValue(
           BrightnessOp.OP_NAME,
-          BrightnessOp.P_BRIGTNESS_VALUE,
+          BrightnessOp.P_BRIGHTNESS_VALUE,
           (double) nextValues.getBrightness());
       postProcessOpManager.setParamValue(
           BrightnessOp.OP_NAME, BrightnessOp.P_CONTRAST_VALUE, (double) nextValues.getContrast());
@@ -182,7 +182,7 @@ public class AcquireImageInfo {
       postProcessOpManager.setParamValue(ZoomOp.OP_NAME, ZoomOp.P_RATIO_X, nextValues.getRatio());
       postProcessOpManager.setParamValue(ZoomOp.OP_NAME, ZoomOp.P_RATIO_Y, nextValues.getRatio());
       postProcessOpManager.setParamValue(
-          ZoomOp.OP_NAME, ZoomOp.P_INTERPOLATION, ZoomOp.INTERPOLATIONS[3]);
+          ZoomOp.OP_NAME, ZoomOp.P_INTERPOLATION, ZoomOp.Interpolation.BICUBIC);
     }
 
     // Reset preprocess cache
@@ -208,6 +208,10 @@ public class AcquireImageInfo {
   public void applyCurrentProcessing(ViewCanvas<ImageElement> view) {
     if (view != null) {
       ImageLayer<ImageElement> imageLayer = view.getImageLayer();
+      ImageOpNode node = imageLayer.getDisplayOpManager().getNode(WindowOp.OP_NAME);
+      if (node != null) {
+        node.setEnabled(false);
+      }
       imageLayer.setImage(image, postProcessOpManager);
     }
   }
@@ -255,7 +259,7 @@ public class AcquireImageInfo {
 
     postProcessOpManager.setParamValue(
         BrightnessOp.OP_NAME,
-        BrightnessOp.P_BRIGTNESS_VALUE,
+        BrightnessOp.P_BRIGHTNESS_VALUE,
         (double) defaultValues.getBrightness());
     postProcessOpManager.setParamValue(
         BrightnessOp.OP_NAME, BrightnessOp.P_CONTRAST_VALUE, (double) defaultValues.getContrast());
@@ -337,9 +341,9 @@ public class AcquireImageInfo {
 
   /**
    * Check if ImageElement has a SOPInstanceUID TAG value and if not create a new UUID. Read Exif
-   * metaData from from original file and populate relevant ImageElement TAGS. <br>
+   * metaData from original file and populate relevant ImageElement TAGS. <br>
    *
-   * @param imageElement
+   * @param imageElement the ImageElement value
    */
   private static void readTags(ImageElement imageElement) {
     // Convert Exif TAG to DICOM attributes
@@ -354,7 +358,7 @@ public class AcquireImageInfo {
       String date = (String) TagUtil.getTagValue(TagW.ExifDateTime, imageElement);
       LocalDateTime dateTime = null;
       if (StringUtil.hasText(date)) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss"); // NON-NLS
         try {
           dateTime = LocalDateTime.parse(date, formatter);
         } catch (DateTimeParseException ex) {

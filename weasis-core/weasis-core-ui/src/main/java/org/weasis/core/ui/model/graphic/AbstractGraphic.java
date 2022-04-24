@@ -47,9 +47,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.Image2DViewer;
 import org.weasis.core.api.gui.util.ActionW;
-import org.weasis.core.api.gui.util.DecFormater;
+import org.weasis.core.api.gui.util.DecFormatter;
 import org.weasis.core.api.gui.util.GeomUtil;
-import org.weasis.core.api.gui.util.MathUtil;
 import org.weasis.core.api.image.util.Unit;
 import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.model.layer.GraphicLayer;
@@ -63,10 +62,10 @@ import org.weasis.core.ui.model.utils.imp.DefaultUUID;
 import org.weasis.core.ui.serialize.ColorModelAdapter;
 import org.weasis.core.ui.serialize.PointAdapter;
 import org.weasis.core.ui.util.MouseEventDouble;
+import org.weasis.core.util.MathUtil;
 
 @XmlAccessorType(XmlAccessType.NONE)
 public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
-  private static final long serialVersionUID = -8152071576417041112L;
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractGraphic.class);
 
   protected static final String NULL_MSG = "Null is not allowed"; // NON-NLS
@@ -75,7 +74,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
   protected List<Point2D> pts;
   protected Paint colorPaint = DEFAULT_COLOR;
   protected Float lineThickness = DEFAULT_LINE_THICKNESS;
-  protected Boolean labelVisible = DEFAULT_LABEL_VISISIBLE;
+  protected Boolean labelVisible = DEFAULT_LABEL_VISIBLE;
   protected Boolean filled = DEFAULT_FILLED;
   protected Integer classID;
   protected GraphicLabel graphicLabel;
@@ -83,18 +82,18 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
 
   protected Shape shape;
   protected Boolean selected = DEFAULT_SELECTED;
-  protected Boolean variablePointsNumber = Boolean.FALSE;
+  protected Boolean variablePointsNumber;
   protected PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
   private GraphicLayer layer;
 
-  public AbstractGraphic(Integer pointNumber) {
+  protected AbstractGraphic(Integer pointNumber) {
     setPointNumber(pointNumber);
     this.variablePointsNumber = Objects.isNull(pointNumber) || pointNumber < 0;
     setPts(null);
   }
 
-  public AbstractGraphic(AbstractGraphic graphic) {
+  protected AbstractGraphic(AbstractGraphic graphic) {
     this.layerType = graphic.layerType;
     setPointNumber(graphic.pointNumber);
     setColorPaint(graphic.colorPaint);
@@ -140,7 +139,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     this.pointNumber = pointNumber;
   }
 
-  @XmlElementWrapper(name = "pts", required = false)
+  @XmlElementWrapper(name = "pts")
   @XmlElement(name = "pt")
   @XmlJavaTypeAdapter(PointAdapter.Point2DAdapter.class)
   @Override
@@ -187,7 +186,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     this.variablePointsNumber = variablePointsNumber;
   }
 
-  @XmlElement(name = "paint", required = false)
+  @XmlElement(name = "paint")
   @XmlJavaTypeAdapter(ColorModelAdapter.PaintAdapter.class)
   @Override
   public Paint getColorPaint() {
@@ -198,7 +197,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     this.colorPaint = Optional.ofNullable(colorPaint).orElse(DEFAULT_COLOR);
   }
 
-  @XmlAttribute(name = "thickness", required = false)
+  @XmlAttribute(name = "thickness")
   @Override
   public Float getLineThickness() {
     return lineThickness;
@@ -208,15 +207,15 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
   public void setLineThickness(Float lineThickness) {
     if (!Objects.equals(this.lineThickness, lineThickness)) {
       this.lineThickness = Optional.ofNullable(lineThickness).orElse(DEFAULT_LINE_THICKNESS);
-      if (shape instanceof AdvancedShape) {
-        ((AdvancedShape) shape)
-            .getShapeList().stream().forEachOrdered(bs -> bs.changelineThickness(lineThickness));
+      if (shape instanceof AdvancedShape advancedShape) {
+        advancedShape.getShapeList().stream()
+            .forEachOrdered(bs -> bs.changeLineThickness(lineThickness));
       }
       fireDrawingChanged();
     }
   }
 
-  @XmlAttribute(name = "showLabel", required = false)
+  @XmlAttribute(name = "showLabel")
   @Override
   public Boolean getLabelVisible() {
     return labelVisible;
@@ -225,12 +224,12 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
   @Override
   public void setLabelVisible(Boolean labelVisible) {
     if (!Objects.equals(this.labelVisible, labelVisible)) {
-      this.labelVisible = Optional.ofNullable(labelVisible).orElse(DEFAULT_LABEL_VISISIBLE);
+      this.labelVisible = Optional.ofNullable(labelVisible).orElse(DEFAULT_LABEL_VISIBLE);
       fireLabelChanged();
     }
   }
 
-  @XmlAttribute(name = "fill", required = false)
+  @XmlAttribute(name = "fill")
   @Override
   public Boolean getFilled() {
     return filled;
@@ -244,7 +243,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     }
   }
 
-  @XmlAttribute(name = "classId", required = false)
+  @XmlAttribute(name = "classId")
   @Override
   public Integer getClassID() {
     return classID;
@@ -274,7 +273,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     }
   }
 
-  @XmlElement(name = "graphicLabel", required = false)
+  @XmlElement(name = "graphicLabel")
   @Override
   public GraphicLabel getGraphicLabel() {
     return graphicLabel;
@@ -310,8 +309,8 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
       return new Area();
     }
 
-    if (shape instanceof AdvancedShape) {
-      return ((AdvancedShape) shape).getArea(transform);
+    if (shape instanceof AdvancedShape advancedShape) {
+      return advancedShape.getArea(transform);
     } else {
       double growingSize = Math.max(SELECTION_SIZE, HANDLE_SIZE);
       growingSize = Math.max(growingSize, lineThickness);
@@ -335,8 +334,8 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
       return null;
     }
 
-    if (shape instanceof AdvancedShape) {
-      ((AdvancedShape) shape).setAffineTransform(transform);
+    if (shape instanceof AdvancedShape advancedShape) {
+      advancedShape.setAffineTransform(transform);
     }
 
     Rectangle2D bounds = shape.getBounds2D();
@@ -377,9 +376,9 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
         s -> {
           Rectangle2D rect;
 
-          if (s instanceof AdvancedShape && !((AdvancedShape) s).shapeList.isEmpty()) {
+          if (s instanceof AdvancedShape advancedShape && !advancedShape.shapeList.isEmpty()) {
             // Assuming first shape is the user drawing path, else stands for decoration
-            Shape generalPath = ((AdvancedShape) s).shapeList.get(0).getShape();
+            Shape generalPath = advancedShape.shapeList.get(0).getShape();
             rect = generalPath.getBounds2D();
           } else {
             rect = s.getBounds2D();
@@ -398,10 +397,10 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
   public void updateLabel(Object source, ViewCanvas<?> view2d) {
     boolean releasedEvent = false;
 
-    if (source instanceof MouseEvent) {
-      releasedEvent = ((MouseEvent) source).getID() == MouseEvent.MOUSE_RELEASED;
-    } else if (source instanceof Boolean) {
-      releasedEvent = (Boolean) source;
+    if (source instanceof MouseEvent mouseEvent) {
+      releasedEvent = mouseEvent.getID() == MouseEvent.MOUSE_RELEASED;
+    } else if (source instanceof Boolean boolVal) {
+      releasedEvent = boolVal;
     }
     this.updateLabel(view2d, null, releasedEvent);
   }
@@ -412,8 +411,8 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     Paint oldPaint = g2d.getPaint();
     Stroke oldStroke = g2d.getStroke();
 
-    if (shape instanceof AdvancedShape) {
-      ((AdvancedShape) shape).paint(g2d, transform);
+    if (shape instanceof AdvancedShape advancedShape) {
+      advancedShape.paint(g2d, transform);
     } else if (shape != null) {
       Shape drawingShape = (transform == null) ? shape : transform.createTransformedShape(shape);
 
@@ -624,8 +623,8 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
       return null;
     }
 
-    if (shape instanceof AdvancedShape) {
-      ((AdvancedShape) shape).setAffineTransform(transform);
+    if (shape instanceof AdvancedShape advancedShape) {
+      advancedShape.setAffineTransform(transform);
     }
 
     Rectangle2D bounds = shape.getBounds2D();
@@ -644,7 +643,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     return getRepaintBounds(shape, transform);
   }
 
-  /** @return selected handle point index if exist, otherwise -1 */
+  /** @return selected handle point index if existed, otherwise -1 */
   @Override
   public int getHandlePointIndex(MouseEventDouble mouseEvent) {
     int nearestHandlePtIndex = -1;
@@ -702,9 +701,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     AffineTransform transform = getAffineTransform(mouseevent);
     if (transform != null && isLabelDisplayable()) {
       Area labelArea = graphicLabel.getArea(transform);
-      if (labelArea != null && labelArea.contains(mouseevent.getImageCoordinates())) {
-        return true;
-      }
+      return labelArea != null && labelArea.contains(mouseevent.getImageCoordinates());
     }
     return false;
   }
@@ -712,8 +709,8 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
   @Override
   @SuppressWarnings("rawtypes")
   public ViewCanvas getDefaultView2d(MouseEvent mouseevent) {
-    if (mouseevent != null && mouseevent.getSource() instanceof ViewCanvas) {
-      return (ViewCanvas) mouseevent.getSource();
+    if (mouseevent != null && mouseevent.getSource() instanceof ViewCanvas viewCanvas) {
+      return viewCanvas;
     }
     return null;
   }
@@ -727,9 +724,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
 
   @Override
   public void setPaint(Color newPaintColor) {
-    if (this.colorPaint == null
-        || newPaintColor == null
-        || !this.colorPaint.equals(newPaintColor)) {
+    if (this.colorPaint == null || !this.colorPaint.equals(newPaintColor)) {
       this.colorPaint = newPaintColor;
       fireDrawingChanged();
     }
@@ -806,7 +801,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
     String[] labels = null;
 
     // If isMultiSelection is false, it should return all enable computed measurements when
-    // quickComputing is enable or when releasedEvent is true
+    // quickComputing is enabled or when releasedEvent is true
     if ((labelVisible || !isMultiSelection) && getLayerType() == LayerType.MEASURE) {
       Unit displayUnit =
           view2d == null ? null : (Unit) view2d.getActionValue(ActionW.SPATIAL_UNIT.cmd());
@@ -835,13 +830,13 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
                 sb.append(item.getLabelExtension());
               }
               sb.append(" : ");
-              if (value instanceof Number) {
-                sb.append(DecFormater.allNumber((Number) value));
+              if (value instanceof Number number) {
+                sb.append(DecFormatter.allNumber(number));
                 if (unit != null) {
                   sb.append(" ").append(unit);
                 }
               } else if (value != null) {
-                sb.append(value.toString());
+                sb.append(value);
               }
             }
             labelList.add(sb.toString());
@@ -849,7 +844,7 @@ public abstract class AbstractGraphic extends DefaultUUID implements Graphic {
         }
       }
       if (!labelList.isEmpty()) {
-        labels = labelList.toArray(new String[labelList.size()]);
+        labels = labelList.toArray(new String[0]);
       }
     }
 

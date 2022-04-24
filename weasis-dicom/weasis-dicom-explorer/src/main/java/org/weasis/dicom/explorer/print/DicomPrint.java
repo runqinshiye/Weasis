@@ -28,7 +28,6 @@ import java.awt.image.DataBufferShort;
 import java.awt.image.DataBufferUShort;
 import java.awt.image.WritableRaster;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Executors;
@@ -48,15 +47,16 @@ import org.dcm4che3.net.pdu.PresentationContext;
 import org.dcm4che3.util.UIDUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.weasis.core.api.gui.util.MathUtil;
 import org.weasis.core.api.image.AffineTransformOp;
 import org.weasis.core.api.image.LayoutConstraints;
+import org.weasis.core.api.image.ZoomOp.Interpolation;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.service.BundleTools;
 import org.weasis.core.ui.editor.image.ExportImage;
 import org.weasis.core.ui.util.ExportLayout;
 import org.weasis.core.ui.util.ImagePrint;
 import org.weasis.core.ui.util.PrintOptions;
+import org.weasis.core.util.MathUtil;
 import org.weasis.dicom.explorer.pref.node.DicomPrintNode;
 import org.weasis.dicom.explorer.print.DicomPrintDialog.FilmSize;
 import org.weasis.opencv.data.PlanarImage;
@@ -66,7 +66,7 @@ public class DicomPrint {
 
   private final DicomPrintNode dcmNode;
   private final DicomPrintOptions printOptions;
-  private int interpolation;
+  private Interpolation interpolation;
   private double placeholderX;
   private double placeholderY;
 
@@ -101,17 +101,15 @@ public class DicomPrint {
         g2d.clearRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
       }
       final Map<LayoutConstraints, Component> elements = layout.getLayoutModel().getConstraints();
-      Iterator<Entry<LayoutConstraints, Component>> enumVal = elements.entrySet().iterator();
-      while (enumVal.hasNext()) {
-        Entry<LayoutConstraints, Component> e = enumVal.next();
+      for (Entry<LayoutConstraints, Component> e : elements.entrySet()) {
         LayoutConstraints key = e.getKey();
         Component value = e.getValue();
 
         ExportImage<? extends ImageElement> image = null;
         Point2D.Double pad = new Point2D.Double(0.0, 0.0);
 
-        if (value instanceof ExportImage) {
-          image = (ExportImage) value;
+        if (value instanceof ExportImage<?> exportImage) {
+          image = exportImage;
           formatImage(image, key, pad);
         }
 
@@ -172,12 +170,12 @@ public class DicomPrint {
     }
 
     String mType = printOptions.getMagnificationType();
-    interpolation = 1;
+    interpolation = Interpolation.BILINEAR;
 
     if ("REPLICATE".equals(mType)) {
-      interpolation = 0;
+      interpolation = Interpolation.NEAREST_NEIGHBOUR;
     } else if ("CUBIC".equals(mType)) {
-      interpolation = 2;
+      interpolation = Interpolation.BICUBIC;
     }
 
     // Printable size
@@ -443,21 +441,24 @@ public class DicomPrint {
         dataBuffer = convertRGBImageToMonochrome(image).getRaster().getDataBuffer();
       }
 
-      if (dataBuffer instanceof DataBufferByte) {
-        bytesOut = ((DataBufferByte) dataBuffer).getData();
-      } else if (dataBuffer instanceof DataBufferShort || dataBuffer instanceof DataBufferUShort) {
-        short[] data =
-            dataBuffer instanceof DataBufferShort
-                ? ((DataBufferShort) dataBuffer).getData()
-                : ((DataBufferUShort) dataBuffer).getData();
-        bytesOut = new byte[data.length * 2];
-        for (int i = 0; i < data.length; i++) {
-          bytesOut[i * 2] = (byte) (data[i] & 0xFF);
-          bytesOut[i * 2 + 1] = (byte) ((data[i] >>> 8) & 0xFF);
-        }
+      if (dataBuffer instanceof DataBufferByte dataBufferByte) {
+        bytesOut = dataBufferByte.getData();
+      } else if (dataBuffer instanceof DataBufferShort dataBufferShort) {
+        bytesOut = fillShortArray(dataBufferShort.getData());
+      } else if (dataBuffer instanceof DataBufferUShort dataBufferUShort) {
+        bytesOut = fillShortArray(dataBufferUShort.getData());
       }
       dcmObj.setBytes(Tag.PixelData, VR.OW, bytesOut);
     }
+  }
+
+  private static byte[] fillShortArray(short[] data) {
+    byte[] bytesOut = new byte[data.length * 2];
+    for (int i = 0; i < data.length; i++) {
+      bytesOut[i * 2] = (byte) (data[i] & 0xFF);
+      bytesOut[i * 2 + 1] = (byte) ((data[i] >>> 8) & 0xFF);
+    }
+    return bytesOut;
   }
 
   private static BufferedImage convertRGBImageToMonochrome(BufferedImage colorImage) {

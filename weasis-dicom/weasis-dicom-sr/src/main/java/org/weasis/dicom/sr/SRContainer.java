@@ -17,14 +17,12 @@ import java.awt.print.PrinterJob;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
 import javax.swing.Action;
-import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -38,11 +36,13 @@ import org.weasis.core.api.explorer.ObservableEvent;
 import org.weasis.core.api.gui.InsertableUtil;
 import org.weasis.core.api.gui.util.GuiExecutor;
 import org.weasis.core.api.image.GridBagLayoutModel;
-import org.weasis.core.api.media.MimeInspector;
 import org.weasis.core.api.media.data.MediaSeries;
 import org.weasis.core.api.media.data.MediaSeriesGroup;
 import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.service.BundleTools;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
+import org.weasis.core.api.util.ResourceUtil.FileIcon;
 import org.weasis.core.ui.docking.DockableTool;
 import org.weasis.core.ui.docking.UIManager;
 import org.weasis.core.ui.editor.image.ImageViewerEventManager;
@@ -66,16 +66,6 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
     implements PropertyChangeListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(SRContainer.class);
 
-  public static final List<SynchView> SYNCH_LIST =
-      Collections.synchronizedList(new ArrayList<SynchView>());
-
-  static {
-    SYNCH_LIST.add(SynchView.NONE);
-  }
-
-  public static final List<GridBagLayoutModel> LAYOUT_LIST =
-      Collections.synchronizedList(new ArrayList<GridBagLayoutModel>());
-
   public static final GridBagLayoutModel VIEWS_1x1 =
       new GridBagLayoutModel(
           "1x1", // NON-NLS
@@ -84,19 +74,17 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
           1,
           SRView.class.getName());
 
-  static {
-    LAYOUT_LIST.add(VIEWS_1x1);
-  }
+  public static final List<GridBagLayoutModel> LAYOUT_LIST = List.of(VIEWS_1x1);
+
+  public static final List<SynchView> SYNCH_LIST = List.of(SynchView.NONE);
 
   // Static tools shared by all the View2dContainer instances, tools are registered when a container
   // is selected
   // Do not initialize tools in a static block (order initialization issue with eventManager), use
   // instead a lazy
   // initialization with a method.
-  public static final List<Toolbar> TOOLBARS =
-      Collections.synchronizedList(new ArrayList<Toolbar>(1));
-  public static final List<DockableTool> TOOLS =
-      Collections.synchronizedList(new ArrayList<DockableTool>(1));
+  public static final List<Toolbar> TOOLBARS = Collections.synchronizedList(new ArrayList<>(1));
+  public static final List<DockableTool> TOOLS = Collections.synchronizedList(new ArrayList<>(1));
   private static volatile boolean initComponents = false;
   static final ImageViewerEventManager<DicomImageElement> SR_EVENT_MANAGER =
       new ImageViewerEventManager<DicomImageElement>() {
@@ -141,7 +129,13 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
   }
 
   public SRContainer(GridBagLayoutModel layoutModel, String uid) {
-    super(SR_EVENT_MANAGER, layoutModel, uid, SRFactory.NAME, MimeInspector.textIcon, null);
+    super(
+        SR_EVENT_MANAGER,
+        layoutModel,
+        uid,
+        SRFactory.NAME,
+        ResourceUtil.getIcon(FileIcon.TEXT),
+        null);
     setSynchView(SynchView.NONE);
     if (!initComponents) {
       initComponents = true;
@@ -316,7 +310,7 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
   }
 
   @Override
-  public JComponent createUIcomponent(String clazz) {
+  public JComponent createComponent(String clazz) {
     try {
       // FIXME use classloader.loadClass or injection
       JComponent component = buildInstance(Class.forName(clazz));
@@ -338,11 +332,9 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
   @Override
   public List<Action> getPrintActions() {
     final String title = Messages.getString("SRContainer.print_layout");
-    return Arrays.asList(
+    return Collections.singletonList(
         new DefaultAction(
-            title,
-            new ImageIcon(ImageViewerPlugin.class.getResource("/icon/16x16/printer.png")),
-            event -> printCurrentView()));
+            title, ResourceUtil.getIcon(ActionIcon.PRINT), event -> printCurrentView()));
   }
 
   void displayHeader() {
@@ -361,7 +353,7 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
       // Get page format from the printer
       if (pj.printDialog(aset)) {
         PageFormat pageFormat = pj.defaultPage();
-        // Force to print in black and white
+        // Force printing in black and white
         EditorPanePrinter pnlPreview =
             new EditorPanePrinter(srview.getHtmlPanel(), pageFormat, new Insets(18, 18, 18, 18));
         pj.setPageable(pnlPreview);
@@ -369,8 +361,8 @@ public class SRContainer extends ImageViewerPlugin<DicomImageElement>
           pj.print();
         } catch (PrinterException e) {
           // check for the annoying 'Printer is not accepting job' error.
-          if (e.getMessage().indexOf("accepting job") != -1) { // NON-NLS
-            // recommend prompting the user at this point if they want to force it
+          if (e.getMessage().contains("accepting job")) { // NON-NLS
+            // recommend prompting the user at this point if they want to force it,
             // so they'll know there may be a problem.
             int response =
                 JOptionPane.showConfirmDialog(

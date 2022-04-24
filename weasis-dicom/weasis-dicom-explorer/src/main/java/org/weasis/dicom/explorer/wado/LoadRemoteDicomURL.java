@@ -67,9 +67,9 @@ public class LoadRemoteDicomURL extends ExplorerTask<Boolean, String> {
   @Override
   protected Boolean doInBackground() throws Exception {
     String seriesUID = null;
-    for (int i = 0; i < urls.length; i++) {
-      if (urls[i] != null) {
-        seriesUID = urls[i].toString();
+    for (URL item : urls) {
+      if (item != null) {
+        seriesUID = item.toString();
         break;
       }
     }
@@ -77,14 +77,14 @@ public class LoadRemoteDicomURL extends ExplorerTask<Boolean, String> {
       String unknown = TagW.NO_VALUE;
       MediaSeriesGroup patient =
           new MediaSeriesGroupNode(
-              TagD.getUID(Level.PATIENT), UIDUtils.createUID(), DicomModel.patient.getTagView());
+              TagD.getUID(Level.PATIENT), UIDUtils.createUID(), DicomModel.patient.tagView());
       patient.setTag(TagD.get(Tag.PatientID), unknown);
       patient.setTag(TagD.get(Tag.PatientName), unknown);
       dicomModel.addHierarchyNode(MediaSeriesGroupNode.rootNode, patient);
 
       MediaSeriesGroup study =
           new MediaSeriesGroupNode(
-              TagD.getUID(Level.STUDY), UIDUtils.createUID(), DicomModel.study.getTagView());
+              TagD.getUID(Level.STUDY), UIDUtils.createUID(), DicomModel.study.tagView());
       dicomModel.addHierarchyNode(patient, study);
 
       Series dicomSeries = new DicomSeries(seriesUID);
@@ -95,9 +95,9 @@ public class LoadRemoteDicomURL extends ExplorerTask<Boolean, String> {
       SeriesInstanceList seriesInstanceList = new SeriesInstanceList();
       dicomSeries.setTag(TagW.WadoInstanceReferenceList, seriesInstanceList);
       dicomModel.addHierarchyNode(study, dicomSeries);
-      for (int i = 0; i < urls.length; i++) {
-        if (urls[i] != null) {
-          String url = urls[i].toString();
+      for (URL value : urls) {
+        if (value != null) {
+          String url = value.toString();
           SopInstance sop = seriesInstanceList.getSopInstance(url, null);
           if (sop == null) {
             sop = new SopInstance(url, null);

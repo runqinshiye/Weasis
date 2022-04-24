@@ -11,8 +11,8 @@ package org.weasis.dicom.qr;
 
 import it.cnr.imaa.essi.lablib.gui.checkboxtree.CheckboxTree;
 import it.cnr.imaa.essi.lablib.gui.checkboxtree.TreeCheckingModel;
+import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.FlowLayout;
 import java.awt.event.MouseEvent;
 import java.util.HashSet;
 import java.util.List;
@@ -20,12 +20,12 @@ import java.util.Objects;
 import java.util.Set;
 import javax.swing.JPanel;
 import javax.swing.tree.TreePath;
+import org.weasis.core.api.gui.util.AbstractWizardDialog;
+import org.weasis.core.ui.util.CheckBoxTreeBuilder;
 import org.weasis.dicom.explorer.DicomModel;
-import org.weasis.dicom.explorer.ExportTree;
 import org.weasis.dicom.qr.RetrieveTreeModel.ToolTipSeriesNode;
 import org.weasis.dicom.qr.RetrieveTreeModel.ToolTipStudyNode;
 
-@SuppressWarnings("serial")
 public class RetrieveTree extends JPanel {
 
   private RetrieveTreeModel retrieveTreeModel;
@@ -39,7 +39,7 @@ public class RetrieveTree extends JPanel {
   }
 
   public RetrieveTree(RetrieveTreeModel retrieveTreeModel) {
-    this.setLayout(new FlowLayout(FlowLayout.LEFT));
+    this.setLayout(new BorderLayout());
     setRetrieveTreeModel(retrieveTreeModel);
   }
 
@@ -59,24 +59,25 @@ public class RetrieveTree extends JPanel {
             TreePath curPath = getPathForLocation(evt.getX(), evt.getY());
             if (curPath != null) {
               Object object = curPath.getLastPathComponent();
-              if (object instanceof ToolTipStudyNode) {
-                return ((ToolTipStudyNode) object).getToolTipText();
-              } else if (object instanceof ToolTipSeriesNode) {
-                return ((ToolTipSeriesNode) object).getToolTipText();
+              if (object instanceof ToolTipStudyNode tipStudyNode) {
+                return tipStudyNode.getToolTipText();
+              } else if (object instanceof ToolTipSeriesNode tipSeriesNode) {
+                return tipSeriesNode.getToolTipText();
               }
             }
             return null;
           }
         };
 
+    checkboxTree.setCellRenderer(CheckBoxTreeBuilder.buildNoIconCheckboxTreeCellRenderer());
     // Register tooltips
     checkboxTree.setToolTipText("");
 
     /**
-     * At this point checking Paths are supposed to be binded at Series Level but depending on the
-     * CheckingMode it may also contains parents treeNode paths.<br>
-     * For medical use recommendation is to default select the whole series related to studies to be
-     * analyzed
+     * At this point checking Paths are supposed to be bound at Series Level but depending on the
+     * CheckingMode it may also contain parents treeNode paths.<br>
+     * For medical use recommendation is to default select the whole series related to the studies
+     * to be analyzed
      */
     TreeCheckingModel checkingModel = retrieveTreeModel.getCheckingModel();
     TreePath[] checkingPaths = retrieveTreeModel.getCheckingPaths();
@@ -93,27 +94,27 @@ public class RetrieveTree extends JPanel {
       }
 
       if (!studyPathsSet.isEmpty()) {
-        TreePath[] studyCheckingPaths = studyPathsSet.toArray(new TreePath[studyPathsSet.size()]);
+        TreePath[] studyCheckingPaths = studyPathsSet.toArray(new TreePath[0]);
         checkboxTree.setCheckingPaths(studyCheckingPaths);
       }
 
       List<TreePath> selectedPaths = retrieveTreeModel.getDefaultSelectedPaths();
       if (!selectedPaths.isEmpty()) {
-        checkboxTree.setSelectionPaths(selectedPaths.toArray(new TreePath[selectedPaths.size()]));
+        checkboxTree.setSelectionPaths(selectedPaths.toArray(new TreePath[0]));
       }
     }
 
-    ExportTree.expandTree(
+    AbstractWizardDialog.expandTree(
         checkboxTree, retrieveTreeModel.getRootNode(), 2); // 2 stands for Study Level
     removeAll();
-    add(checkboxTree);
+    add(checkboxTree, BorderLayout.CENTER);
   }
 
   public CheckboxTree getCheckboxTree() {
     for (int i = 0; i < getComponentCount(); i++) {
       Component c = getComponent(i);
-      if (c instanceof CheckboxTree) {
-        return (CheckboxTree) c;
+      if (c instanceof CheckboxTree tree) {
+        return tree;
       }
     }
     throw new IllegalStateException("CheckboxTree cannot be null");

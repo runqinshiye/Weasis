@@ -16,11 +16,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.weasis.core.util.LangUtil;
 import org.weasis.core.util.StringUtil;
 
-/** Yet another GNU long options parser. This one is configured by parsing its Usage string. */
+/** Yet another GNU long options' parser. This one is configured by parsing its Usage string. */
 public class Options implements Option {
 
   public static final String NL = System.getProperty("line.separator", "\n"); // NON-NLS
@@ -55,13 +57,12 @@ public class Options implements Option {
   private final List<Object> xargs = new ArrayList<>();
   private List<String> args = null;
 
-  private static final String UNKNOWN = "unknown"; // NON-NLS
+  private static final String UNKNOWN = "unknown_usage_name"; // NON-NLS
   private String usageName = UNKNOWN;
   private int usageIndex = 0;
 
   private final String[] spec;
   private final String[] gspec;
-  private final String defOpts;
   private final String[] defArgs;
   private String error = null;
 
@@ -166,9 +167,9 @@ public class Options implements Option {
       throw new IllegalArgumentException("option not defined with argument: " + name);
     }
 
-    if (arg instanceof String) { // default value
+    if (arg instanceof String val) { // default value
       list = new ArrayList<>();
-      if (StringUtil.hasText((String) arg)) {
+      if (StringUtil.hasText(val)) {
         list.add(arg);
       }
     } else {
@@ -258,7 +259,7 @@ public class Options implements Option {
       buf.append(spec[i]);
       buf.append(NL);
     }
-    System.err.print(buf.toString());
+    System.err.print(buf);
   }
 
   /** prints usage message and returns IllegalArgumentException, for you to throw. */
@@ -290,7 +291,7 @@ public class Options implements Option {
 
     if (gopt != null) {
       for (Entry<String, Boolean> e : gopt.optSet.entrySet()) {
-        if (e.getValue()) {
+        if (LangUtil.getNULLtoFalse(e.getValue())) {
           myOptSet.put(e.getKey(), true);
         }
       }
@@ -307,7 +308,7 @@ public class Options implements Option {
     unmodifiableOptSet = Collections.unmodifiableMap(myOptSet);
     unmodifiableOptArg = Collections.unmodifiableMap(myOptArg);
 
-    defOpts = System.getenv(usageName.toUpperCase() + "_OPTS"); // NON-NLS
+    String defOpts = System.getenv(usageName.toUpperCase() + "_OPTS"); // NON-NLS
     defArgs = (defOpts != null) ? defOpts.split("\\s+") : new String[0]; // NON-NLS
   }
 
@@ -353,7 +354,7 @@ public class Options implements Option {
         }
       }
 
-      if (usageName == UNKNOWN) { // NOSONAR compare object not string
+      if (Objects.equals(usageName, UNKNOWN)) {
         Matcher u = uname.matcher(line);
         if (u.find()) {
           usageName = u.group(1);
@@ -381,7 +382,7 @@ public class Options implements Option {
   }
 
   @Override
-  public Option parse(List<? extends Object> argv) {
+  public Option parse(List<?> argv) {
     return parse(argv, false);
   }
 
@@ -395,10 +396,9 @@ public class Options implements Option {
   }
 
   @Override
-  public Option parse(List<? extends Object> argv, boolean skipArg0) {
+  public Option parse(List<?> argv, boolean skipArg0) {
     reset();
-    List<Object> arguments = new ArrayList<>();
-    arguments.addAll(Arrays.asList(defArgs));
+    List<Object> arguments = new ArrayList<>(Arrays.asList(defArgs));
 
     for (Object arg : argv) {
       if (skipArg0) {
@@ -509,7 +509,7 @@ public class Options implements Option {
 
     // remove long option aliases
     for (Entry<String, String> alias : optAlias.entrySet()) {
-      if (optSet.get(alias.getKey())) {
+      if (LangUtil.getNULLtoFalse(optSet.get(alias.getKey()))) {
         optSet.put(alias.getValue(), true);
         if (optArg.containsKey(alias.getKey())) {
           optArg.put(alias.getValue(), optArg.get(alias.getKey()));

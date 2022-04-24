@@ -68,8 +68,7 @@ public class ViewerPluginBuilder {
     this.factory = factory;
     this.series = series;
     this.model = model;
-    this.properties =
-        props == null ? Collections.synchronizedMap(new HashMap<String, Object>()) : props;
+    this.properties = props == null ? Collections.synchronizedMap(new HashMap<>()) : props;
   }
 
   public SeriesViewerFactory getFactory() {
@@ -122,7 +121,7 @@ public class ViewerPluginBuilder {
     if (factory == null || series == null || model == null) {
       return;
     }
-    Map<String, Object> props = Collections.synchronizedMap(new HashMap<String, Object>());
+    Map<String, Object> props = Collections.synchronizedMap(new HashMap<>());
     props.put(CMP_ENTRY_BUILD_NEW_VIEWER, compareEntryToBuildNewViewer);
     props.put(BEST_DEF_LAYOUT, removeOldSeries);
     props.put(SCREEN_BOUND, screenBound);
@@ -267,7 +266,7 @@ public class ViewerPluginBuilder {
     MediaSeriesGroup group1 =
         DefaultDataModel.getHierarchyNode(MediaSeriesGroupNode.rootNode, gUID);
     if (group1 == null) {
-      group1 = new MediaSeriesGroupNode(TagW.Group, gUID, AbstractFileModel.group.getTagView());
+      group1 = new MediaSeriesGroupNode(TagW.Group, gUID, AbstractFileModel.group.tagView());
       group1.setTagNoNull(groupName, groupValue);
       DefaultDataModel.addHierarchyNode(MediaSeriesGroupNode.rootNode, group1);
     }
@@ -285,8 +284,7 @@ public class ViewerPluginBuilder {
       } else {
         // Test if SOPInstanceUID already exists
         TagW sopTag = TagW.get("SOPInstanceUID");
-        if (series instanceof Series
-            && ((Series<?>) series).hasMediaContains(sopTag, reader.getTagValue(sopTag))) {
+        if (((Series<?>) series).hasMediaContains(sopTag, reader.getTagValue(sopTag))) {
           return series;
         }
 
@@ -311,8 +309,6 @@ public class ViewerPluginBuilder {
 
     } catch (Exception e) {
       LOGGER.error("Build series error", e);
-    } finally {
-      reader.reset();
     }
     return series;
   }

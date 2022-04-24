@@ -21,7 +21,7 @@ import javax.swing.event.ListSelectionListener;
 import org.dcm4che3.data.Tag;
 import org.weasis.acquire.explorer.AcquireImageInfo;
 import org.weasis.acquire.explorer.core.bean.SeriesGroup;
-import org.weasis.acquire.explorer.gui.central.tumbnail.AcquireCentralTumbnailPane;
+import org.weasis.acquire.explorer.gui.central.tumbnail.AcquireCentralThumbnailPane;
 import org.weasis.base.explorer.JIThumbnailCache;
 import org.weasis.base.explorer.list.IThumbnailModel;
 import org.weasis.core.api.media.data.ImageElement;
@@ -29,13 +29,13 @@ import org.weasis.dicom.codec.TagD;
 
 public class AcquireCentralImagePanel extends JPanel implements ListSelectionListener {
 
-  private final AcquireCentralTumbnailPane<ImageElement> imageListPane;
+  private final AcquireCentralThumbnailPane<ImageElement> imageListPane;
   private final AcquireCentralInfoPanel imageInfo;
 
   public AcquireCentralImagePanel(AcquireTabPanel acquireTabPanel, JIThumbnailCache thumbCache) {
     setLayout(new BorderLayout());
     this.imageInfo = new AcquireCentralInfoPanel(null);
-    this.imageListPane = new AcquireCentralTumbnailPane<>(new ArrayList<>(), thumbCache);
+    this.imageListPane = new AcquireCentralThumbnailPane<>(new ArrayList<>(), thumbCache);
 
     imageListPane.setAcquireTabPanel(Objects.requireNonNull(acquireTabPanel));
     imageListPane.addListSelectionListener(this);
@@ -44,12 +44,12 @@ public class AcquireCentralImagePanel extends JPanel implements ListSelectionLis
     add(imageInfo, BorderLayout.SOUTH);
   }
 
-  public void getCurrentSerie(SeriesGroup newSerie) {
-    imageInfo.setSerie(newSerie);
+  public void getCurrentSeries(SeriesGroup newSeries) {
+    imageInfo.setSeries(newSeries);
   }
 
   public void setSeriesGroup(SeriesGroup seriesGroup, List<AcquireImageInfo> imageInfos) {
-    imageInfo.setSerie(seriesGroup);
+    imageInfo.setSeries(seriesGroup);
     List<ImageElement> list = imageInfos == null ? null : toImageElement(imageInfos);
     imageListPane.setList(list);
   }
@@ -57,7 +57,10 @@ public class AcquireCentralImagePanel extends JPanel implements ListSelectionLis
   private static List<ImageElement> toImageElement(List<AcquireImageInfo> list) {
     return list.stream()
         .map(AcquireImageInfo::getImage)
-        .sorted(Comparator.comparing(i -> TagD.dateTime(Tag.ContentDate, Tag.ContentTime, i)))
+        .sorted(
+            Comparator.comparing(
+                i -> TagD.dateTime(Tag.ContentDate, Tag.ContentTime, i),
+                Comparator.nullsLast(Comparator.naturalOrder())))
         .collect(Collectors.toList());
   }
 
@@ -72,7 +75,7 @@ public class AcquireCentralImagePanel extends JPanel implements ListSelectionLis
   }
 
   public void updateSeries(SeriesGroup newSeriesGroup) {
-    imageInfo.setSerie(newSeriesGroup);
+    imageInfo.setSeries(newSeriesGroup);
   }
 
   public IThumbnailModel<ImageElement> getFileListModel() {

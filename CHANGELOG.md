@@ -1,6 +1,67 @@
 # Changelog
 
-## [v3.7.1](https://github.com/nroduit/Weasis/tree/v3.7.1) (2021-06-05)
+## [v4.0.0-rc](https://github.com/nroduit/Weasis/tree/v4.0.0-rc) (2022-04-24)
+
+[Full Changelog](https://github.com/nroduit/Weasis/compare/v3.8.1...v4.0.0-rc)
+
+**Implemented enhancements:**
+
+- Settings for opening new tab when importing images from local devices [\#259](https://github.com/nroduit/Weasis/issues/259)
+- Exporting data: Improve exporting image rendering  [\#255](https://github.com/nroduit/Weasis/issues/255)
+- Exporting data: Improve DICOM export \(generate new UIDs, transcoding\) [\#254](https://github.com/nroduit/Weasis/issues/254)
+- Replace Substance Look and Feel by FlatLaf [\#253](https://github.com/nroduit/Weasis/issues/253)
+- Move to Java 17 \(runtime and language specifications\) [\#252](https://github.com/nroduit/Weasis/issues/252)
+- New API for image rendering directly based on OpenCV  [\#250](https://github.com/nroduit/Weasis/issues/250)
+- Save the search criteria in DICOM Q/R [\#237](https://github.com/nroduit/Weasis/issues/237)
+- Bad render of specific instances with encapsulated transfer syntax [\#226](https://github.com/nroduit/Weasis/issues/226)
+- Apple silicon support - M1 \(arm\) processor for weasis-opencv on macOS [\#212](https://github.com/nroduit/Weasis/issues/212)
+
+**Closed issues:**
+
+- Removal of Java WebStart  [\#251](https://github.com/nroduit/Weasis/issues/251)
+
+## [v3.8.1](https://github.com/nroduit/Weasis/tree/v3.8.1) (2022-02-03)
+
+[Full Changelog](https://github.com/nroduit/Weasis/compare/v3.8.0...v3.8.1)
+
+**Implemented enhancements:**
+
+- Improve the automatic layout choice when opening several series [\#242](https://github.com/nroduit/Weasis/issues/242)
+- Update to dcm4che 5.25.1 [\#241](https://github.com/nroduit/Weasis/issues/241)
+- Add new default layouts for panoramic screens and MPR [\#229](https://github.com/nroduit/Weasis/issues/229)
+
+**Fixed bugs:**
+
+- Dicomizer: picker date do not commit the value when the focus is lost [\#240](https://github.com/nroduit/Weasis/issues/240)
+- Cannot display image with invalid shutter [\#236](https://github.com/nroduit/Weasis/issues/236)
+- Support measurement computations across Ultrasound regions with different scale factors [\#227](https://github.com/nroduit/Weasis/issues/227)
+
+**Closed issues:**
+
+- Building on aarch64: is it supposed to work? [\#234](https://github.com/nroduit/Weasis/issues/234)
+- Weasis icon at higher resolutions [\#233](https://github.com/nroduit/Weasis/issues/233)
+
+## [v3.8.0](https://github.com/nroduit/Weasis/tree/v3.8.0) (2021-12-11)
+
+[Full Changelog](https://github.com/nroduit/Weasis/compare/v3.7.1...v3.8.0)
+
+**Implemented enhancements:**
+
+- Improve photo editor in Dicomizer [\#210](https://github.com/nroduit/Weasis/issues/210)
+- Allow DICOMWeb OAuth2 authentication with STOW-RS [\#209](https://github.com/nroduit/Weasis/issues/209)
+- Separate "drawing tools" and "measurement tools" \(chnage drawing icon\) [\#206](https://github.com/nroduit/Weasis/issues/206)
+- Display order of "split series" [\#205](https://github.com/nroduit/Weasis/issues/205)
+- Display View Position for mammogram [\#203](https://github.com/nroduit/Weasis/issues/203)
+- Rotating ellipse feature [\#194](https://github.com/nroduit/Weasis/issues/194)
+
+**Fixed bugs:**
+
+- US images are stretched [\#217](https://github.com/nroduit/Weasis/issues/217)
+- WADO retrieve without authentication combined with C-FIND does not work \(regression\) [\#200](https://github.com/nroduit/Weasis/issues/200)
+- Deflate syntax is not supported for raw image and encapsulated document [\#197](https://github.com/nroduit/Weasis/issues/197)
+- JPEG-LS with YBR\_FULL color model is not supported [\#196](https://github.com/nroduit/Weasis/issues/196)
+
+## [v3.7.1](https://github.com/nroduit/Weasis/tree/v3.7.1) (2021-06-06)
 
 [Full Changelog](https://github.com/nroduit/Weasis/compare/v3.7.0...v3.7.1)
 
@@ -17,6 +78,7 @@
 - Weasis 3.7 fails to register the weasis:// protocol on macOS [\#180](https://github.com/nroduit/Weasis/issues/180)
 - Sorting channel issue in ECG [\#178](https://github.com/nroduit/Weasis/issues/178)
 - On Windows the Dicomizer exe launches the viewer  [\#176](https://github.com/nroduit/Weasis/issues/176)
+- Rebuilding thumbnail doesn't work [\#174](https://github.com/nroduit/Weasis/issues/174)
 
 ## [v3.7.0](https://github.com/nroduit/Weasis/tree/v3.7.0) (2021-02-02)
 
@@ -35,6 +97,10 @@
 
 - Fix overriding weasis.resources.url in VM option or in command $weasis:config [\#165](https://github.com/nroduit/Weasis/issues/165)
 - Raw RGB images encoded in bigendian are not rendered correctly [\#154](https://github.com/nroduit/Weasis/issues/154)
+
+**Merged pull requests:**
+
+- loadRemotePref [\#171](https://github.com/nroduit/Weasis/pull/171) ([bjacquemoud](https://github.com/bjacquemoud))
 
 ## [v3.6.2](https://github.com/nroduit/Weasis/tree/v3.6.2) (2020-08-26)
 

@@ -23,7 +23,9 @@ import org.dcm4che3.util.StreamUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.gui.util.AppProperties;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.media.MimeInspector;
+import org.weasis.core.api.media.data.MediaElement;
 import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.media.data.TagW;
 import org.weasis.core.util.FileUtil;
@@ -52,8 +54,7 @@ public class DicomEncapDocSeries extends Series<DicomEncapDocElement> implements
 
   @Override
   public void addMedia(DicomEncapDocElement media) {
-    if (media != null && media.getMediaReader() instanceof DicomMediaIO) {
-      DicomMediaIO dicomImageLoader = (DicomMediaIO) media.getMediaReader();
+    if (media != null && media.getMediaReader() instanceof DicomMediaIO dicomImageLoader) {
       String extension = ".tmp";
       Attributes ds = dicomImageLoader.getDicomObject();
       String mime = ds.getString(Tag.MIMETypeOfEncapsulatedDocument);
@@ -63,8 +64,7 @@ public class DicomEncapDocSeries extends Series<DicomEncapDocElement> implements
       }
       // see http://dicom.nema.org/MEDICAL/Dicom/current/output/chtml/part03/sect_C.24.2.html
       Object data = dicomImageLoader.getDicomObject().getValue(Tag.EncapsulatedDocument);
-      if (data instanceof BulkData) {
-        BulkData bulkData = (BulkData) data;
+      if (data instanceof BulkData bulkData) {
         BufferedInputStream in = null;
         FileOutputStream out = null;
         try {
@@ -85,22 +85,14 @@ public class DicomEncapDocSeries extends Series<DicomEncapDocElement> implements
   }
 
   @Override
+  public MediaElement getFirstSpecialElement() {
+    return null;
+  }
+
+  @Override
   public String getToolTips() {
-    StringBuilder toolTips = new StringBuilder("<html>");
-    addToolTipsElement(toolTips, Messages.getString("DicomSeries.pat"), TagD.get(Tag.PatientName));
-    addToolTipsElement(toolTips, Messages.getString("DicomSeries.mod"), TagD.get(Tag.Modality));
-    addToolTipsElement(
-        toolTips, Messages.getString("DicomSeries.series_nb"), TagD.get(Tag.SeriesNumber));
-    addToolTipsElement(
-        toolTips, Messages.getString("DicomSeries.study"), TagD.get(Tag.StudyDescription));
-    addToolTipsElement(
-        toolTips, Messages.getString("DicomSeries.series"), TagD.get(Tag.SeriesDescription));
-    addToolTipsElement(
-        toolTips,
-        Messages.getString("DicomSeries.date"),
-        TagD.get(Tag.SeriesDate),
-        TagD.get(Tag.SeriesTime));
-    toolTips.append("</html>");
+    StringBuilder toolTips = DicomSeries.getToolTips(this);
+    toolTips.append(GuiUtils.HTML_END);
     return toolTips.toString();
   }
 
@@ -116,7 +108,7 @@ public class DicomEncapDocSeries extends Series<DicomEncapDocElement> implements
 
   @Override
   public List<File> getExtractFiles() {
-    // Should have only one file as all the DicomEncapDocElement items are split in sub-series
+    // Should have only one file as all the DicomEncapDocElement items are split in subseries
     List<File> files = new ArrayList<>();
     getMedias(null, null)
         .forEach(dcm -> files.add(dcm.getExtractFile())); // Synchronized iteration with forEach

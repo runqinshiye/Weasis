@@ -16,9 +16,9 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Paint;
-import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.Toolkit;
+import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Line2D;
@@ -27,11 +27,11 @@ import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JPanel;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.ui.editor.image.DefaultView2d;
 import org.weasis.dicom.wave.SignalMarker.Measure;
 
 public class LeadPanel extends JPanel {
-  private static final long serialVersionUID = -2928188250483176572L;
 
   private final WaveView view;
   private final ChannelDefinition channels;
@@ -44,8 +44,8 @@ public class LeadPanel extends JPanel {
   private int sampleNumber;
 
   private int selectedPosition;
-  private List<SignalMarker> markers;
-  private Measure measureType;
+  private final List<SignalMarker> markers;
+  private final Measure measureType;
   private final Font fontTitle = new Font("SanSerif", Font.BOLD, 11);
 
   public LeadPanel(WaveView view, WaveDataReadable data, ChannelDefinition channels) {
@@ -105,12 +105,12 @@ public class LeadPanel extends JPanel {
           @Override
           public void mouseMoved(MouseEvent e) {
             if (selectedPosition >= 0) {
-              if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK)
-                  == MouseEvent.BUTTON1_DOWN_MASK) {
+              if ((e.getModifiersEx() & InputEvent.BUTTON1_DOWN_MASK)
+                  == InputEvent.BUTTON1_DOWN_MASK) {
                 setSignalMarker(selectedPosition, SignalMarker.Type.START);
               }
-              if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK)
-                  == MouseEvent.BUTTON3_DOWN_MASK) {
+              if ((e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK)
+                  == InputEvent.BUTTON3_DOWN_MASK) {
                 setSignalMarker(selectedPosition, SignalMarker.Type.STOP);
               }
               repaint();
@@ -207,7 +207,7 @@ public class LeadPanel extends JPanel {
   public void shiftSignalMarker(Measure tool, SignalMarker.Type type, int shift) {
     for (SignalMarker marker : markers) {
       if (isMarkerAdapted(marker, tool, type)) {
-        marker.setPosition(marker.getPostion() + shift);
+        marker.setPosition(marker.getPosition() + shift);
       }
     }
   }
@@ -246,8 +246,8 @@ public class LeadPanel extends JPanel {
       return;
     }
 
-    int startPos = start.getPostion();
-    int stopPos = stop.getPostion();
+    int startPos = start.getPosition();
+    int stopPos = stop.getPosition();
 
     double time = (stopPos - startPos) / (double) view.getSamplesPerSecond();
     double diffuV = data.getSample(stopPos, channels) - data.getSample(startPos, channels);
@@ -282,10 +282,9 @@ public class LeadPanel extends JPanel {
     Stroke oldStroke = g2d.getStroke();
 
     // Rectangle originalBounds = g2.getClipBounds();
-    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-    g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-    // g2.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_ENABLE);
+    Object[] oldRenderingHints = GuiUtils.setRenderingHints(g, true, true, true);
+    // g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
     g2d.setBackground(this.getBackground());
     g2d.clearRect(0, 0, getWidth(), getHeight());
 
@@ -299,6 +298,7 @@ public class LeadPanel extends JPanel {
     drawLeadTitle(g2d);
     drawSignalMarkers(g2d, dim);
 
+    GuiUtils.resetRenderingHints(g, oldRenderingHints);
     // g2.setClip(originalBounds);
     g2d.setPaint(oldColor);
     g2d.setStroke(oldStroke);
@@ -329,7 +329,7 @@ public class LeadPanel extends JPanel {
 
   private void drawWaveData(Graphics2D g2, Dimension dim) {
     double cellHeight = dim.getHeight() / this.mvCellCount;
-    double halfHeight = dim.height / 2.0; // base line
+    double halfHeight = dim.height / 2.0; // baseline
 
     g2.setColor(Color.BLACK);
     Stroke stroke = new BasicStroke(1.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
@@ -357,8 +357,8 @@ public class LeadPanel extends JPanel {
     Color background = new Color(230, 230, 230, 100);
     g2.setColor(background);
 
-    double startX = this.ratioX * start.getPostion();
-    double stopX = this.ratioX * stop.getPostion();
+    double startX = this.ratioX * start.getPosition();
+    double stopX = this.ratioX * stop.getPosition();
     if (startX > stopX) {
       double tmp = stopX;
       stopX = startX;
@@ -378,7 +378,7 @@ public class LeadPanel extends JPanel {
       } else {
         color = Color.CYAN;
       }
-      drawMarker(g2, color, marker.getPostion(), dim);
+      drawMarker(g2, color, marker.getPosition(), dim);
     }
   }
 

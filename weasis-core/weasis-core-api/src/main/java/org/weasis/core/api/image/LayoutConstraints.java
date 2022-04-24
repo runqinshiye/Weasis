@@ -18,31 +18,31 @@ public class LayoutConstraints extends GridBagConstraints
     implements Comparable<LayoutConstraints>, Copyable<LayoutConstraints> {
 
   public static final int SPACE = 3;
-  private String type;
-  private int layoutID;
+  private final String type;
+  private final int layoutID;
   private Color color;
 
   public LayoutConstraints(
       String type,
       int layoutID,
-      int gridx,
-      int gridy,
-      int gridwidth,
-      int gridheight,
-      double weightx,
-      double weighty,
+      int gridX,
+      int gridY,
+      int gridWidth,
+      int gridHeight,
+      double weightX,
+      double weightY,
       int anchor,
       int fill) {
     super(
-        gridx,
-        gridy,
-        gridwidth,
-        gridheight,
-        weightx,
-        weighty,
+        gridX,
+        gridY,
+        gridWidth,
+        gridHeight,
+        weightX,
+        weightY,
         anchor,
         fill,
-        new Insets(gridy == 0 ? 0 : SPACE, gridx == 0 ? 0 : SPACE, 0, 0),
+        new Insets(gridY == 0 ? 0 : SPACE, gridX == 0 ? 0 : SPACE, 0, 0),
         0,
         0);
     this.type = type;
@@ -76,7 +76,7 @@ public class LayoutConstraints extends GridBagConstraints
 
   @Override
   public int compareTo(LayoutConstraints o) {
-    return layoutID < o.layoutID ? -1 : (layoutID == o.layoutID ? 0 : 1);
+    return Integer.compare(layoutID, o.layoutID);
   }
 
   @Override

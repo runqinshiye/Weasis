@@ -9,10 +9,10 @@
  */
 package org.weasis.base.explorer.list;
 
+import com.formdev.flatlaf.ui.FlatUIUtils;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Frame;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.dnd.DnDConstants;
@@ -29,10 +29,8 @@ import java.net.URI;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -64,16 +62,12 @@ import org.weasis.core.ui.editor.SeriesViewerFactory;
 import org.weasis.core.ui.editor.ViewerPluginBuilder;
 import org.weasis.core.ui.util.DefaultAction;
 import org.weasis.core.util.FileUtil;
-import org.weasis.core.util.StringUtil;
 
-@SuppressWarnings("serial")
 public abstract class AbstractThumbnailList<E extends MediaElement> extends JList<E>
     implements ThumbnailList<E> {
 
   public static final String SECTION_CHANGED = "SECTION_CHANGED"; // NON-NLS
   public static final String DIRECTORY_SIZE = "DIRECTORY_SIZE"; // NON-NLS
-
-  public static final Dimension DEF_ICON_DIM = new Dimension(150, 150);
 
   private static final NumberFormat intGroupFormat = LocalUtil.getIntegerInstance();
 
@@ -83,27 +77,23 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
 
   protected final JIThumbnailCache thumbCache;
 
-  private final int editingIndex = -1;
-  private final DefaultListSelectionModel selectionModel;
-
   private boolean changed;
   private Point dragPressed = null;
   private DragSource dragSource = null;
 
-  public AbstractThumbnailList(JIThumbnailCache thumbCache) {
+  protected AbstractThumbnailList(JIThumbnailCache thumbCache) {
     this(thumbCache, HORIZONTAL_WRAP);
   }
 
-  public AbstractThumbnailList(JIThumbnailCache thumbCache, int scrollMode) {
+  protected AbstractThumbnailList(JIThumbnailCache thumbCache, int scrollMode) {
     super();
     this.thumbCache = thumbCache == null ? new JIThumbnailCache() : thumbCache;
     this.setModel(newModel());
     this.changed = false;
 
-    this.selectionModel = new DefaultListSelectionModel();
-    this.setBackground(new Color(242, 242, 242));
-
-    setSelectionModel(this.selectionModel);
+    DefaultListSelectionModel selectionModel = new DefaultListSelectionModel();
+    this.setBackground(FlatUIUtils.getUIColor("List.background", Color.DARK_GRAY));
+    setSelectionModel(selectionModel);
     // setTransferHandler(new ListTransferHandler());
     ThumbnailRenderer<E> panel = new ThumbnailRenderer<>();
     Dimension dim = panel.getPreferredSize();
@@ -190,17 +180,6 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
     return (IThumbnailModel) getModel();
   }
 
-  public Frame getFrame() {
-    return null;
-  }
-
-  public boolean isEditing() {
-    if (this.editingIndex > -1) {
-      return true;
-    }
-    return false;
-  }
-
   // Subclass JList to workaround bug 4832765, which can cause the
   // scroll pane to not let the user easily scroll up to the beginning
   // of the list. An alternative would be to set the unitIncrement
@@ -244,27 +223,22 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
       return null;
     }
 
-    StringBuilder toolTips = new StringBuilder();
-    toolTips.append("<html>");
-    toolTips.append(item.getName());
-    toolTips.append("<br>");
-    toolTips.append(Messages.getString("JIThumbnailList.size"));
-    toolTips.append(StringUtil.COLON_AND_SPACE);
-    toolTips.append(FileUtil.humanReadableByte(item.getLength(), false));
-    toolTips.append("<br>");
-
-    toolTips.append(Messages.getString("JIThumbnailList.date"));
-    toolTips.append(StringUtil.COLON_AND_SPACE);
-    toolTips.append(TagUtil.formatDateTime(Instant.ofEpochMilli(item.getLastModified())));
-    toolTips.append("<br>");
-    toolTips.append("</html>");
-
-    return toolTips.toString();
+    return """
+      <html>
+        %s<br>
+        %s: %s<br>
+        %s: %s<br>
+      </html>
+      """
+        .formatted(
+            item.getName(),
+            Messages.getString("JIThumbnailList.size"),
+            FileUtil.humanReadableByte(item.getLength(), false),
+            Messages.getString("JIThumbnailList.date"),
+            TagUtil.formatDateTime(Instant.ofEpochMilli(item.getLastModified())));
   }
 
   public void reset() {
-    setFixedCellHeight(DEF_ICON_DIM.height);
-    setFixedCellWidth(DEF_ICON_DIM.width);
     setLayoutOrientation(HORIZONTAL_WRAP);
 
     getThumbnailListModel().reload();
@@ -309,7 +283,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
 
   public void openSelection() {
     E object = getSelectedValue();
-    openSelection(Arrays.asList(object), true, true, false);
+    openSelection(Collections.singletonList(object), true, true, false);
   }
 
   public void openSelection(
@@ -358,7 +332,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
         }
       }
       if (!list.isEmpty()) {
-        Map<String, Object> props = Collections.synchronizedMap(new HashMap<String, Object>());
+        Map<String, Object> props = Collections.synchronizedMap(new HashMap<>());
         props.put(ViewerPluginBuilder.CMP_ENTRY_BUILD_NEW_VIEWER, compareEntryToBuildNewViewer);
         props.put(ViewerPluginBuilder.BEST_DEF_LAYOUT, bestDefaultLayout);
         props.put(ViewerPluginBuilder.SCREEN_BOUND, null);
@@ -410,11 +384,8 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
         if (mime != null) {
           SeriesViewerFactory plugin = UIManager.getViewerFactory(mime);
           if (plugin != null) {
-            List<MediaSeries<MediaElement>> list = plugins.get(plugin);
-            if (list == null) {
-              list = new ArrayList<>(modeLayout ? 10 : 1);
-              plugins.put(plugin, list);
-            }
+            List<MediaSeries<MediaElement>> list =
+                plugins.computeIfAbsent(plugin, k -> new ArrayList<>(modeLayout ? 10 : 1));
 
             // Get only application readers from files
             MediaReader mreader = m.getMediaReader();
@@ -454,7 +425,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
         }
       }
 
-      Map<String, Object> props = Collections.synchronizedMap(new HashMap<String, Object>());
+      Map<String, Object> props = Collections.synchronizedMap(new HashMap<>());
       props.put(ViewerPluginBuilder.CMP_ENTRY_BUILD_NEW_VIEWER, compareEntryToBuildNewViewer);
       props.put(ViewerPluginBuilder.BEST_DEF_LAYOUT, bestDefaultLayout);
       props.put(ViewerPluginBuilder.SCREEN_BOUND, null);
@@ -462,10 +433,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
         props.put(ViewerPluginBuilder.ADD_IN_SELECTED_VIEW, true);
       }
 
-      for (Iterator<Entry<SeriesViewerFactory, List<MediaSeries<MediaElement>>>> iterator =
-              plugins.entrySet().iterator();
-          iterator.hasNext(); ) {
-        Entry<SeriesViewerFactory, List<MediaSeries<MediaElement>>> item = iterator.next();
+      for (Entry<SeriesViewerFactory, List<MediaSeries<MediaElement>>> item : plugins.entrySet()) {
         ViewerPluginBuilder builder =
             new ViewerPluginBuilder(
                 item.getKey(), item.getValue(), ViewerPluginBuilder.DefaultDataModel, props);
@@ -478,7 +446,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
     if (mediaElement != null) {
       String mime = mediaElement.getMimeType();
       if (mime != null) {
-        return mime.indexOf("dicom") != -1; // NON-NLS
+        return mime.contains("dicom"); // NON-NLS
       }
     }
     return false;
@@ -491,9 +459,9 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
       e.consume();
       final int firstIndex = getFirstVisibleIndex();
       final int visibleRows = getVisibleRowCount();
-      final int visibleColums =
+      final int visibleColumns =
           (int) (((float) (lastIndex - firstIndex) / (float) visibleRows) + .5);
-      final int visibleItems = visibleRows * visibleColums;
+      final int visibleItems = visibleRows * visibleColumns;
 
       final int val =
           (lastIndex + visibleItems >= getModel().getSize())
@@ -516,11 +484,11 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
       e.consume();
       final int firstIndex = getFirstVisibleIndex();
       final int visibleRows = getVisibleRowCount();
-      final int visibleColums =
+      final int visibleColumns =
           (int) (((float) (lastIndex - firstIndex) / (float) visibleRows) + .5);
-      final int visibleItems = visibleRows * visibleColums;
+      final int visibleItems = visibleRows * visibleColumns;
 
-      final int val = ((firstIndex - 1) - visibleItems < 0) ? 0 : (firstIndex - 1) - visibleItems;
+      final int val = Math.max((firstIndex - 1) - visibleItems, 0);
       clearSelection();
       setSelectedIndex(val);
       fireSelectionValueChanged(val, val, false);
@@ -533,16 +501,12 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
 
   public void jiThumbnailKeyPressed(final KeyEvent e) {
     switch (e.getKeyCode()) {
-      case KeyEvent.VK_PAGE_DOWN:
-        nextPage(e);
-        break;
-      case KeyEvent.VK_PAGE_UP:
-        lastPage(e);
-        break;
-      case KeyEvent.VK_ENTER:
+      case KeyEvent.VK_PAGE_DOWN -> nextPage(e);
+      case KeyEvent.VK_PAGE_UP -> lastPage(e);
+      case KeyEvent.VK_ENTER -> {
         openSelection();
         e.consume();
-        break;
+      }
     }
   }
 
@@ -588,7 +552,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
     private void showPopup(final MouseEvent evt) {
       // Context menu
       if (SwingUtilities.isRightMouseButton(evt)) {
-        JPopupMenu popupMenu = AbstractThumbnailList.this.buidContexMenu(evt);
+        JPopupMenu popupMenu = AbstractThumbnailList.this.buildContextMenu(evt);
         if (popupMenu != null) {
           popupMenu.show(evt.getComponent(), evt.getX(), evt.getY());
         }
@@ -653,8 +617,8 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
       if (series != null) {
         GhostGlassPane glassPane = AppProperties.glassPane;
         Icon icon = null;
-        if (media instanceof ImageElement) {
-          icon = thumbCache.getThumbnailFor((ImageElement) media, this, index);
+        if (media instanceof ImageElement imageElement) {
+          icon = thumbCache.getThumbnailFor(imageElement, this, index);
         }
         if (icon == null) {
           icon = JIUtility.getSystemIcon(media);
@@ -671,23 +635,23 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
   }
 
   @Override
-  public void dragMouseMoved(DragSourceDragEvent dsde) {
-    drawGlassPane(dsde.getLocation());
+  public void dragMouseMoved(DragSourceDragEvent dragEvent) {
+    drawGlassPane(dragEvent.getLocation());
   }
 
   // --- DragSourceListener methods -----------------------------------
 
   @Override
-  public void dragEnter(DragSourceDragEvent dsde) {}
+  public void dragEnter(DragSourceDragEvent dragEvent) {}
 
   @Override
-  public void dragOver(DragSourceDragEvent dsde) {}
+  public void dragOver(DragSourceDragEvent dragEvent) {}
 
   @Override
-  public void dragExit(DragSourceEvent dsde) {}
+  public void dragExit(DragSourceEvent dragEvent) {}
 
   @Override
-  public void dragDropEnd(DragSourceDropEvent dsde) {
+  public void dragDropEnd(DragSourceDropEvent dragEvent) {
     GhostGlassPane glassPane = AppProperties.glassPane;
     dragPressed = null;
     glassPane.setImagePosition(null);
@@ -696,7 +660,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
   }
 
   @Override
-  public void dropActionChanged(DragSourceDragEvent dsde) {}
+  public void dropActionChanged(DragSourceDragEvent dragEvent) {}
 
   public void drawGlassPane(Point p) {
     if (dragPressed != null) {
@@ -714,7 +678,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
       if (index >= 0) {
         E selectedMedia = getModel().getElementAt(index);
         if (selectedMedia != null && !selected.contains(selectedMedia)) {
-          selected = Arrays.asList(selectedMedia);
+          selected = Collections.singletonList(selectedMedia);
           setSelectedValue(selectedMedia, false);
         }
       }
@@ -724,7 +688,7 @@ public abstract class AbstractThumbnailList<E extends MediaElement> extends JLis
 
   public abstract IThumbnailModel<E> newModel();
 
-  public abstract JPopupMenu buidContexMenu(final MouseEvent e);
+  public abstract JPopupMenu buildContextMenu(final MouseEvent e);
 
   public abstract void mouseClickedEvent(MouseEvent e);
 }

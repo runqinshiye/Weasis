@@ -25,6 +25,7 @@ import bibliothek.gui.dock.common.intern.CommonDockable;
 import bibliothek.gui.dock.common.intern.DefaultCommonDockable;
 import bibliothek.gui.dock.common.mode.ExtendedMode;
 import bibliothek.gui.dock.control.focus.DefaultFocusRequest;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.List;
@@ -32,7 +33,6 @@ import java.util.UUID;
 import javax.swing.Icon;
 import javax.swing.JPanel;
 import org.weasis.core.api.explorer.ObservableEvent;
-import org.weasis.core.api.gui.Insertable;
 import org.weasis.core.api.gui.util.GuiExecutor;
 import org.weasis.core.api.media.data.MediaElement;
 import org.weasis.core.api.media.data.MediaSeriesGroup;
@@ -52,21 +52,22 @@ public abstract class ViewerPlugin<E extends MediaElement> extends JPanel
   private final String tooltips;
   private final DefaultSingleCDockable dockable;
 
-  public ViewerPlugin(String pluginName) {
+  protected ViewerPlugin(String pluginName) {
     this(null, pluginName, null, null);
   }
 
-  public ViewerPlugin(String uid, String pluginName, Icon icon, String tooltips) {
+  protected ViewerPlugin(String uid, String pluginName, Icon icon, String tooltips) {
     setLayout(new BorderLayout());
     setName(pluginName);
     this.pluginName = pluginName;
     this.icon = icon;
     this.tooltips = tooltips;
     this.dockableUID = uid == null ? UUID.randomUUID().toString() : uid;
-    this.dockable = new DefaultSingleCDockable(dockableUID, icon, pluginName);
+    Icon titleIcon = icon instanceof FlatSVGIcon flatSVGIcon ? flatSVGIcon.derive(20, 20) : icon;
+    this.dockable = new DefaultSingleCDockable(dockableUID, titleIcon, pluginName);
     this.dockable.setTitleText(pluginName);
     this.dockable.setTitleToolTip(tooltips);
-    this.dockable.setTitleIcon(icon);
+    this.dockable.setTitleIcon(titleIcon);
     this.dockable.setFocusComponent(this);
     this.dockable.setStackable(true);
     this.dockable.setSingleTabShown(true);
@@ -76,8 +77,8 @@ public abstract class ViewerPlugin<E extends MediaElement> extends JPanel
           @Override
           public void close(CDockable dockable) {
             super.close(dockable);
-            if (dockable.getFocusComponent() instanceof SeriesViewer) {
-              ((SeriesViewer) dockable.getFocusComponent()).close();
+            if (dockable.getFocusComponent() instanceof SeriesViewer<?> seriesViewer) {
+              seriesViewer.close();
             }
             Dockable prevDockable =
                 UIManager.DOCKING_CONTROL
@@ -87,11 +88,10 @@ public abstract class ViewerPlugin<E extends MediaElement> extends JPanel
             if (prevDockable == null) {
               handleFocusAfterClosing();
             } else {
-              if (prevDockable instanceof DefaultCommonDockable) {
-                CDockable ld = ((DefaultCommonDockable) prevDockable).getDockable();
-                if (ld instanceof AbstractCDockable) {
-                  ((AbstractCDockable) ld).toFront();
-                }
+              if (prevDockable instanceof DefaultCommonDockable defaultCommonDockable
+                  && defaultCommonDockable.getDockable()
+                      instanceof AbstractCDockable abstractCDockable) {
+                abstractCDockable.toFront();
               }
             }
           }
@@ -195,9 +195,9 @@ public abstract class ViewerPlugin<E extends MediaElement> extends JPanel
     List<Toolbar> bars = getToolBar();
     if (bars != null) {
       synchronized (bars) {
-        for (Insertable t : bars) {
-          if (t instanceof ViewerToolBar) {
-            return (ViewerToolBar) t;
+        for (Toolbar t : bars) {
+          if (t instanceof ViewerToolBar viewerToolBar) {
+            return viewerToolBar;
           }
         }
       }
@@ -206,8 +206,8 @@ public abstract class ViewerPlugin<E extends MediaElement> extends JPanel
   }
 
   private static class CloseOthersAction extends CButton {
-    private CDockable dockable;
-    private boolean closeAll;
+    private final CDockable dockable;
+    private final boolean closeAll;
 
     public CloseOthersAction(CDockable dockable, boolean closeAll) {
       // prevent standard initialization of the action by calling the protected constructor
@@ -238,13 +238,13 @@ public abstract class ViewerPlugin<E extends MediaElement> extends JPanel
       for (Dockable child : children) {
         // we are not interested in things like entire stacks, or our own Dockable. So let's do
         // some checks before closing a Dockable
-        if (child instanceof CommonDockable) {
-          CDockable cChild = ((CommonDockable) child).getDockable();
+        if (child instanceof CommonDockable commonDockable) {
+          CDockable cChild = commonDockable.getDockable();
           if (cChild.isCloseable() && (closeAll || cChild != dockable)) {
-            if (cChild.getFocusComponent() instanceof SeriesViewer) {
-              ((SeriesViewer) cChild.getFocusComponent()).close();
-              if (cChild.getFocusComponent() instanceof ViewerPlugin) {
-                ((ViewerPlugin) cChild.getFocusComponent()).handleFocusAfterClosing();
+            if (cChild.getFocusComponent() instanceof SeriesViewer<?> seriesViewer) {
+              seriesViewer.close();
+              if (cChild.getFocusComponent() instanceof ViewerPlugin<?> viewerPlugin) {
+                viewerPlugin.handleFocusAfterClosing();
               }
             } else {
               cChild.setVisible(false);

@@ -24,7 +24,7 @@ import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Tag;
 import org.weasis.core.api.gui.util.Filter;
 import org.weasis.core.util.StringUtil;
-import org.weasis.dicom.codec.macro.HierachicalSOPInstanceReference;
+import org.weasis.dicom.codec.macro.HierarchicalSOPInstanceReference;
 import org.weasis.dicom.codec.macro.KODocumentModule;
 import org.weasis.dicom.codec.macro.SOPInstanceReferenceAndMAC;
 import org.weasis.dicom.codec.macro.SeriesAndInstanceReference;
@@ -53,13 +53,6 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
       }
     }
 
-    /**
-     * @param studyInstanceUID
-     * @param seriesInstanceUID
-     * @param sopInstanceUID
-     * @param sopClassUID
-     * @param frames the list of DICOM Instance Number
-     */
     public Reference(
         String studyInstanceUID,
         String seriesInstanceUID,
@@ -100,7 +93,8 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
   protected Map<String, Map<String, SOPInstanceReferenceAndMAC>> sopInstanceReferenceMapBySeriesUID;
   protected Map<String, Map<String, SeriesAndInstanceReference>>
       seriesAndInstanceReferenceMapByStudyUID;
-  protected Map<String, HierachicalSOPInstanceReference> hierachicalSOPInstanceReferenceByStudyUID;
+  protected Map<String, HierarchicalSOPInstanceReference>
+      hierarchicalSOPInstanceReferenceByStudyUID;
 
   public AbstractKOSpecialElement(DicomMediaIO mediaIO) {
     super(mediaIO);
@@ -132,22 +126,22 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
   }
 
   public Set<String> getReferencedStudyInstanceUIDSet() {
-    if (hierachicalSOPInstanceReferenceByStudyUID == null) {
-      updateHierachicalSOPInstanceReference();
+    if (hierarchicalSOPInstanceReferenceByStudyUID == null) {
+      updateHierarchicalSOPInstanceReference();
     }
-    return hierachicalSOPInstanceReferenceByStudyUID.keySet();
+    return hierarchicalSOPInstanceReferenceByStudyUID.keySet();
   }
 
   public boolean containsStudyInstanceUIDReference(String studyInstanceUIDReference) {
-    if (hierachicalSOPInstanceReferenceByStudyUID == null) {
-      updateHierachicalSOPInstanceReference();
+    if (hierarchicalSOPInstanceReferenceByStudyUID == null) {
+      updateHierarchicalSOPInstanceReference();
     }
-    return hierachicalSOPInstanceReferenceByStudyUID.containsKey(studyInstanceUIDReference);
+    return hierarchicalSOPInstanceReferenceByStudyUID.containsKey(studyInstanceUIDReference);
   }
 
   public Set<String> getReferencedSeriesInstanceUIDSet(String studyUID) {
     if (seriesAndInstanceReferenceMapByStudyUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
     Map<String, SeriesAndInstanceReference> seriesAndInstanceReferenceBySeriesUID =
         seriesAndInstanceReferenceMapByStudyUID.get(studyUID);
@@ -158,7 +152,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
   public Set<String> getReferencedSeriesInstanceUIDSet() {
     if (sopInstanceReferenceMapBySeriesUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
 
     return sopInstanceReferenceMapBySeriesUID.keySet();
@@ -166,14 +160,14 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
   public boolean containsSeriesInstanceUIDReference(String seriesInstanceUIDReference) {
     if (sopInstanceReferenceMapBySeriesUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
     return sopInstanceReferenceMapBySeriesUID.containsKey(seriesInstanceUIDReference);
   }
 
   public Set<String> getReferencedSOPInstanceUIDSet() {
     if (sopInstanceReferenceMapBySeriesUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
 
     Set<String> referencedSOPInstanceUIDSet = new LinkedHashSet<>();
@@ -190,7 +184,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
     }
 
     if (sopInstanceReferenceMapBySeriesUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
 
     Map<String, SOPInstanceReferenceAndMAC> sopInstanceReferenceBySOPInstanceUID =
@@ -207,7 +201,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
     }
 
     if (sopInstanceReferenceMapBySeriesUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
     return sopInstanceReferenceMapBySeriesUID.get(seriesUID);
   }
@@ -220,7 +214,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
   public boolean isEmpty() {
     if (sopInstanceReferenceMapBySeriesUID == null) {
-      updateHierachicalSOPInstanceReference();
+      updateHierarchicalSOPInstanceReference();
     }
     return sopInstanceReferenceMapBySeriesUID.isEmpty();
   }
@@ -230,28 +224,28 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
    * CurrentRequestedProcedureEvidences of the root DicomObject into the dedicated Maps. These
    * collections are used to improve access performance for data queries.
    *
-   * @note This method should be called only once since any call to add/remove methods should keep
-   *     in sync with the CurrentRequestedProcedureEvidences of the root DicomObject
+   * <p>This method should be called only once since any call to add/remove methods should keep in
+   * sync with the CurrentRequestedProcedureEvidences of the root DicomObject
    */
-  protected void updateHierachicalSOPInstanceReference() {
+  protected void updateHierarchicalSOPInstanceReference() {
     init();
 
     Attributes dcmItems = getMediaReader().getDicomObject();
     if (dcmItems != null) {
-      Collection<HierachicalSOPInstanceReference> referencedStudySequence =
-          HierachicalSOPInstanceReference.toHierachicalSOPInstanceReferenceMacros(
+      Collection<HierarchicalSOPInstanceReference> referencedStudySequence =
+          HierarchicalSOPInstanceReference.toHierarchicalSOPInstanceReferenceMacros(
               dcmItems.getSequence(Tag.CurrentRequestedProcedureEvidenceSequence));
       boolean sopInstanceExist = false;
 
-      for (HierachicalSOPInstanceReference studyRef : referencedStudySequence) {
+      for (HierarchicalSOPInstanceReference studyRef : referencedStudySequence) {
         Collection<SeriesAndInstanceReference> referencedSeriesSequence =
             studyRef.getReferencedSeries();
         String studyUID = studyRef.getStudyInstanceUID();
 
-        for (SeriesAndInstanceReference serieRef : referencedSeriesSequence) {
+        for (SeriesAndInstanceReference seriesRef : referencedSeriesSequence) {
           Collection<SOPInstanceReferenceAndMAC> referencedSOPInstanceSequence =
-              serieRef.getReferencedSOPInstances();
-          String seriesUID = serieRef.getSeriesInstanceUID();
+              seriesRef.getReferencedSOPInstances();
+          String seriesUID = seriesRef.getSeriesInstanceUID();
 
           for (SOPInstanceReferenceAndMAC sopRef : referencedSOPInstanceSequence) {
             String sopInstanceUID = sopRef.getReferencedSOPInstanceUID();
@@ -261,40 +255,32 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
             }
 
             Map<String, SOPInstanceReferenceAndMAC> sopInstanceReferenceBySOPInstanceUID =
-                sopInstanceReferenceMapBySeriesUID.get(seriesUID);
+                sopInstanceReferenceMapBySeriesUID.computeIfAbsent(
+                    seriesUID, k -> new LinkedHashMap<>());
 
-            if (sopInstanceReferenceBySOPInstanceUID == null) {
-              sopInstanceReferenceBySOPInstanceUID = new LinkedHashMap<>();
-              sopInstanceReferenceMapBySeriesUID.put(
-                  seriesUID, sopInstanceReferenceBySOPInstanceUID);
-            }
             sopInstanceReferenceBySOPInstanceUID.put(sopInstanceUID, sopRef);
             sopInstanceExist = true;
           }
 
           if (sopInstanceExist) {
             Map<String, SeriesAndInstanceReference> seriesAndInstanceReferenceBySeriesUID =
-                seriesAndInstanceReferenceMapByStudyUID.get(studyUID);
+                seriesAndInstanceReferenceMapByStudyUID.computeIfAbsent(
+                    studyUID, k -> new LinkedHashMap<>());
 
-            if (seriesAndInstanceReferenceBySeriesUID == null) {
-              seriesAndInstanceReferenceBySeriesUID = new LinkedHashMap<>();
-              seriesAndInstanceReferenceMapByStudyUID.put(
-                  studyUID, seriesAndInstanceReferenceBySeriesUID);
-            }
-            seriesAndInstanceReferenceBySeriesUID.put(seriesUID, serieRef);
+            seriesAndInstanceReferenceBySeriesUID.put(seriesUID, seriesRef);
           }
         }
 
         if (sopInstanceExist) {
-          hierachicalSOPInstanceReferenceByStudyUID.put(studyUID, studyRef);
+          hierarchicalSOPInstanceReferenceByStudyUID.put(studyUID, studyRef);
         }
       }
     }
   }
 
   private void init() {
-    if (hierachicalSOPInstanceReferenceByStudyUID == null) {
-      hierachicalSOPInstanceReferenceByStudyUID = new LinkedHashMap<>();
+    if (hierarchicalSOPInstanceReferenceByStudyUID == null) {
+      hierarchicalSOPInstanceReferenceByStudyUID = new LinkedHashMap<>();
     }
     if (seriesAndInstanceReferenceMapByStudyUID == null) {
       seriesAndInstanceReferenceMapByStudyUID = new LinkedHashMap<>();
@@ -312,8 +298,8 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
   public boolean addKeyObject(Reference ref) {
 
-    if (hierachicalSOPInstanceReferenceByStudyUID == null) {
-      updateHierachicalSOPInstanceReference();
+    if (hierarchicalSOPInstanceReferenceByStudyUID == null) {
+      updateHierarchicalSOPInstanceReference();
     }
 
     // Get the SOPInstanceReferenceMap for this seriesUID
@@ -322,8 +308,9 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
     if (sopInstanceReferenceBySOPInstanceUID == null) {
       // the seriesUID is not referenced, create a new SOPInstanceReferenceMap
+      sopInstanceReferenceBySOPInstanceUID = new LinkedHashMap<>();
       sopInstanceReferenceMapBySeriesUID.put(
-          ref.seriesInstanceUID, sopInstanceReferenceBySOPInstanceUID = new LinkedHashMap<>());
+          ref.seriesInstanceUID, sopInstanceReferenceBySOPInstanceUID);
     } else if (sopInstanceReferenceBySOPInstanceUID.containsKey(ref.sopInstanceUID)) {
       if (ref.frameList == null || ref.frameList.isEmpty()) {
         // the sopInstanceUID is already referenced, skip the job
@@ -349,45 +336,42 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
     // Get the SeriesAndInstanceReferenceMap for this studyUID
     Map<String, SeriesAndInstanceReference> seriesAndInstanceReferenceBySeriesUID =
-        seriesAndInstanceReferenceMapByStudyUID.get(ref.studyInstanceUID);
-    if (seriesAndInstanceReferenceBySeriesUID == null) {
-      // the studyUID is not referenced, create a new one SeriesAndInstanceReferenceMap
-      seriesAndInstanceReferenceMapByStudyUID.put(
-          ref.studyInstanceUID, seriesAndInstanceReferenceBySeriesUID = new LinkedHashMap<>());
-    }
+        seriesAndInstanceReferenceMapByStudyUID.computeIfAbsent(
+            ref.studyInstanceUID, k -> new LinkedHashMap<>());
+    // the studyUID is not referenced, create a new one SeriesAndInstanceReferenceMap
 
     // Get the SeriesAndInstanceReference for this seriesUID
-    SeriesAndInstanceReference referencedSerie =
+    SeriesAndInstanceReference referencedSeries =
         seriesAndInstanceReferenceBySeriesUID.get(ref.seriesInstanceUID);
-    if (referencedSerie == null) {
+    if (referencedSeries == null) {
       // the seriesUID is not referenced, create a new SeriesAndInstanceReference
-      referencedSerie = new SeriesAndInstanceReference();
-      referencedSerie.setSeriesInstanceUID(ref.seriesInstanceUID);
-      seriesAndInstanceReferenceBySeriesUID.put(ref.seriesInstanceUID, referencedSerie);
+      referencedSeries = new SeriesAndInstanceReference();
+      referencedSeries.setSeriesInstanceUID(ref.seriesInstanceUID);
+      seriesAndInstanceReferenceBySeriesUID.put(ref.seriesInstanceUID, referencedSeries);
     }
 
     // Update the current SeriesAndInstanceReference with the referencedSOPInstance Sequence
-    referencedSerie.setReferencedSOPInstances(sopInstanceReferenceBySOPInstanceUID.values());
+    referencedSeries.setReferencedSOPInstances(sopInstanceReferenceBySOPInstanceUID.values());
 
-    // Get the HierachicalSOPInstanceReference for this studyUID
-    HierachicalSOPInstanceReference hierachicalDicom =
-        hierachicalSOPInstanceReferenceByStudyUID.get(ref.studyInstanceUID);
+    // Get the HierarchicalSOPInstanceReference for this studyUID
+    HierarchicalSOPInstanceReference hierarchicalDicom =
+        hierarchicalSOPInstanceReferenceByStudyUID.get(ref.studyInstanceUID);
 
-    if (hierachicalDicom == null) {
-      // the studyUID is not referenced, create a new one HierachicalSOPInstanceReference
-      hierachicalDicom = new HierachicalSOPInstanceReference();
-      hierachicalDicom.setStudyInstanceUID(ref.studyInstanceUID);
-      hierachicalSOPInstanceReferenceByStudyUID.put(ref.studyInstanceUID, hierachicalDicom);
+    if (hierarchicalDicom == null) {
+      // the studyUID is not referenced, create a new one HierarchicalSOPInstanceReference
+      hierarchicalDicom = new HierarchicalSOPInstanceReference();
+      hierarchicalDicom.setStudyInstanceUID(ref.studyInstanceUID);
+      hierarchicalSOPInstanceReferenceByStudyUID.put(ref.studyInstanceUID, hierarchicalDicom);
     }
 
-    // Update the current HierachicalSOPInstance with the referencedSeries Sequence
-    hierachicalDicom.setReferencedSeries(seriesAndInstanceReferenceBySeriesUID.values());
+    // Update the current HierarchicalSOPInstance with the referencedSeries Sequence
+    hierarchicalDicom.setReferencedSeries(seriesAndInstanceReferenceBySeriesUID.values());
 
     // Update the CurrentRequestedProcedureEvidences for the root dcmItems
     Attributes dcmItems = getMediaReader().getDicomObject();
 
     new KODocumentModule(dcmItems)
-        .setCurrentRequestedProcedureEvidences(hierachicalSOPInstanceReferenceByStudyUID.values());
+        .setCurrentRequestedProcedureEvidences(hierarchicalSOPInstanceReferenceByStudyUID.values());
 
     return true;
   }
@@ -398,8 +382,8 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
   public boolean removeKeyObject(Reference ref) {
 
-    if (hierachicalSOPInstanceReferenceByStudyUID == null) {
-      updateHierachicalSOPInstanceReference();
+    if (hierarchicalSOPInstanceReferenceByStudyUID == null) {
+      updateHierarchicalSOPInstanceReference();
     }
 
     // Get the SeriesAndInstanceReferenceMap for this studyUID
@@ -413,7 +397,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
     if (sopInstanceReferenceBySOPInstanceUID == null
         || seriesAndInstanceReferenceBySeriesUID == null
         || !sopInstanceReferenceBySOPInstanceUID.containsKey(ref.sopInstanceUID)) {
-      // UID's parameters were not referenced, skip the job
+      // UIDs parameters were not referenced, skip the job
       return false;
     }
 
@@ -437,14 +421,14 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
       if (seriesAndInstanceReferenceBySeriesUID.isEmpty()) {
         seriesAndInstanceReferenceMapByStudyUID.remove(ref.studyInstanceUID);
-        hierachicalSOPInstanceReferenceByStudyUID.remove(ref.studyInstanceUID);
+        hierarchicalSOPInstanceReferenceByStudyUID.remove(ref.studyInstanceUID);
       } else {
-        // Get the HierachicalSOPInstanceReference for this studyUID
-        HierachicalSOPInstanceReference hierachicalDicom =
-            hierachicalSOPInstanceReferenceByStudyUID.get(ref.studyInstanceUID);
+        // Get the HierarchicalSOPInstanceReference for this studyUID
+        HierarchicalSOPInstanceReference hierarchicalDicom =
+            hierarchicalSOPInstanceReferenceByStudyUID.get(ref.studyInstanceUID);
 
-        // Update the current HierachicalSOPInstance with the referencedSeries Sequence
-        hierachicalDicom.setReferencedSeries(seriesAndInstanceReferenceBySeriesUID.values());
+        // Update the current HierarchicalSOPInstance with the referencedSeries Sequence
+        hierarchicalDicom.setReferencedSeries(seriesAndInstanceReferenceBySeriesUID.values());
       }
 
     } else {
@@ -458,10 +442,10 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
 
     // Update the CurrentRequestedProcedureEvidences for the root dcmItems
     Attributes dcmItems = getMediaReader().getDicomObject();
-    List<HierachicalSOPInstanceReference> referencedStudies = null;
+    List<HierarchicalSOPInstanceReference> referencedStudies = null;
 
-    if (!hierachicalSOPInstanceReferenceByStudyUID.isEmpty()) {
-      referencedStudies = new ArrayList<>(hierachicalSOPInstanceReferenceByStudyUID.values());
+    if (!hierarchicalSOPInstanceReferenceByStudyUID.isEmpty()) {
+      referencedStudies = new ArrayList<>(hierarchicalSOPInstanceReferenceByStudyUID.values());
     }
 
     new KODocumentModule(dcmItems).setCurrentRequestedProcedureEvidences(referencedStudies);
@@ -470,7 +454,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
   }
 
   public Filter<DicomImageElement> getSOPInstanceUIDFilter() {
-    return new Filter<DicomImageElement>() {
+    return new Filter<>() {
       @Override
       public boolean passes(DicomImageElement dicom) {
         String seriesInstanceUID = TagD.getTagValue(dicom, Tag.SeriesInstanceUID, String.class);
@@ -501,9 +485,7 @@ public class AbstractKOSpecialElement extends DicomSpecialElement {
     for (int i : arr1) {
       result.add(i);
     }
-    for (Integer integer : frameList) {
-      result.add(integer);
-    }
+    result.addAll(frameList);
     return result.stream().mapToInt(i -> i).toArray();
   }
 

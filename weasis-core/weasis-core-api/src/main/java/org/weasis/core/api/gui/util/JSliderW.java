@@ -12,7 +12,6 @@ package org.weasis.core.api.gui.util;
 import javax.swing.BoundedRangeModel;
 import javax.swing.JSlider;
 
-@SuppressWarnings("serial")
 public class JSliderW extends JSlider {
 
   private int labelDivision = 4;
@@ -47,11 +46,11 @@ public class JSliderW extends JSlider {
     this.labelDivision = labelDivision;
   }
 
-  public boolean isdisplayValueInTitle() {
+  public boolean isDisplayValueInTitle() {
     return displayValueInTitle;
   }
 
-  public void setdisplayValueInTitle(boolean displayOnlyValue) {
+  public void setDisplayValueInTitle(boolean displayOnlyValue) {
     this.displayValueInTitle = displayOnlyValue;
   }
 

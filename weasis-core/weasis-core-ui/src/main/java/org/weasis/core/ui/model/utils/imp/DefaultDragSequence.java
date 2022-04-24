@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import javax.swing.JDialog;
-import org.weasis.core.api.gui.util.MathUtil;
 import org.weasis.core.ui.dialog.MeasureDialog;
 import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.model.graphic.AbstractDragGraphic;
@@ -24,6 +23,7 @@ import org.weasis.core.ui.model.graphic.Graphic;
 import org.weasis.core.ui.model.utils.Draggable;
 import org.weasis.core.ui.util.ColorLayerUI;
 import org.weasis.core.ui.util.MouseEventDouble;
+import org.weasis.core.util.MathUtil;
 
 public class DefaultDragSequence implements Draggable {
   protected final DragGraphic graphic;
@@ -108,11 +108,10 @@ public class DefaultDragSequence implements Draggable {
             boolean isEditingGraph = false;
             Optional<Graphic> first =
                 graphPane.getGraphicManager().getFirstGraphicIntersecting(mouseEvent);
-            if (first.isPresent() && first.get() instanceof AbstractDragGraphic) {
-              AbstractDragGraphic dragGraph = (AbstractDragGraphic) first.get();
+            if (first.isPresent() && first.get() instanceof AbstractDragGraphic dragGraph) {
               if (dragGraph.getSelected() && dragGraph.getVariablePointsNumber()) {
                 List<DragGraphic> selectedDragGraphList =
-                    graphPane.getGraphicManager().getSelectedDragableGraphics();
+                    graphPane.getGraphicManager().getSelectedDraggableGraphics();
 
                 if (selectedDragGraphList.size() == 1
                     && !dragGraph.isOnGraphicLabel(mouseEvent)

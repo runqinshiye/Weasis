@@ -15,17 +15,12 @@ import java.util.Collections;
 import java.util.List;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 import org.weasis.acquire.explorer.AcquireManager;
 import org.weasis.acquire.explorer.Messages;
-import org.weasis.acquire.explorer.gui.AcquireToolBar;
 import org.weasis.base.explorer.JIThumbnailCache;
 import org.weasis.base.viewer2d.EventManager;
-import org.weasis.core.api.gui.InsertableUtil;
 import org.weasis.core.api.media.data.ImageElement;
 import org.weasis.core.api.media.data.MediaSeries;
-import org.weasis.core.api.service.BundleTools;
 import org.weasis.core.ui.docking.DockableTool;
 import org.weasis.core.ui.editor.SeriesViewerEvent;
 import org.weasis.core.ui.editor.SeriesViewerEvent.EVENT;
@@ -34,32 +29,16 @@ import org.weasis.core.ui.util.ToolBarContainer;
 import org.weasis.core.ui.util.Toolbar;
 import org.weasis.core.ui.util.WtoolBar;
 
-@SuppressWarnings("serial")
 public class ImageGroupPane extends ViewerPlugin<ImageElement> {
 
-  public final List<Toolbar> toolBar = Collections.synchronizedList(new ArrayList<Toolbar>(1));
+  public final List<Toolbar> toolBar = Collections.synchronizedList(new ArrayList<>(1));
 
   public final AcquireTabPanel tabbedPane;
 
   public ImageGroupPane(String pluginName, JIThumbnailCache thumbCache) {
     super(pluginName);
     this.tabbedPane = new AcquireTabPanel(thumbCache);
-    // Add standard toolbars
-    final BundleContext context = FrameworkUtil.getBundle(this.getClass()).getBundleContext();
-    String bundleName = context.getBundle().getSymbolicName();
-    String componentName = InsertableUtil.getCName(this.getClass());
-    String key = "enable"; // NON-NLS
-
-    if (InsertableUtil.getBooleanProperty(
-        BundleTools.SYSTEM_PREFERENCES,
-        bundleName,
-        componentName,
-        InsertableUtil.getCName(AcquireToolBar.class),
-        key,
-        true)) {
-      toolBar.add(ToolBarContainer.EMPTY);
-    }
-
+    toolBar.add(ToolBarContainer.EMPTY);
     init();
   }
 

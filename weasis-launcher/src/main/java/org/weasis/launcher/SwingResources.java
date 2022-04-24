@@ -11,14 +11,15 @@ package org.weasis.launcher;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
+import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.UIManager;
 
 public class SwingResources {
 
-  private static final Logger LOGGER = Logger.getLogger(SwingResources.class.getName());
+  private static final Logger LOGGER = System.getLogger(SwingResources.class.getName());
 
   static final String AND_MNEMONIC = "AndMnemonic";
   static final String TITLE_SUFFIX = ".titleAndMnemonic";
@@ -54,17 +55,17 @@ public class SwingResources {
       try {
         swingDialogs.load(inStream);
       } catch (IOException e) {
-        LOGGER.log(Level.SEVERE, "Cannot read swing translations", e);
+        LOGGER.log(Level.ERROR, "Cannot read swing translations", e);
       } finally {
         FileUtil.safeClose(inStream);
       }
 
-      for (Object key : swingDialogs.keySet()) {
-        String stringKey = key.toString();
-        String compositeKey = null;
+      for (Entry<Object, Object> entry : swingDialogs.entrySet()) {
+        String stringKey = entry.getKey().toString();
+        Object value = entry.getValue();
+        String compositeKey;
 
         if (stringKey.endsWith(AND_MNEMONIC)) {
-          Object value = swingDialogs.get(key);
           if (value != null) {
             String text = value.toString();
             String mnemonic = null;
@@ -99,7 +100,7 @@ public class SwingResources {
             }
           }
         } else {
-          UIManager.put(key, swingDialogs.get(key));
+          UIManager.put(entry.getKey(), value);
         }
       }
     }

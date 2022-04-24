@@ -61,7 +61,6 @@ import org.weasis.core.ui.pref.Monitor;
 import org.weasis.core.ui.util.MouseEventDouble;
 
 public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPlugin<E> {
-  private static final long serialVersionUID = -5804430771962614157L;
 
   public static final String F_VIEWS = Messages.getString("ImageViewerPlugin.2");
 
@@ -88,14 +87,28 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
           1,
           2,
           view2dClass.getName());
+  public static final GridBagLayoutModel VIEWS_1x3 =
+      new GridBagLayoutModel(
+          "1x3", // NON-NLS
+          String.format(F_VIEWS, "1x3"), // NON-NLS
+          1,
+          3,
+          view2dClass.getName());
+  public static final GridBagLayoutModel VIEWS_1x4 =
+      new GridBagLayoutModel(
+          "1x4", // NON-NLS
+          String.format(F_VIEWS, "1x4"), // NON-NLS
+          1,
+          4,
+          view2dClass.getName());
   public static final GridBagLayoutModel VIEWS_2x2_f2 =
       new GridBagLayoutModel(
-          ImageViewerPlugin.class.getResourceAsStream("/config/layoutModel2x2_f2.xml"),
+          ImageViewerPlugin.class.getResourceAsStream("/config/layoutModel2x2_f2.xml"), // NON-NLS
           "layout_c2x1", // NON-NLS
           Messages.getString("ImageViewerPlugin.layout_c2x1"));
   public static final GridBagLayoutModel VIEWS_2_f1x2 =
       new GridBagLayoutModel(
-          ImageViewerPlugin.class.getResourceAsStream("/config/layoutModel2_f1x2.xml"),
+          ImageViewerPlugin.class.getResourceAsStream("/config/layoutModel2_f1x2.xml"), // NON-NLS
           "layout_c1x2", // NON-NLS
           Messages.getString("ImageViewerPlugin.layout_c1x2"));
   public static final GridBagLayoutModel VIEWS_2x2 =
@@ -104,6 +117,20 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
           String.format(F_VIEWS, "2x2"), // NON-NLS
           2,
           2,
+          view2dClass.getName());
+  public static final GridBagLayoutModel VIEWS_2x3 =
+      new GridBagLayoutModel(
+          "2x3", // NON-NLS
+          String.format(F_VIEWS, "2x3"), // NON-NLS
+          2,
+          3,
+          view2dClass.getName());
+  public static final GridBagLayoutModel VIEWS_2x4 =
+      new GridBagLayoutModel(
+          "2x4", // NON-NLS
+          String.format(F_VIEWS, "2x4"), // NON-NLS
+          2,
+          4,
           view2dClass.getName());
 
   /** The current focused <code>ImagePane</code>. The default is 0. */
@@ -119,13 +146,11 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
   protected final JPanel grid;
   protected GridBagLayoutModel layoutModel;
 
-  private final MouseHandler mouseHandler;
-
-  public ImageViewerPlugin(ImageViewerEventManager<E> eventManager, String pluginName) {
+  protected ImageViewerPlugin(ImageViewerEventManager<E> eventManager, String pluginName) {
     this(eventManager, VIEWS_1x1, pluginName, null, null, null);
   }
 
-  public ImageViewerPlugin(
+  protected ImageViewerPlugin(
       ImageViewerEventManager<E> eventManager,
       GridBagLayoutModel layoutModel,
       String uid,
@@ -148,7 +173,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     add(grid, BorderLayout.CENTER);
 
     setLayoutModel(layoutModel);
-    this.mouseHandler = new MouseHandler();
+    MouseHandler mouseHandler = new MouseHandler();
     grid.addMouseListener(mouseHandler);
     grid.addMouseMotionListener(mouseHandler);
   }
@@ -156,10 +181,6 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
   /**
    * Returns true if type is instance of defaultClass. This operation is delegated in each bundle to
    * be sure all classes are visible.
-   *
-   * @param defaultClass
-   * @param type
-   * @return
    */
   public abstract boolean isViewType(Class<?> defaultClass, String type);
 
@@ -167,7 +188,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
 
   public abstract ViewCanvas<E> createDefaultView(String classType);
 
-  public abstract Component createUIcomponent(String clazz);
+  public abstract Component createComponent(String clazz);
 
   public ViewCanvas<E> getSelectedImagePane() {
     return selectedImagePane;
@@ -200,10 +221,9 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
   public GridBagLayoutModel getOriginalLayoutModel() {
     // Get the non clone layout from the list
     ActionState layout = eventManager.getAction(ActionW.LAYOUT);
-    if (layout instanceof ComboItemListener) {
-      for (Object element : ((ComboItemListener) layout).getAllItem()) {
-        if (element instanceof GridBagLayoutModel) {
-          GridBagLayoutModel gbm = (GridBagLayoutModel) element;
+    if (layout instanceof ComboItemListener<?> comboItemListener) {
+      for (Object element : comboItemListener.getAllItem()) {
+        if (element instanceof GridBagLayoutModel gbm) {
           if ((layoutModel.getIcon() != null && gbm.getIcon() == layoutModel.getIcon())
               || layoutModel.toString().equals(gbm.toString())) {
             return gbm;
@@ -220,7 +240,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     buf.append("x"); // NON-NLS
     buf.append(cols);
     return new GridBagLayoutModel(
-        buf.toString(), String.format(ImageViewerPlugin.F_VIEWS, buf.toString()), rows, cols, type);
+        buf.toString(), String.format(ImageViewerPlugin.F_VIEWS, buf), rows, cols, type);
   }
 
   @Override
@@ -245,8 +265,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
   @Override
   public void removeSeries(MediaSeries<E> series) {
     if (series != null) {
-      for (int i = 0; i < view2ds.size(); i++) {
-        ViewCanvas<E> v = view2ds.get(i);
+      for (ViewCanvas<E> v : view2ds) {
         if (v.getSeries() == series) {
           v.setSeries(null, null);
         }
@@ -268,15 +287,15 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
 
   public void changeLayoutModel(GridBagLayoutModel layoutModel) {
     ActionState layout = eventManager.getAction(ActionW.LAYOUT);
-    if (layout instanceof ComboItemListener) {
-      ((ComboItemListener) layout).setSelectedItem(layoutModel);
+    if (layout instanceof ComboItemListener<?> itemListener) {
+      itemListener.setSelectedItem(layoutModel);
     }
   }
 
   protected void removeComponents() {
     for (Component c : components) {
-      if (c instanceof SeriesViewerListener) {
-        eventManager.removeSeriesViewerListener((SeriesViewerListener) c);
+      if (c instanceof SeriesViewerListener viewerListener) {
+        eventManager.removeSeriesViewerListener(viewerListener);
       }
     }
     components.clear();
@@ -290,12 +309,11 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
       component = (JComponent) cl.newInstance();
     }
 
-    if (component instanceof SeriesViewerListener) {
-      eventManager.addSeriesViewerListener((SeriesViewerListener) component);
+    if (component instanceof SeriesViewerListener viewerListener) {
+      eventManager.addSeriesViewerListener(viewerListener);
     }
     return component;
   }
-  ;
 
   private boolean hasSeriesViewerConstructor(Class<?> clazz) {
     for (Constructor<?> constructor : clazz.getConstructors()) {
@@ -334,9 +352,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     removeComponents();
     GraphicSelectionListener glistener = null;
     final Map<LayoutConstraints, Component> elements = this.layoutModel.getConstraints();
-    Iterator<LayoutConstraints> enumVal = elements.keySet().iterator();
-    while (enumVal.hasNext()) {
-      LayoutConstraints e = enumVal.next();
+    for (LayoutConstraints e : elements.keySet()) {
       boolean typeView2d = isViewType(view2dClass, e.getType());
       if (typeView2d) {
         ViewCanvas<E> oldView;
@@ -353,13 +369,13 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
           oldView.getSeries().setOpen(true);
         }
       } else {
-        Component component = createUIcomponent(e.getType());
+        Component component = createComponent(e.getType());
         if (component != null) {
-          if (component instanceof JComponent) {
-            ((JComponent) component).setOpaque(true);
+          if (component instanceof JComponent jComponent) {
+            jComponent.setOpaque(true);
           }
-          if (component instanceof HistogramView) {
-            glistener = (HistogramView) component;
+          if (component instanceof HistogramView histogramView) {
+            glistener = histogramView;
           }
           components.add(component);
           elements.put(e, component);
@@ -401,10 +417,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     if (oldView2d != null && newView2d != null) {
       grid.removeAll();
       final Map<LayoutConstraints, Component> elements = this.layoutModel.getConstraints();
-      Iterator<Entry<LayoutConstraints, Component>> enumVal = elements.entrySet().iterator();
-      while (enumVal.hasNext()) {
-        Entry<LayoutConstraints, Component> element = enumVal.next();
-
+      for (Entry<LayoutConstraints, Component> element : elements.entrySet()) {
         if (element.getValue() == oldView2d.getJComponent()) {
           if (selectedImagePane == oldView2d) {
             selectedImagePane = newView2d;
@@ -496,7 +509,8 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     final Map<LayoutConstraints, Component> elements = layoutModel.getConstraints();
     // Prevent conflict with double click for stopping to draw a graphic (like polyline)
 
-    List<DragGraphic> selGraphics = defaultView2d.getGraphicManager().getSelectedDragableGraphics();
+    List<DragGraphic> selGraphics =
+        defaultView2d.getGraphicManager().getSelectedDraggableGraphics();
 
     // Check if there is at least one graphic not complete (numer of pts == UNDEFINED)
     if (selGraphics.stream().anyMatch(g -> Objects.equals(g.getPtsNumber(), Graphic.UNDEFINED))) {
@@ -527,9 +541,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     grid.removeAll();
     if (detachedWindow || fullscreenDialog == null) {
       remove(grid);
-      Iterator<Entry<LayoutConstraints, Component>> enumVal = elements.entrySet().iterator();
-      while (enumVal.hasNext()) {
-        Entry<LayoutConstraints, Component> entry = enumVal.next();
+      for (Entry<LayoutConstraints, Component> entry : elements.entrySet()) {
         if (entry.getValue().equals(defaultView2d.getJComponent())) {
           GridBagConstraints c = entry.getKey().copy();
           c.weightx = 1.0;
@@ -571,9 +583,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
       }
 
     } else {
-      Iterator<Entry<LayoutConstraints, Component>> enumVal = elements.entrySet().iterator();
-      while (enumVal.hasNext()) {
-        Entry<LayoutConstraints, Component> entry = enumVal.next();
+      for (Entry<LayoutConstraints, Component> entry : elements.entrySet()) {
         grid.add(entry.getValue(), entry.getKey());
       }
       for (ViewCanvas<E> v : view2ds) {
@@ -647,7 +657,6 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     eventManager.updateAllListeners(this, synchView);
   }
 
-  @SuppressWarnings("unchecked")
   public void updateTileOffset() {
     if (SynchData.Mode.TILE.equals(synchView.getSynchData().getMode())
         && selectedImagePane != null) {
@@ -665,6 +674,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
         }
       }
       if (series != null) {
+        @SuppressWarnings("unchecked")
         int limit =
             series.size((Filter<E>) selectedView.getActionValue(ActionW.FILTERED_SERIES.cmd()));
         for (int i = 0; i < view2ds.size(); i++) {
@@ -688,7 +698,7 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
     if (mouseActions == null) {
       for (ViewCanvas<E> v : view2ds) {
         v.disableMouseAndKeyListener();
-        // Let the possibility to get the focus
+        // Let the possibility get the focus
         v.iniDefaultMouseListener();
       }
     } else {
@@ -703,28 +713,90 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
       return VIEWS_1x1;
     }
     ActionState layout = eventManager.getAction(ActionW.LAYOUT);
-    if (layout instanceof ComboItemListener) {
-      Object[] list = ((ComboItemListener) layout).getAllItem();
+    if (layout instanceof ComboItemListener<?> comboItemListener) {
+      Object[] list = comboItemListener.getAllItem();
+      GridBagLayoutModel bestModel = VIEWS_2x2;
+      int diff = Integer.MAX_VALUE;
+      int diffLayout = Integer.MAX_VALUE;
       for (Object m : list) {
-        if (m instanceof GridBagLayoutModel) {
-          if (getViewTypeNumber((GridBagLayoutModel) m, view2dClass) >= size) {
-            return (GridBagLayoutModel) m;
+        if (m instanceof GridBagLayoutModel model) {
+          int layoutSize = getViewTypeNumber(model, view2dClass);
+          int layoutDiff = Math.abs(layoutSize - size);
+          if (layoutSize >= size && layoutDiff <= diff) {
+            if (layoutDiff == diff) {
+              Dimension dim = model.getGridSize();
+              if (Math.abs(dim.width - dim.height) < diffLayout) {
+                diffLayout = Math.abs(dim.width - dim.height);
+              } else {
+                continue;
+              }
+            }
+            diff = layoutDiff;
+            bestModel = model;
           }
         }
       }
+      return bestModel;
     }
 
     return VIEWS_2x2;
   }
 
+  public static GridBagLayoutModel getBestDefaultViewLayout(ActionState layout, int size) {
+    if (size <= 1) {
+      return VIEWS_1x1;
+    }
+    if (layout instanceof ComboItemListener<?> comboItemListener) {
+      Object[] list = comboItemListener.getAllItem();
+      GridBagLayoutModel bestModel = VIEWS_2x2;
+      int diffNumber = Integer.MAX_VALUE;
+      int diffLayout = Integer.MAX_VALUE;
+      for (Object m : list) {
+        if (m instanceof GridBagLayoutModel model) {
+          int layoutSize = getViewTypeNumber(model);
+          int dn = Math.abs(layoutSize - size);
+          if (layoutSize >= size && dn <= diffNumber) {
+            Dimension dim = model.getGridSize();
+            if (dn == diffNumber) {
+              int dwh = Math.abs(dim.width - dim.height);
+              if (dwh < diffLayout) {
+                diffLayout = dwh;
+              } else if (dwh == diffLayout && dim.width > dim.height) {
+                diffLayout = dwh;
+              } else {
+                continue;
+              }
+            }
+            diffNumber = dn;
+            bestModel = model;
+          }
+        }
+      }
+      return bestModel;
+    }
+    return VIEWS_2x2;
+  }
+
+  public static int getViewTypeNumber(GridBagLayoutModel layout) {
+    int val = 0;
+    if (layout != null) {
+      for (LayoutConstraints layoutConstraints : layout.getConstraints().keySet()) {
+        if (layoutConstraints.getColor() == null) {
+          val++;
+        }
+      }
+    }
+    return val;
+  }
+
   public GridBagLayoutModel getViewLayout(String title) {
     if (title != null) {
       ActionState layout = eventManager.getAction(ActionW.LAYOUT);
-      if (layout instanceof ComboItemListener) {
-        Object[] list = ((ComboItemListener) layout).getAllItem();
+      if (layout instanceof ComboItemListener<?> comboItemListener) {
+        Object[] list = comboItemListener.getAllItem();
         for (Object m : list) {
-          if (m instanceof GridBagLayoutModel && title.equals(((GridBagLayoutModel) m).getId())) {
-            return (GridBagLayoutModel) m;
+          if (m instanceof GridBagLayoutModel layoutModel && title.equals(layoutModel.getId())) {
+            return layoutModel;
           }
         }
       }
@@ -956,10 +1028,8 @@ public abstract class ImageViewerPlugin<E extends ImageElement> extends ViewerPl
 
     private int getCursor(MouseEvent me) {
       Point p = me.getPoint();
-      Iterator<Entry<LayoutConstraints, Component>> enumVal =
-          ImageViewerPlugin.this.layoutModel.getConstraints().entrySet().iterator();
-      while (enumVal.hasNext()) {
-        Entry<LayoutConstraints, Component> entry = enumVal.next();
+      for (Entry<LayoutConstraints, Component> entry :
+          ImageViewerPlugin.this.layoutModel.getConstraints().entrySet()) {
         Component c = entry.getValue();
         if (c != null) {
           Rectangle rect = c.getBounds();

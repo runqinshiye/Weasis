@@ -53,7 +53,7 @@ public class MprView extends View2d {
      * Get the radiologist way to see stack (means in axial, the first image is from feet and last image is in the
      * head direction) This option may not be changed. Sorting stack must be disabled from menu in UI.
      */
-    actionsInView.put(ActionW.SORTSTACK.cmd(), SortSeriesStack.slicePosition);
+    actionsInView.put(ActionW.SORT_STACK.cmd(), SortSeriesStack.slicePosition);
 
     // Propagate the preset
     OpManager disOp = getDisplayOpManager();
@@ -71,22 +71,17 @@ public class MprView extends View2d {
   }
 
   @Override
-  protected void setImage(DicomImageElement img) {
-    super.setImage(img);
-  }
-
-  @Override
-  protected JPopupMenu buildContexMenu(final MouseEvent evt) {
-    ActionState action = eventManager.getAction(ActionW.SORTSTACK);
+  protected JPopupMenu buildContextMenu(final MouseEvent evt) {
+    ActionState action = eventManager.getAction(ActionW.SORT_STACK);
     if (action != null && action.isActionEnabled()) {
       // Force to disable sort stack menu
       action.enableAction(false);
-      JPopupMenu ctx = super.buildContexMenu(evt);
+      JPopupMenu ctx = super.buildContextMenu(evt);
       action.enableAction(true);
       return ctx;
     }
 
-    return super.buildContexMenu(evt);
+    return super.buildContextMenu(evt);
   }
 
   @Override
@@ -118,11 +113,11 @@ public class MprView extends View2d {
     super.drawOnTop(g2d);
     final JProgressBar bar = progressBar;
     if (bar != null && bar.isVisible()) {
-      int shiftx = getWidth() / 2 - progressBar.getWidth() / 2;
-      int shifty = getHeight() / 2 - progressBar.getHeight() / 2;
-      g2d.translate(shiftx, shifty);
+      int shiftX = getWidth() / 2 - progressBar.getWidth() / 2;
+      int shiftY = getHeight() / 2 - progressBar.getHeight() / 2;
+      g2d.translate(shiftX, shiftY);
       progressBar.paint(g2d);
-      g2d.translate(-shiftx, -shifty);
+      g2d.translate(-shiftX, -shiftY);
     }
   }
 

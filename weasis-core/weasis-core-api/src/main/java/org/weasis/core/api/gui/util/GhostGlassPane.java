@@ -19,7 +19,6 @@ import java.awt.Rectangle;
 import javax.swing.Icon;
 import javax.swing.JComponent;
 
-@SuppressWarnings("serial")
 public class GhostGlassPane extends JComponent {
 
   private static final AlphaComposite composite =
@@ -54,9 +53,7 @@ public class GhostGlassPane extends JComponent {
       }
     } else {
       Rectangle newClip = new Rectangle(location.x, location.y, width, height);
-      if (oldLocation != null) {
-        newClip.add(new Rectangle(oldLocation.x, oldLocation.y, width, height));
-      }
+      newClip.add(new Rectangle(oldLocation.x, oldLocation.y, width, height));
       repaint(newClip);
     }
   }

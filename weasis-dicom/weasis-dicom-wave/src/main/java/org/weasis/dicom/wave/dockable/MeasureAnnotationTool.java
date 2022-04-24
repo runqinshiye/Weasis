@@ -12,7 +12,6 @@ package org.weasis.dicom.wave.dockable;
 import bibliothek.gui.dock.common.CLocation;
 import bibliothek.gui.dock.common.mode.ExtendedMode;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -22,12 +21,10 @@ import java.util.Optional;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
-import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableModel;
 import org.dcm4che3.data.Attributes;
@@ -35,15 +32,17 @@ import org.dcm4che3.data.Sequence;
 import org.dcm4che3.data.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.weasis.core.api.gui.util.TableHeaderRenderer;
+import org.weasis.core.api.gui.Insertable;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.media.data.Series;
 import org.weasis.core.api.media.data.TagW;
-import org.weasis.core.api.util.FontTools;
+import org.weasis.core.api.util.FontItem;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.docking.PluginTool;
 import org.weasis.core.ui.editor.SeriesViewerEvent;
 import org.weasis.core.ui.editor.SeriesViewerEvent.EVENT;
 import org.weasis.core.ui.editor.SeriesViewerListener;
-import org.weasis.core.ui.editor.image.dockable.MeasureTool;
 import org.weasis.core.ui.util.SimpleTableModel;
 import org.weasis.core.ui.util.TableColumnAdjuster;
 import org.weasis.core.util.StringUtil;
@@ -54,28 +53,29 @@ import org.weasis.dicom.explorer.DicomModel;
 import org.weasis.dicom.wave.Messages;
 
 public class MeasureAnnotationTool extends PluginTool implements SeriesViewerListener {
-  private static final long serialVersionUID = 1117961156637401550L;
+
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasureAnnotationTool.class);
 
   public static final String BUTTON_NAME = "Measurements"; // NON-NLS
 
   private final JScrollPane rootPane;
   private final JPanel tableMarkerContainer = new JPanel();
-  private JTable jtableMarker;
+  private JTable tableMarker;
 
   private final JPanel tableTagContainer = new JPanel();
-  private JTable jtableTag;
+  private JTable tableTag;
 
   public MeasureAnnotationTool() {
     super(
-        BUTTON_NAME, BUTTON_NAME, POSITION.EAST, ExtendedMode.NORMALIZED, PluginTool.Type.TOOL, 30);
+        BUTTON_NAME, BUTTON_NAME, POSITION.EAST, ExtendedMode.NORMALIZED, Insertable.Type.TOOL, 30);
     this.rootPane = new JScrollPane();
-    dockable.setTitleIcon(new ImageIcon(MeasureTool.class.getResource("/icon/16x16/measure.png")));
-    setDockableWidth(300);
+    dockable.setTitleIcon(ResourceUtil.getIcon(ActionIcon.MEASURE));
+    rootPane.setBorder(BorderFactory.createEmptyBorder()); // remove default line
+    setDockableWidth(280);
     jbInit();
   }
 
-  private final void jbInit() {
+  private void jbInit() {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
     add(getMarkerPanel());
     add(getAnnotationsPanel());
@@ -89,24 +89,17 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
     transform.setBorder(
         BorderFactory.createCompoundBorder(
             BorderFactory.createEmptyBorder(10, 3, 0, 3),
-            new TitledBorder(
-                null,
-                Messages.getString("annotations"),
-                TitledBorder.DEFAULT_JUSTIFICATION,
-                TitledBorder.DEFAULT_POSITION,
-                FontTools.getFont12Bold(),
-                Color.GRAY)));
+            GuiUtils.getTitledBorder(Messages.getString("annotations"))));
 
     JPanel panel1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     transform.add(panel1);
     transform.add(Box.createVerticalStrut(5));
-    jtableTag =
+    tableTag =
         createMultipleRenderingTable(new SimpleTableModel(new String[] {}, new Object[][] {}));
-    jtableTag.setFont(FontTools.getFont10());
+    tableTag.setFont(FontItem.SMALL.getFont());
 
-    jtableTag.getTableHeader().setReorderingAllowed(false);
-    tableTagContainer.setBorder(BorderFactory.createEtchedBorder());
-    tableTagContainer.setPreferredSize(new Dimension(50, 80));
+    tableTag.getTableHeader().setReorderingAllowed(false);
+    tableTagContainer.setPreferredSize(GuiUtils.getDimension(50, 80));
     tableTagContainer.setLayout(new BorderLayout());
     transform.add(tableTagContainer);
 
@@ -121,24 +114,17 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
     transform.setBorder(
         BorderFactory.createCompoundBorder(
             BorderFactory.createEmptyBorder(10, 3, 0, 3),
-            new TitledBorder(
-                null,
-                Messages.getString("markers"),
-                TitledBorder.DEFAULT_JUSTIFICATION,
-                TitledBorder.DEFAULT_POSITION,
-                FontTools.getFont12Bold(),
-                Color.GRAY)));
+            GuiUtils.getTitledBorder(Messages.getString("markers"))));
 
     JPanel panel1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     transform.add(panel1);
     transform.add(Box.createVerticalStrut(5));
-    jtableMarker =
+    tableMarker =
         createMultipleRenderingTable(new SimpleTableModel(new String[] {}, new Object[][] {}));
-    jtableMarker.setFont(FontTools.getFont10());
+    tableMarker.setFont(FontItem.SMALL.getFont());
 
-    jtableMarker.getTableHeader().setReorderingAllowed(false);
-    tableMarkerContainer.setBorder(BorderFactory.createEtchedBorder());
-    tableMarkerContainer.setPreferredSize(new Dimension(50, 80));
+    tableMarker.getTableHeader().setReorderingAllowed(false);
+    tableMarkerContainer.setPreferredSize(GuiUtils.getDimension(50, 80));
     tableMarkerContainer.setLayout(new BorderLayout());
     transform.add(tableMarkerContainer);
 
@@ -165,13 +151,11 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
 
   public static JTable createMultipleRenderingTable(TableModel model) {
     JTable table = new JTable(model);
+    table.getTableHeader().setReorderingAllowed(false);
+    table.setShowHorizontalLines(true);
+    table.setShowVerticalLines(true);
     table.getColumnModel().setColumnMargin(3);
     return table;
-  }
-
-  public static void createTableHeaders(JTable table) {
-    table.getColumnModel().getColumn(0).setHeaderRenderer(new TableHeaderRenderer());
-    table.getColumnModel().getColumn(1).setHeaderRenderer(new TableHeaderRenderer());
   }
 
   public void readAnnotations(Attributes attributes) {
@@ -192,20 +176,19 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
         Messages.getString("MeasureAnnotationTool.tag"),
         Messages.getString("MeasureAnnotationTool.value")
       };
-      jtableTag.setModel(new SimpleTableModel(headers, labels));
-      jtableTag.getColumnModel().getColumn(1).setCellRenderer(new TagRenderer());
-      createTableHeaders(jtableTag);
+      tableTag.setModel(new SimpleTableModel(headers, labels));
+      tableTag.getColumnModel().getColumn(1).setCellRenderer(new TagRenderer());
       int height =
-          (jtableTag.getRowHeight() + jtableTag.getRowMargin()) * jtableTag.getRowCount()
-              + jtableTag.getTableHeader().getHeight()
+          (tableTag.getRowHeight() + tableTag.getRowMargin()) * tableTag.getRowCount()
+              + tableTag.getTableHeader().getHeight()
               + 5;
       tableTagContainer.setPreferredSize(
-          new Dimension(jtableTag.getColumnModel().getTotalColumnWidth(), height));
-      tableTagContainer.add(jtableTag.getTableHeader(), BorderLayout.PAGE_START);
-      tableTagContainer.add(jtableTag, BorderLayout.CENTER);
-      TableColumnAdjuster.pack(jtableTag);
+          new Dimension(tableTag.getColumnModel().getTotalColumnWidth(), height));
+      tableTagContainer.add(tableTag.getTableHeader(), BorderLayout.PAGE_START);
+      tableTagContainer.add(tableTag, BorderLayout.CENTER);
+      TableColumnAdjuster.pack(tableTag);
     } else {
-      tableTagContainer.setPreferredSize(new Dimension(50, 50));
+      tableTagContainer.setPreferredSize(GuiUtils.getDimension(50, 50));
     }
     tableTagContainer.revalidate();
     tableTagContainer.repaint();
@@ -224,20 +207,19 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
         Messages.getString("MeasureAnnotationTool.tag"),
         Messages.getString("MeasureAnnotationTool.value")
       };
-      jtableMarker.setModel(new SimpleTableModel(headers, labels));
-      jtableMarker.getColumnModel().getColumn(1).setCellRenderer(new TagRenderer());
-      createTableHeaders(jtableMarker);
+      tableMarker.setModel(new SimpleTableModel(headers, labels));
+      tableMarker.getColumnModel().getColumn(1).setCellRenderer(new TagRenderer());
       int height =
-          (jtableMarker.getRowHeight() + jtableMarker.getRowMargin()) * jtableMarker.getRowCount()
-              + jtableMarker.getTableHeader().getHeight()
+          (tableMarker.getRowHeight() + tableMarker.getRowMargin()) * tableMarker.getRowCount()
+              + tableMarker.getTableHeader().getHeight()
               + 5;
       tableMarkerContainer.setPreferredSize(
-          new Dimension(jtableMarker.getColumnModel().getTotalColumnWidth(), height));
-      tableMarkerContainer.add(jtableMarker.getTableHeader(), BorderLayout.PAGE_START);
-      tableMarkerContainer.add(jtableMarker, BorderLayout.CENTER);
-      TableColumnAdjuster.pack(jtableMarker);
+          new Dimension(tableMarker.getColumnModel().getTotalColumnWidth(), height));
+      tableMarkerContainer.add(tableMarker.getTableHeader(), BorderLayout.PAGE_START);
+      tableMarkerContainer.add(tableMarker, BorderLayout.CENTER);
+      TableColumnAdjuster.pack(tableMarker);
     } else {
-      tableMarkerContainer.setPreferredSize(new Dimension(50, 50));
+      tableMarkerContainer.setPreferredSize(GuiUtils.getDimension(50, 50));
     }
     tableMarkerContainer.revalidate();
     tableMarkerContainer.repaint();
@@ -245,8 +227,8 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
 
   public static int getNumberOfMeasures(boolean[] select) {
     int k = 0;
-    for (int i = 0; i < select.length; i++) {
-      if (select[i]) {
+    for (boolean b : select) {
+      if (b) {
         k++;
       }
     }
@@ -257,9 +239,7 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
 
     Sequence ctxSeq = attributes.getSequence(Tag.AcquisitionContextSequence);
     if (ctxSeq != null) {
-      for (int i = 0; i < ctxSeq.size(); i++) {
-        Attributes item = ctxSeq.get(i);
-
+      for (Attributes item : ctxSeq) {
         try {
           String value = "";
           if ("NUMERIC".equalsIgnoreCase(item.getString(Tag.ValueType))) {
@@ -341,9 +321,7 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
   private void readWaveformAnnotations(Attributes attributes, List<Object[]> list) {
     Sequence anSeq = attributes.getSequence(Tag.WaveformAnnotationSequence);
     if (anSeq != null) {
-      for (int i = 0; i < anSeq.size(); i++) {
-        Attributes item = anSeq.get(i);
-
+      for (Attributes item : anSeq) {
         try {
           String text = item.getString(Tag.UnformattedTextValue);
           if (StringUtil.hasText(text)) {
@@ -383,7 +361,7 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
 
   public void setSeries(Series<?> series) {
     if (series != null) {
-      // Should have only one object by series (if more, they are split in several sub-series in
+      // Should have only one object by series (if more, they are split in several subseries in
       // dicomModel)
       DicomSpecialElement s = DicomModel.getFirstSpecialElement(series, DicomSpecialElement.class);
       if (s != null) {
@@ -395,7 +373,7 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
   public static class TagRenderer extends DefaultTableCellRenderer {
 
     public TagRenderer() {
-      setFont(FontTools.getFont11()); // Default size
+      setFont(FontItem.SMALL.getFont());
     }
 
     @Override
@@ -406,8 +384,8 @@ public class MeasureAnnotationTool extends PluginTool implements SeriesViewerLis
 
       TableModel model = table.getModel();
       Object tag = model.getValueAt(row, 0);
-      if (tag instanceof TagW) {
-        setValue(((TagW) tag).getFormattedTagValue(value, null));
+      if (tag instanceof TagW tagW) {
+        setValue(tagW.getFormattedTagValue(value, null));
       }
       return val;
     }

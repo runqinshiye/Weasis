@@ -21,10 +21,9 @@ import javax.swing.RootPaneContainer;
 import javax.swing.Timer;
 import org.jdesktop.jxlayer.JXLayer;
 import org.jdesktop.jxlayer.plaf.AbstractLayerUI;
-import org.weasis.core.api.gui.util.JMVUtils;
+import org.weasis.core.api.gui.util.GuiUtils;
 import org.weasis.core.api.gui.util.WinUtil;
 
-@SuppressWarnings("serial")
 public class ColorLayerUI extends AbstractLayerUI<JComponent> {
 
   protected static final float MAX_ALPHA = 0.75f;
@@ -42,8 +41,8 @@ public class ColorLayerUI extends AbstractLayerUI<JComponent> {
   }
 
   public static ColorLayerUI createTransparentLayerUI(RootPaneContainer parent) {
-    if (parent != null) {
-      JXLayer<JComponent> layer = new JXLayer(parent.getContentPane());
+    if (parent != null && parent.getContentPane() instanceof JComponent jComponent) {
+      JXLayer<JComponent> layer = new JXLayer<>(jComponent);
       final ColorLayerUI ui = new ColorLayerUI(layer, parent);
       layer.setUI(ui);
       parent.setContentPane(layer);
@@ -63,7 +62,7 @@ public class ColorLayerUI extends AbstractLayerUI<JComponent> {
   public static void showCenterScreen(Window window, ColorLayerUI layer) {
     Container container = getContentPane(layer);
     if (container == null) {
-      JMVUtils.showCenterScreen(window);
+      GuiUtils.showCenterScreen(window);
     } else {
       Dimension sSize = container.getSize();
       Dimension wSize = window.getSize();
@@ -116,10 +115,6 @@ public class ColorLayerUI extends AbstractLayerUI<JComponent> {
         });
     this.xlayer.repaint();
     timer.start();
-  }
-
-  public JXLayer<JComponent> getXlayer() {
-    return xlayer;
   }
 
   public static Container getContentPane(ColorLayerUI layer) {

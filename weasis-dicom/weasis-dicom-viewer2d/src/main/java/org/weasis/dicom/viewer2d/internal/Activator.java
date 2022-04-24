@@ -9,7 +9,7 @@
  */
 package org.weasis.dicom.viewer2d.internal;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
@@ -46,19 +46,17 @@ import org.weasis.dicom.viewer2d.EventManager;
 import org.weasis.dicom.viewer2d.View2dContainer;
 import org.weasis.dicom.viewer2d.mpr.MPRContainer;
 
-@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}")
+@Header(name = Constants.BUNDLE_ACTIVATOR, value = "${@class}") // NON-NLS
 public class Activator implements BundleActivator, ServiceListener {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Activator.class);
 
   @Override
-  public void start(final BundleContext bundleContext) throws Exception {
+  public void start(final BundleContext bundleContext) {
 
     Dictionary<String, Object> dict = new Hashtable<>();
     dict.put(CommandProcessor.COMMAND_SCOPE, "dcmview2d"); // NON-NLS
-    dict.put(
-        CommandProcessor.COMMAND_FUNCTION,
-        EventManager.functions.toArray(new String[EventManager.functions.size()]));
+    dict.put(CommandProcessor.COMMAND_FUNCTION, EventManager.functions.toArray(new String[0]));
     bundleContext.registerService(EventManager.class.getName(), EventManager.getInstance(), dict);
 
     registerExistingComponents(bundleContext);
@@ -74,7 +72,7 @@ public class Activator implements BundleActivator, ServiceListener {
   }
 
   @Override
-  public void stop(BundleContext bundleContext) throws Exception {
+  public void stop(BundleContext bundleContext) {
     // Save preferences
     ImageViewerPlugin<DicomImageElement> container =
         EventManager.getInstance().getSelectedView2dContainer();
@@ -90,7 +88,7 @@ public class Activator implements BundleActivator, ServiceListener {
 
   @Override
   public synchronized void serviceChanged(final ServiceEvent event) {
-    // Tools and Toolbars (with non immediate instance) must be instantiate in the EDT
+    // Tools and Toolbars (with non-immediate instance) must be instantiated in the EDT
     GuiExecutor.instance().execute(() -> dataExplorerChanged(event));
   }
 
@@ -98,12 +96,11 @@ public class Activator implements BundleActivator, ServiceListener {
 
     final ServiceReference<?> mref = event.getServiceReference();
     // The View2dContainer name should be referenced as a property in the provided service
-    if (Boolean.valueOf((String) mref.getProperty(View2dContainer.class.getName()))) {
+    if (Boolean.parseBoolean((String) mref.getProperty(View2dContainer.class.getName()))) {
       final BundleContext context =
           FrameworkUtil.getBundle(Activator.this.getClass()).getBundleContext();
       Object service = context.getService(mref);
-      if (service instanceof InsertableFactory) {
-        InsertableFactory factory = (InsertableFactory) service;
+      if (service instanceof InsertableFactory factory) {
         if (event.getType() == ServiceEvent.REGISTERED) {
           registerComponent(factory);
         } else if (event.getType() == ServiceEvent.UNREGISTERING) {
@@ -122,9 +119,9 @@ public class Activator implements BundleActivator, ServiceListener {
       for (ServiceReference<InsertableFactory> serviceReference :
           bundleContext.getServiceReferences(InsertableFactory.class, null)) {
         // The View2dContainer name should be referenced as a property in the provided service
-        if (Boolean.valueOf(
+        if (Boolean.parseBoolean(
             (String) serviceReference.getProperty(View2dContainer.class.getName()))) {
-          // Instantiate UI components in EDT (necessary with Substance Theme)
+          // Instantiate UI components in EDT
           GuiExecutor.instance()
               .execute(() -> registerComponent(bundleContext.getService(serviceReference)));
         }
@@ -147,17 +144,15 @@ public class Activator implements BundleActivator, ServiceListener {
   }
 
   private static void registerToolBar(Insertable instance) {
-    if (instance instanceof Toolbar && !View2dContainer.TOOLBARS.contains(instance)) {
-      Toolbar bar = (Toolbar) instance;
+    if (instance instanceof Toolbar bar && !View2dContainer.TOOLBARS.contains(instance)) {
       View2dContainer.TOOLBARS.add(bar);
-      updateViewerUI(ObservableEvent.BasicAction.UPDTATE_TOOLBARS);
+      updateViewerUI(ObservableEvent.BasicAction.UPDATE_TOOLBARS);
       LOGGER.debug("Add Toolbar [{}] for {}", bar, View2dContainer.class.getName());
     }
   }
 
   private static void registerTool(Insertable instance) {
-    if (instance instanceof DockableTool && !View2dContainer.TOOLS.contains(instance)) {
-      DockableTool tool = (DockableTool) instance;
+    if (instance instanceof DockableTool tool && !View2dContainer.TOOLS.contains(instance)) {
       View2dContainer.TOOLS.add(tool);
       ImageViewerPlugin<DicomImageElement> view =
           EventManager.getInstance().getSelectedView2dContainer();
@@ -176,7 +171,7 @@ public class Activator implements BundleActivator, ServiceListener {
         if (factory.isComponentCreatedByThisFactory(b)) {
           Preferences prefs = BundlePreferences.getDefaultPreferences(context);
           if (prefs != null) {
-            List<Insertable> list = Arrays.asList(b);
+            List<Insertable> list = Collections.singletonList(b);
             InsertableUtil.savePreferences(
                 list,
                 prefs.node(View2dContainer.class.getSimpleName().toLowerCase()),
@@ -190,7 +185,7 @@ public class Activator implements BundleActivator, ServiceListener {
       }
     }
     if (updateGUI) {
-      updateViewerUI(ObservableEvent.BasicAction.UPDTATE_TOOLBARS);
+      updateViewerUI(ObservableEvent.BasicAction.UPDATE_TOOLBARS);
     }
   }
 
@@ -203,7 +198,7 @@ public class Activator implements BundleActivator, ServiceListener {
           if (prefs != null) {
             Preferences containerNode =
                 prefs.node(View2dContainer.class.getSimpleName().toLowerCase());
-            InsertableUtil.savePreferences(Arrays.asList(t), containerNode, Type.TOOL);
+            InsertableUtil.savePreferences(Collections.singletonList(t), containerNode, Type.TOOL);
           }
 
           View2dContainer.TOOLS.remove(i);

@@ -18,9 +18,10 @@ import java.awt.geom.AffineTransform;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.Icon;
-import javax.swing.ImageIcon;
 import org.weasis.core.api.image.util.MeasurableLayer;
 import org.weasis.core.api.image.util.Unit;
+import org.weasis.core.api.util.ResourceUtil;
+import org.weasis.core.api.util.ResourceUtil.ActionIcon;
 import org.weasis.core.ui.Messages;
 import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.model.utils.Draggable;
@@ -34,10 +35,8 @@ import org.weasis.core.ui.model.utils.imp.SelectedDragSequence;
  * @author Benoit Jacquemoud
  */
 public class SelectGraphic extends RectangleGraphic {
-  private static final long serialVersionUID = -7680605225823046153L;
 
-  public static final Icon ICON =
-      new ImageIcon(SelectGraphic.class.getResource("/icon/22x22/draw-selection.png"));
+  public static final Icon ICON = ResourceUtil.getIcon(ActionIcon.DRAW_SELECTION);
 
   public SelectGraphic() {
     super();
@@ -72,11 +71,12 @@ public class SelectGraphic extends RectangleGraphic {
     float[] dash = {5f};
     Shape transformedShape = transform == null ? shape : transform.createTransformedShape(shape);
 
-    g2d.setStroke(new BasicStroke(1.0F, 0, 0, 5F, dash, 0));
+    g2d.setStroke(new BasicStroke(1.0F, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 5F, dash, 0));
     g2d.draw(transformedShape);
 
     g2d.setColor(Color.black);
-    g2d.setStroke(new BasicStroke(1.0F, 0, 0, 5F, dash, 5F));
+    g2d.setStroke(
+        new BasicStroke(1.0F, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 5F, dash, 5F));
     g2d.draw(transformedShape);
 
     g2d.setColor(oldColor);

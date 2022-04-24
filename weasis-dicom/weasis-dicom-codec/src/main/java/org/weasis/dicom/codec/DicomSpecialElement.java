@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.dcm4che3.data.Attributes;
-import org.dcm4che3.data.Sequence;
 import org.dcm4che3.data.Tag;
 import org.dcm4che3.data.UID;
 import org.dcm4che3.io.DicomOutputStream;
@@ -32,13 +31,13 @@ import org.weasis.core.api.media.data.SeriesComparator;
 import org.weasis.core.util.StringUtil;
 import org.weasis.core.util.StringUtil.Suffix;
 import org.weasis.dicom.codec.macro.SOPInstanceReferenceAndMAC;
-import org.weasis.dicom.codec.utils.DicomMediaUtils;
+import org.weasis.dicom.param.AttributeEditor;
 
-public class DicomSpecialElement extends MediaElement {
+public class DicomSpecialElement extends MediaElement implements DicomElement {
   private static final Logger LOGGER = LoggerFactory.getLogger(DicomSpecialElement.class);
 
   public static final SeriesComparator<DicomSpecialElement> ORDER_BY_DESCRIPTION =
-      new SeriesComparator<DicomSpecialElement>() {
+      new SeriesComparator<>() {
         @Override
         public int compare(DicomSpecialElement arg0, DicomSpecialElement arg1) {
           return String.CASE_INSENSITIVE_ORDER.compare(arg0.getLabel(), arg1.getLabel());
@@ -46,7 +45,7 @@ public class DicomSpecialElement extends MediaElement {
       };
 
   public static final SeriesComparator<DicomSpecialElement> ORDER_BY_DATE =
-      new SeriesComparator<DicomSpecialElement>() {
+      new SeriesComparator<>() {
 
         @Override
         public int compare(DicomSpecialElement m1, DicomSpecialElement m2) {
@@ -144,75 +143,43 @@ public class DicomSpecialElement extends MediaElement {
   }
 
   @Override
-  public boolean saveToFile(File output) {
+  public Attributes saveToFile(File output, DicomExportParameters params) {
+    return saveToFile(this, output, params.dicomEditors());
+  }
+
+  public static Attributes saveToFile(
+      DicomElement dicom, File output, List<AttributeEditor> dicomEditors) {
+    DcmMediaReader reader = dicom.getMediaReader();
+    boolean hasTransformation = dicomEditors != null && !dicomEditors.isEmpty();
     // When object is in memory, write it
-    if (getMediaReader().isEditableDicom()) {
-      Attributes dcm = getMediaReader().getDicomObject();
+    if (reader.isEditableDicom() || hasTransformation) {
+      Attributes dcm = reader.getDicomObject();
       if (dcm != null) {
         try (DicomOutputStream out = new DicomOutputStream(output)) {
-          out.writeDataset(dcm.createFileMetaInformation(UID.ImplicitVRLittleEndian), dcm);
-          return true;
+          Attributes dataSet;
+          if (hasTransformation) {
+            dataSet = new Attributes(dcm);
+            dicomEditors.forEach(e -> e.apply(dataSet, null));
+          } else {
+            dataSet = dcm;
+          }
+          String dstTsuid = reader.getDicomMetaData().getTransferSyntaxUID();
+          if (UID.ImplicitVRLittleEndian.equals(dstTsuid)
+              || UID.ExplicitVRBigEndian.equals(dstTsuid)) {
+            dstTsuid = UID.ImplicitVRLittleEndian;
+          }
+          out.writeDataset(dataSet.createFileMetaInformation(dstTsuid), dataSet);
+          return dataSet;
         } catch (IOException e) {
-          LOGGER.error("Cannot write dicom ({}) into {}", getLabel(), output, e);
+          LOGGER.error(
+              "Cannot write dicom ({}) into {}", dcm.getString(Tag.SOPInstanceUID), output, e);
         }
       }
+    } else {
+      MediaElement.saveToFile(reader, output);
+      return new Attributes();
     }
-    return super.saveToFile(output);
-  }
-
-  public static final List<DicomSpecialElement> getPRfromSopUID(
-      String seriesUID,
-      String sopUID,
-      Integer frameNumber,
-      List<DicomSpecialElement> studyElements) {
-    List<DicomSpecialElement> filteredList = new ArrayList<>();
-    if (studyElements != null && seriesUID != null && sopUID != null) {
-      for (DicomSpecialElement dicom : studyElements) {
-        if (dicom != null && "PR".equals(TagD.getTagValue(dicom, Tag.Modality))) {
-          Attributes[] seq =
-              TagD.getTagValue(dicom, Tag.ReferencedSeriesSequence, Attributes[].class);
-          if (isSopuidInReferencedSeriesSequence(seq, seriesUID, sopUID, frameNumber)) {
-            filteredList.add(dicom);
-          }
-        }
-      }
-    }
-    return filteredList;
-  }
-
-  public static boolean isSopuidInReferencedSeriesSequence(
-      Attributes[] seq, String seriesUID, String sopUID, Integer dicomFrameNumber) {
-    if (seq != null) {
-      for (Attributes item : seq) {
-        if (seriesUID.equals(item.getString(Tag.SeriesInstanceUID))) {
-          Sequence refImgs = item.getSequence(Tag.ReferencedImageSequence);
-          if (refImgs == null || refImgs.isEmpty()) {
-            return true;
-          }
-
-          for (Attributes sop : refImgs) {
-            if (sopUID.equals(sop.getString(Tag.ReferencedSOPInstanceUID))) {
-              if (dicomFrameNumber == null) {
-                return true;
-              }
-              int[] seqFrame =
-                  DicomMediaUtils.getIntAyrrayFromDicomElement(
-                      sop, Tag.ReferencedFrameNumber, null);
-              if (seqFrame == null || seqFrame.length == 0) {
-                return true;
-              } else {
-                for (int k : seqFrame) {
-                  if (k == dicomFrameNumber) {
-                    return true;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return false;
+    return null;
   }
 
   public static boolean isSopuidInReferencedSeriesSequence(
@@ -225,7 +192,7 @@ public class DicomSpecialElement extends MediaElement {
           return true;
         } else {
           for (int k : seqFrame) {
-            if (k == dicomFrameNumber.intValue()) {
+            if (k == dicomFrameNumber) {
               return true;
             }
           }
@@ -239,15 +206,15 @@ public class DicomSpecialElement extends MediaElement {
   }
 
   /**
-   * @param seriesUID
-   * @param specialElements
+   * @param seriesUID the Series Instance UID
+   * @param specialElements the list of DicomSpecialElement
    * @return the KOSpecialElement collection for the given parameters, if the referenced seriesUID
    *     is null all the KOSpecialElement from specialElements collection are returned. In any case
    *     all the KOSpecialElement that are writable will be added to the returned collection
-   *     whatever is the seriesUID. These KO are part of the new created ones by users of the
+   *     whatever is the seriesUID. These KO are part of the new created one's by users of the
    *     application
    */
-  public static final Collection<KOSpecialElement> getKoSpecialElements(
+  public static Collection<KOSpecialElement> getKoSpecialElements(
       Collection<DicomSpecialElement> specialElements, String seriesUID) {
 
     if (specialElements == null) {
@@ -258,9 +225,7 @@ public class DicomSpecialElement extends MediaElement {
 
     for (DicomSpecialElement element : specialElements) {
 
-      if (element instanceof KOSpecialElement) {
-        KOSpecialElement koElement = (KOSpecialElement) element;
-
+      if (element instanceof KOSpecialElement koElement) {
         Set<String> referencedSeriesInstanceUIDSet = koElement.getReferencedSeriesInstanceUIDSet();
 
         if (seriesUID == null
@@ -277,7 +242,7 @@ public class DicomSpecialElement extends MediaElement {
     return koElementSet == null ? Collections.emptySet() : koElementSet;
   }
 
-  public static final Collection<RejectedKOSpecialElement> getRejectionKoSpecialElements(
+  public static Collection<RejectedKOSpecialElement> getRejectionKoSpecialElements(
       Collection<DicomSpecialElement> specialElements, String seriesUID) {
 
     if (specialElements == null) {
@@ -288,9 +253,7 @@ public class DicomSpecialElement extends MediaElement {
 
     for (DicomSpecialElement element : specialElements) {
 
-      if (element instanceof RejectedKOSpecialElement) {
-        RejectedKOSpecialElement koElement = (RejectedKOSpecialElement) element;
-
+      if (element instanceof RejectedKOSpecialElement koElement) {
         Set<String> referencedSeriesInstanceUIDSet = koElement.getReferencedSeriesInstanceUIDSet();
 
         if (seriesUID == null
@@ -307,7 +270,7 @@ public class DicomSpecialElement extends MediaElement {
     return koElementSet == null ? Collections.emptySet() : koElementSet;
   }
 
-  public static final RejectedKOSpecialElement getRejectionKoSpecialElement(
+  public static RejectedKOSpecialElement getRejectionKoSpecialElement(
       Collection<DicomSpecialElement> specialElements,
       String seriesUID,
       String sopUID,
@@ -319,31 +282,26 @@ public class DicomSpecialElement extends MediaElement {
     List<RejectedKOSpecialElement> koList = null;
 
     for (DicomSpecialElement element : specialElements) {
-      if (element instanceof RejectedKOSpecialElement) {
-        RejectedKOSpecialElement koElement = (RejectedKOSpecialElement) element;
-        if (isSopuidInReferencedSeriesSequence(
-            koElement.getReferencedSOPInstanceUIDObject(seriesUID), sopUID, dicomFrameNumber)) {
-          if (koList == null) {
-            koList = new ArrayList<>();
-          }
-          koList.add(koElement);
+      if (element instanceof RejectedKOSpecialElement koElement
+          && isSopuidInReferencedSeriesSequence(
+              koElement.getReferencedSOPInstanceUIDObject(seriesUID), sopUID, dicomFrameNumber)) {
+        if (koList == null) {
+          koList = new ArrayList<>();
         }
+        koList.add(koElement);
       }
     }
 
     if (koList != null) {
       // return the most recent Rejection Object
-      Collections.sort(koList, ORDER_BY_DATE);
+      koList.sort(ORDER_BY_DATE);
       return koList.get(0);
     }
     return null;
   }
 
-  public static final List<PRSpecialElement> getPRSpecialElements(
-      Collection<DicomSpecialElement> specialElements,
-      String seriesUID,
-      String sopUID,
-      Integer dicomFrameNumber) {
+  public static List<PRSpecialElement> getPRSpecialElements(
+      Collection<DicomSpecialElement> specialElements, DicomImageElement img) {
 
     if (specialElements == null) {
       return Collections.emptyList();
@@ -351,21 +309,16 @@ public class DicomSpecialElement extends MediaElement {
     List<PRSpecialElement> prList = null;
 
     for (DicomSpecialElement element : specialElements) {
-
-      if (element instanceof PRSpecialElement) {
-        PRSpecialElement prElement = (PRSpecialElement) element;
-        Attributes[] seq =
-            TagD.getTagValue(prElement, Tag.ReferencedSeriesSequence, Attributes[].class);
-        if (isSopuidInReferencedSeriesSequence(seq, seriesUID, sopUID, dicomFrameNumber)) {
-          if (prList == null) {
-            prList = new ArrayList<>();
-          }
-          prList.add(prElement);
+      if (element instanceof PRSpecialElement prElement
+          && PresentationStateReader.isImageApplicable(prElement, img)) {
+        if (prList == null) {
+          prList = new ArrayList<>();
         }
+        prList.add(prElement);
       }
     }
     if (prList != null) {
-      Collections.sort(prList, ORDER_BY_DATE);
+      prList.sort(ORDER_BY_DATE);
     }
     return prList == null ? Collections.emptyList() : prList;
   }

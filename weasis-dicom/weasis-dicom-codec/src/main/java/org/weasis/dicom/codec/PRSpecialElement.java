@@ -11,6 +11,8 @@ package org.weasis.dicom.codec;
 
 import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Tag;
+import org.dcm4che3.img.data.PrDicomObject;
+import org.weasis.core.api.media.data.TagW;
 
 public class PRSpecialElement extends DicomSpecialElement {
 
@@ -38,9 +40,11 @@ public class PRSpecialElement extends DicomSpecialElement {
     if (clabel == null) {
       super.initLabel();
     } else {
-      StringBuilder buf = new StringBuilder(getLabelPrefix());
-      buf.append(clabel);
-      label = buf.toString();
+      label = getLabelPrefix() + clabel;
     }
+  }
+
+  public PrDicomObject getPrDicomObject() {
+    return (PrDicomObject) getTagValue(TagW.PrDicomObject);
   }
 }

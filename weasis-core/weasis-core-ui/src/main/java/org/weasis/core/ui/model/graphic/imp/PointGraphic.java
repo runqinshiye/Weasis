@@ -23,7 +23,6 @@ import org.weasis.core.ui.model.utils.exceptions.InvalidShapeException;
 @XmlType(name = "point")
 @XmlRootElement(name = "point")
 public class PointGraphic extends AbstractGraphic {
-  private static final long serialVersionUID = 3485484151733273261L;
 
   static final Integer DEFAULT_POINT_SIZE = 1;
 
@@ -33,8 +32,8 @@ public class PointGraphic extends AbstractGraphic {
     super(1);
   }
 
-  public PointGraphic(PointGraphic pointGaphic) {
-    super(pointGaphic);
+  public PointGraphic(PointGraphic pointGraphic) {
+    super(pointGraphic);
   }
 
   @Override
@@ -44,8 +43,8 @@ public class PointGraphic extends AbstractGraphic {
 
   @Override
   protected void initCopy(Graphic graphic) {
-    if (graphic instanceof PointGraphic) {
-      setPointSize(((PointGraphic) graphic).getPointSize());
+    if (graphic instanceof PointGraphic pointGraphic) {
+      setPointSize(pointGraphic.getPointSize());
     }
   }
 

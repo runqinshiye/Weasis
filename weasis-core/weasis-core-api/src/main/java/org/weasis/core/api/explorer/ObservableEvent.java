@@ -13,17 +13,15 @@ import java.beans.PropertyChangeEvent;
 
 public class ObservableEvent extends PropertyChangeEvent {
 
-  private static final long serialVersionUID = 2727161739305072870L;
-
   public enum BasicAction {
     SELECT,
     ADD,
     REMOVE,
     UPDATE,
-    UDPATE_PARENT,
+    UPDATE_PARENT,
     NULL_SELECTION,
     UPDATE_TOOLS,
-    UPDTATE_TOOLBARS,
+    UPDATE_TOOLBARS,
     REGISTER,
     UNREGISTER,
     REPLACE,
