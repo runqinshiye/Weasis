@@ -147,17 +147,22 @@ under the License.
  <mirrors>
 <!-- 阿里云仓库 -->
 <mirror>
-<id>alimaven</id>
-<mirrorOf>central</mirrorOf>
-<name>aliyun maven</name>
-<url>https://maven.aliyun.com/nexus/content/repositories/central/</url>
+  <id>aliyunmaven</id>
+  <mirrorOf>*</mirrorOf>
+  <name>阿里云公共仓库</name>
+  <url>https://maven.aliyun.com/repository/public</url>
 </mirror>
-
 <mirror>
-<id>nexus-aliyun</id>
-<mirrorOf>central</mirrorOf>
-<name>Nexus aliyun</name>
-<url>http://maven.aliyun.com/nexus/content/groups/public</url>
+  <id>googlemaven</id>
+  <mirrorOf>*</mirrorOf>
+  <name>google公共仓库</name>
+  <url>https://maven.aliyun.com/repository/google</url>
+</mirror>
+<mirror>
+  <id>apachemaven</id>
+  <mirrorOf>*</mirrorOf>
+  <name>apache公共仓库</name>
+  <url>https://maven.aliyun.com/repository/apache-snapshots</url>
 </mirror>
 </mirrors>
 
