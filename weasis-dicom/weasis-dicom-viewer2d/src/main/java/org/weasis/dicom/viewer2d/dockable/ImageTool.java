@@ -53,10 +53,10 @@ public class ImageTool extends PluginTool {
     super(BUTTON_NAME, pluginName, Insertable.Type.TOOL, 20);
     dockable.setTitleIcon(ResourceUtil.getIcon(OtherIcon.IMAGE_EDIT));
     setDockableWidth(290);
-    jbInit();
+    init();
   }
 
-  private void jbInit() {
+  private void init() {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
     add(getWindowLevelPanel());
     add(getTransformPanel());
@@ -218,9 +218,9 @@ public class ImageTool extends PluginTool {
       transform.add(rotationSlider);
     }
     ActionState flipAction = EventManager.getInstance().getAction(ActionW.FLIP);
-    if (flipAction instanceof ToggleButtonListener sliderItem) {
+    if (flipAction instanceof ToggleButtonListener toggleButton) {
       JPanel pane = GuiUtils.getFlowLayoutPanel();
-      pane.add(sliderItem.createCheckBox(Messages.getString("View2dContainer.flip_h")));
+      pane.add(toggleButton.createCheckBox(Messages.getString("View2dContainer.flip_h")));
       transform.add(pane);
     }
     return transform;
