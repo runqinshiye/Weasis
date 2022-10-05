@@ -53,10 +53,10 @@ public class ImageTool extends PluginTool {
     super(BUTTON_NAME, pluginName, Insertable.Type.TOOL, 20);
     dockable.setTitleIcon(ResourceUtil.getIcon(OtherIcon.IMAGE_EDIT));
     setDockableWidth(290);
-    init();
+    jbInit();
   }
 
-  private void init() {
+  private void jbInit() {
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
     add(getWindowLevelPanel());
     add(getTransformPanel());

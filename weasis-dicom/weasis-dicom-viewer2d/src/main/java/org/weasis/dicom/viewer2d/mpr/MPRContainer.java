@@ -72,7 +72,7 @@ import org.weasis.dicom.codec.DicomImageElement;
 import org.weasis.dicom.codec.TagD;
 import org.weasis.dicom.codec.TagD.Level;
 import org.weasis.dicom.codec.geometry.ImageOrientation;
-import org.weasis.dicom.codec.geometry.ImageOrientation.Plan;
+import org.weasis.dicom.codec.geometry.ImageOrientation.Label;
 import org.weasis.dicom.explorer.DicomModel;
 import org.weasis.dicom.explorer.DicomViewerPlugin;
 import org.weasis.dicom.explorer.ExportToolBar;
@@ -115,20 +115,12 @@ public class MPRContainer extends DicomViewerPlugin implements PropertyChangeLis
 
   public static final List<SynchView> SYNCH_LIST = List.of(SynchView.NONE, defaultMpr);
 
-  public static final GridBagLayoutModel view1 =
-      new GridBagLayoutModel(new LinkedHashMap<>(3), "mpr", "MPR (col 1,2)");
-  protected static final GridBagLayoutModel view2 = VIEWS_2x2_f2.copy();
-  protected static final GridBagLayoutModel view3 = VIEWS_2_f1x2.copy();
-  public static final GridBagLayoutModel view4 =
-      new GridBagLayoutModel(new LinkedHashMap<>(3), "mpr", "MPR (row 2,1)");
-  protected static final GridBagLayoutModel view5 = VIEWS_1x3.copy();
+  public static final GridBagLayoutModel VIEWS_2x1_mpr =
+      new GridBagLayoutModel(
+          new LinkedHashMap<>(3), "mpr", Messages.getString("MPRContainer.title")); // NON-NLS
 
   static {
-    view2.setTitle("MPR (col 2,1)");
-    view3.setTitle("MPR (row 1,2)");
-    view5.setTitle("MPR (col 1,1,1)");
-
-    Map<LayoutConstraints, Component> constraints = view1.getConstraints();
+    Map<LayoutConstraints, Component> constraints = VIEWS_2x1_mpr.getConstraints();
     constraints.put(
         new LayoutConstraints(
             MprView.class.getName(),
@@ -164,47 +156,6 @@ public class MPRContainer extends DicomViewerPlugin implements PropertyChangeLis
             1,
             1,
             0.5,
-            0.5,
-            GridBagConstraints.CENTER,
-            GridBagConstraints.BOTH),
-        null);
-
-    Map<LayoutConstraints, Component> view4Constraints = view4.getConstraints();
-    view4Constraints.put(
-        new LayoutConstraints(
-            MprView.class.getName(),
-            0,
-            0,
-            0,
-            1,
-            1,
-            0.5,
-            0.5,
-            GridBagConstraints.CENTER,
-            GridBagConstraints.BOTH),
-        null);
-    view4Constraints.put(
-        new LayoutConstraints(
-            MprView.class.getName(),
-            1,
-            1,
-            0,
-            1,
-            1,
-            0.5,
-            0.5,
-            GridBagConstraints.CENTER,
-            GridBagConstraints.BOTH),
-        null);
-    view4Constraints.put(
-        new LayoutConstraints(
-            MprView.class.getName(),
-            2,
-            0,
-            1,
-            2,
-            1,
-            1.0,
             0.5,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH),
@@ -212,7 +163,7 @@ public class MPRContainer extends DicomViewerPlugin implements PropertyChangeLis
   }
 
   public static final List<GridBagLayoutModel> LAYOUT_LIST =
-      List.of(view1, view2, view3, view4, view5);
+      List.of(VIEWS_2x1_mpr, VIEWS_2x2_f2, VIEWS_2_f1x2, VIEWS_1x3);
 
   // Static tools shared by all the View2dContainer instances, tools are registered when a container
   // is selected
@@ -644,12 +595,15 @@ public class MPRContainer extends DicomViewerPlugin implements PropertyChangeLis
     if (s != null) {
       Object img = s.getMedia(MediaSeries.MEDIA_POSITION.MIDDLE, null, null);
       if (img instanceof DicomImageElement imageElement) {
-        Plan orientation = ImageOrientation.getPlan(imageElement);
-        if (orientation != null) {
+        double[] v = TagD.getTagValue(imageElement, Tag.ImageOrientationPatient, double[].class);
+        if (v != null && v.length == 6) {
+          Label orientation =
+              ImageOrientation.makeImageOrientationLabelFromImageOrientationPatient(
+                  v[0], v[1], v[2], v[3], v[4], v[5]);
           SliceOrientation sliceOrientation = SliceOrientation.AXIAL;
-          if (Plan.CORONAL.equals(orientation)) {
+          if (ImageOrientation.Label.CORONAL.equals(orientation)) {
             sliceOrientation = SliceOrientation.CORONAL;
-          } else if (Plan.SAGITTAL.equals(orientation)) {
+          } else if (ImageOrientation.Label.SAGITTAL.equals(orientation)) {
             sliceOrientation = SliceOrientation.SAGITTAL;
           }
           MprView view = getMprView(sliceOrientation);

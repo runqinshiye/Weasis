@@ -41,12 +41,12 @@ import org.weasis.core.ui.editor.image.ViewCanvas;
 import org.weasis.core.ui.model.utils.imp.DefaultUUID;
 import org.weasis.core.ui.pref.ViewSetting;
 import org.weasis.core.util.StringUtil;
+import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.lut.WlParams;
 
 public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultUUID
     implements LayerAnnotation {
 
-  protected static final Color highlight = new Color(255, 153, 153);
   public static final String P_ALL_VIEWS = "annotations.all.views";
   public static final AtomicBoolean applyToAllView = new AtomicBoolean(true);
   public static final Map<String, Boolean> defaultDisplayPreferences = new HashMap<>();
@@ -79,15 +79,6 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
   }
 
   protected static final int P_BORDER = 10;
-
-  public record ImageProperties(
-      int width,
-      int height,
-      double pixelSize,
-      double rescaleX,
-      double rescaleY,
-      Unit pixelUnit,
-      String pixelDescription) {}
 
   protected final HashMap<String, Boolean> displayPreferences = new HashMap<>();
   protected boolean visible = true;
@@ -258,22 +249,6 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     return r;
   }
 
-  protected double getPixelMin() {
-    E img = view2DPane.getImage();
-    if (img != null) {
-      return img.getPixelMin();
-    }
-    return 0.0;
-  }
-
-  protected double getPixelMax() {
-    E img = view2DPane.getImage();
-    if (img != null) {
-      return img.getPixelMax();
-    }
-    return 0.0;
-  }
-
   public void drawLUT(Graphics2D g2, Rectangle bound, float midFontHeight) {
     WlParams p = getWinLeveParameters();
     if (p != null && bound.height > 350) {
@@ -309,9 +284,9 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
       g2.draw(rect);
 
       g2.setPaint(Color.WHITE);
-
-      double pixMin = getPixelMin();
-      double pixMax = getPixelMax();
+      ImageElement img = view2DPane.getImage();
+      double pixMin = img.getPixelMin();
+      double pixMax = img.getPixelMax();
       HistogramData data =
           new HistogramData(
               new float[0], lut, 0, null, p, pixMin, pixMax, view2DPane.getMeasurableLayer());
@@ -384,22 +359,23 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     return lut;
   }
 
-  public void drawScale(
-      Graphics2D g2d, Rectangle bound, float fontHeight, ImageProperties imgProps) {
-    if (imgProps == null) {
+  public void drawScale(Graphics2D g2d, Rectangle bound, float fontHeight) {
+    ImageElement image = view2DPane.getImage();
+    PlanarImage source = image.getImage();
+    if (source == null) {
       return;
     }
 
     double zoomFactor = view2DPane.getViewModel().getViewScale();
 
-    double scale = imgProps.pixelSize / zoomFactor;
+    double scale = image.getPixelSize() / zoomFactor;
     double scaleSizex =
         adjustShowScale(
             scale,
-            (int) Math.min(zoomFactor * imgProps.width * imgProps.rescaleX, bound.width / 2.0));
+            (int) Math.min(zoomFactor * source.width() * image.getRescaleX(), bound.width / 2.0));
 
     if (showBottomScale && scaleSizex > 50.0d) {
-      Unit[] unit = {imgProps.pixelUnit};
+      Unit[] unit = {image.getPixelSpacingUnit()};
       String str = adjustLengthDisplay(scaleSizex * scale, unit);
       g2d.setStroke(new BasicStroke(1.0F));
       g2d.setPaint(Color.BLACK);
@@ -453,12 +429,10 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
           }
         }
       }
-      if (StringUtil.hasText(imgProps.pixelDescription)) {
+      String pixSizeDesc = image.getPixelSizeCalibrationDescription();
+      if (StringUtil.hasText(pixSizeDesc)) {
         FontTools.paintFontOutline(
-            g2d,
-            imgProps.pixelDescription,
-            (float) (posx + scaleSizex + 5),
-            (float) posy - fontHeight);
+            g2d, pixSizeDesc, (float) (posx + scaleSizex + 5), (float) posy - fontHeight);
       }
       str += " " + unit[0].getAbbreviation();
       FontTools.paintFontOutline(g2d, str, (float) (posx + scaleSizex + 5), (float) posy);
@@ -467,10 +441,10 @@ public abstract class AbstractInfoLayer<E extends ImageElement> extends DefaultU
     double scaleSizeY =
         adjustShowScale(
             scale,
-            (int) Math.min(zoomFactor * imgProps.height * imgProps.rescaleY, bound.height / 2.0));
+            (int) Math.min(zoomFactor * source.height() * image.getRescaleY(), bound.height / 2.0));
 
     if (scaleSizeY > 30.0d) {
-      Unit[] unit = {imgProps.pixelUnit};
+      Unit[] unit = {image.getPixelSpacingUnit()};
       String str = adjustLengthDisplay(scaleSizeY * scale, unit);
 
       float strokeWidth = g2d.getFont().getSize() / 15.0f;

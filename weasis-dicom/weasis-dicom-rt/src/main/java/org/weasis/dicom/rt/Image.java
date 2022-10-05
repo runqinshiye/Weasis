@@ -12,7 +12,6 @@ package org.weasis.dicom.rt;
 import org.apache.commons.math3.util.Pair;
 import org.dcm4che3.data.Attributes;
 import org.dcm4che3.data.Tag;
-import org.joml.Vector3d;
 import org.weasis.dicom.codec.DicomImageElement;
 
 /**
@@ -23,7 +22,7 @@ public class Image {
   private String patientPosition;
   private int prone;
   private int feetFirst;
-  private Vector3d imageSpacing;
+  private double[] imageSpacing;
 
   // Image LUT
   Pair<double[], double[]> imageLUT;
@@ -36,7 +35,7 @@ public class Image {
     this.feetFirst = patientPosition.contains("ff") ? -1 : 1; // NON-NLS
 
     // Get the image pixel spacing
-    this.imageSpacing = image.getSliceGeometry().getVoxelSpacing();
+    this.imageSpacing = image.getSliceGeometry().getVoxelSpacingArray();
   }
 
   public String getPatientPosition() {
@@ -63,8 +62,12 @@ public class Image {
     this.feetFirst = feetFirst;
   }
 
-  public Vector3d getImageSpacing() {
+  public double[] getImageSpacing() {
     return this.imageSpacing;
+  }
+
+  public void setImageSpacing(double[] imageSpacing) {
+    this.imageSpacing = imageSpacing;
   }
 
   public Pair<double[], double[]> getImageLUT() {

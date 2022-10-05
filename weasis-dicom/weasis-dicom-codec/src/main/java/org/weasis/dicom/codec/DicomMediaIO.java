@@ -129,7 +129,6 @@ public class DicomMediaIO implements DcmMediaReader {
     tagManager.addTag(Tag.InstitutionalDepartmentName, Level.SERIES);
     tagManager.addTag(Tag.StationName, Level.SERIES);
     tagManager.addTag(Tag.Manufacturer, Level.SERIES);
-    tagManager.addTag(Tag.AnatomicalOrientationType, Level.SERIES);
     tagManager.addTag(Tag.ManufacturerModelName, Level.SERIES);
     tagManager.addTag(Tag.SeriesNumber, Level.SERIES);
     tagManager.addTag(Tag.NumberOfFrames, Level.SERIES);
@@ -485,7 +484,10 @@ public class DicomMediaIO implements DcmMediaReader {
       ImageDescriptor desc = md.getImageDescriptor();
       TagD.get(Tag.ImagePositionPatient).readValue(header, this);
       TagD.get(Tag.ImageOrientationPatient).readValue(header, this);
-      setTagNoNull(TagW.ImageOrientationPlane, ImageOrientation.getPlan(this));
+      setTagNoNull(
+          TagW.ImageOrientationPlane,
+          ImageOrientation.makeImageOrientationLabelFromImageOrientationPatient(
+              TagD.getTagValue(this, Tag.ImageOrientationPatient, double[].class)));
 
       int bitsAllocated = desc.getBitsAllocated();
       int bitsStored = desc.getBitsStored();

@@ -110,7 +110,6 @@ public class SeriesBuilder {
         Tag.StationName,
         Tag.Manufacturer,
         Tag.ManufacturerModelName,
-        Tag.AnatomicalOrientationType,
         Tag.SeriesNumber,
         Tag.KVP,
         Tag.Laterality,

@@ -54,8 +54,8 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.joml</groupId>
-      <artifactId>joml</artifactId>
+      <groupId>org.jogamp.java3d</groupId>
+      <artifactId>vecmath</artifactId>
     </dependency>
   </dependencies>
 </project>

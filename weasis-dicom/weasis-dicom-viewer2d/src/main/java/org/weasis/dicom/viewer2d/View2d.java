@@ -45,7 +45,9 @@ import javax.swing.KeyStroke;
 import javax.swing.TransferHandler;
 import org.dcm4che3.data.Tag;
 import org.dcm4che3.img.lut.PresetWindowLevel;
-import org.joml.Vector3d;
+import org.jogamp.vecmath.Point3d;
+import org.jogamp.vecmath.Tuple3d;
+import org.jogamp.vecmath.Vector3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.api.explorer.DataExplorerView;
@@ -123,11 +125,10 @@ import org.weasis.dicom.codec.display.ShutterOp;
 import org.weasis.dicom.codec.display.WindowAndPresetsOp;
 import org.weasis.dicom.codec.geometry.GeometryOfSlice;
 import org.weasis.dicom.codec.geometry.ImageOrientation;
-import org.weasis.dicom.codec.geometry.ImageOrientation.Plan;
+import org.weasis.dicom.codec.geometry.ImageOrientation.Label;
 import org.weasis.dicom.codec.geometry.IntersectSlice;
 import org.weasis.dicom.codec.geometry.IntersectVolume;
 import org.weasis.dicom.codec.geometry.LocalizerPoster;
-import org.weasis.dicom.codec.geometry.PatientOrientation.Biped;
 import org.weasis.dicom.explorer.DicomExplorer;
 import org.weasis.dicom.explorer.DicomModel;
 import org.weasis.dicom.explorer.HangingProtocols.OpeningViewer;
@@ -335,7 +336,7 @@ public class View2d extends DefaultView2d<DicomImageElement> {
           GeometryOfSlice sliceGeometry = this.getImage().getDispSliceGeometry();
           String fruid = TagD.getTagValue(series, Tag.FrameOfReferenceUID, String.class);
           if (sliceGeometry != null && fruid != null) {
-            Vector3d p3 = Double.isNaN(p.x) ? null : sliceGeometry.getPosition(p);
+            Point3d p3 = Double.isNaN(p.x) ? null : sliceGeometry.getPosition(p);
             ImageViewerPlugin<DicomImageElement> container =
                 this.eventManager.getSelectedView2dContainer();
             if (container != null) {
@@ -889,7 +890,7 @@ public class View2d extends DefaultView2d<DicomImageElement> {
     return eventManager.getAction(actionKey.get(), MouseActionAdapter.class).orElse(null);
   }
 
-  public void computeCrosshair(Vector3d p3) {
+  public void computeCrosshair(Point3d p3) {
     DicomImageElement image = this.getImage();
     if (image != null) {
       graphicManager.deleteByLayerType(LayerType.CROSSLINES);
@@ -900,35 +901,34 @@ public class View2d extends DefaultView2d<DicomImageElement> {
         if (sliceOrientation != null && p3 != null) {
           Point2D p = sliceGeometry.getImagePosition(p3);
           if (p != null) {
-            Vector3d dimensions = sliceGeometry.getDimensions();
+            Tuple3d dimensions = sliceGeometry.getDimensions();
             boolean axial = SliceOrientation.AXIAL.equals(sliceOrientation);
             Point2D centerPt = new Point2D.Double(p.getX(), p.getY());
 
             List<Point2D> pts = new ArrayList<>();
             pts.add(new Point2D.Double(p.getX(), 0.0));
-            pts.add(new Point2D.Double(p.getX(), dimensions.x));
+            pts.add(new Point2D.Double(p.getX(), dimensions.getX()));
 
             boolean sagittal = SliceOrientation.SAGITTAL.equals(sliceOrientation);
-            Color color1 = axial ? Biped.A.getColor() : Biped.F.getColor();
+            Color color1 = sagittal ? Color.GREEN : Color.BLUE;
             addCrosshairLine(layer, pts, color1, centerPt);
 
             List<Point2D> pts2 = new ArrayList<>();
-            Color color2 = sagittal ? Biped.A.getColor() : Biped.R.getColor();
+            Color color2 = axial ? Color.GREEN : Color.RED;
             pts2.add(new Point2D.Double(0.0, p.getY()));
-            pts2.add(new Point2D.Double(dimensions.y, p.getY()));
+            pts2.add(new Point2D.Double(dimensions.getY(), p.getY()));
             addCrosshairLine(layer, pts2, color2, centerPt);
 
-            //            PlanarImage dispImg = image.getImage();
-            //            if (dispImg != null) {
-            //              Rectangle2D rect =
-            //                  new Rectangle2D.Double(
-            //                      0,
-            //                      0,
-            //                      dispImg.width() * image.getRescaleX(),
-            //                      dispImg.height() * image.getRescaleY());
-            //              addRectangle(layer, rect, axial ? Biped.F.getColor() : sagittal ?
-            //                  Biped.R.getColor() : Biped.A.getColor());
-            //            }
+            PlanarImage dispImg = image.getImage();
+            if (dispImg != null) {
+              Rectangle2D rect =
+                  new Rectangle2D.Double(
+                      0,
+                      0,
+                      dispImg.width() * image.getRescaleX(),
+                      dispImg.height() * image.getRescaleY());
+              addRectangle(layer, rect, axial ? Color.RED : sagittal ? Color.BLUE : Color.GREEN);
+            }
           }
         }
       }
@@ -982,13 +982,16 @@ public class View2d extends DefaultView2d<DicomImageElement> {
     if (s != null) {
       Object img = s.getMedia(MediaSeries.MEDIA_POSITION.MIDDLE, null, null);
       if (img instanceof DicomImageElement imageElement) {
-        Plan orientation = ImageOrientation.getPlan(imageElement);
-        if (orientation != null) {
-          if (Plan.AXIAL.equals(orientation)) {
+        double[] v = TagD.getTagValue(imageElement, Tag.ImageOrientationPatient, double[].class);
+        if (v != null && v.length == 6) {
+          Label orientation =
+              ImageOrientation.makeImageOrientationLabelFromImageOrientationPatient(
+                  v[0], v[1], v[2], v[3], v[4], v[5]);
+          if (ImageOrientation.Label.AXIAL.equals(orientation)) {
             sliceOrientation = SliceOrientation.AXIAL;
-          } else if (Plan.CORONAL.equals(orientation)) {
+          } else if (ImageOrientation.Label.CORONAL.equals(orientation)) {
             sliceOrientation = SliceOrientation.CORONAL;
-          } else if (Plan.SAGITTAL.equals(orientation)) {
+          } else if (ImageOrientation.Label.SAGITTAL.equals(orientation)) {
             sliceOrientation = SliceOrientation.SAGITTAL;
           }
         }
