@@ -51,7 +51,7 @@ under the License.
    |
    | Default: ${user.home}/.m2/repository
   -->
-  <localRepository>C:\Users\Administrator\.m2\repository</localRepository>
+  <localRepository>D:\Java\.m2\repository</localRepository>
 
 
   <!-- interactiveMode
@@ -145,7 +145,7 @@ under the License.
    | server for that repository.
    |-->
  <mirrors>
-<!-- 阿里云仓库 -->
+<!-- 阿里云仓库 
 <mirror>
   <id>aliyunmaven</id>
   <mirrorOf>*</mirrorOf>
@@ -163,7 +163,7 @@ under the License.
   <mirrorOf>*</mirrorOf>
   <name>apache公共仓库</name>
   <url>https://maven.aliyun.com/repository/apache-snapshots</url>
-</mirror>
+</mirror>-->
 </mirrors>
 
 
